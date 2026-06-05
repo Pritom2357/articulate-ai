@@ -16,7 +16,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { swaggerJsdocOptions } = require('./docs/swaggerConfig.js');
 
-dotenv.config({path: path.resolve(__dirname, '.env')});
+dotenv.config({path: path.resolve(__dirname, '../.env')});
 
 const app = express();
 const {authRouter} = require('./routes/authRoutes.js');
