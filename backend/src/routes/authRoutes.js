@@ -1,10 +1,10 @@
 const express = require('express');
-const UserController = require('../controllers/userController.js');
+const AuthController = require('../controllers/auth.controller.js');
 const AuthenticateToken = require('../middlewares/authenticateToken.js');
 
 // essential modules
 const authRouter = express.Router();
-const userController = new UserController();
+const authController = new AuthController();
 const authenticateToken = new AuthenticateToken();
 
 /**
@@ -27,7 +27,7 @@ const authenticateToken = new AuthenticateToken();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-authRouter.get('/init-table', userController.createTable);
+// authRouter.get('/init-table', authController.createTable);
 
 /**
  * @openapi
@@ -55,7 +55,7 @@ authRouter.get('/init-table', userController.createTable);
  *       409:
  *         description: Conflict (duplicate email/username)
  */
-authRouter.post('/register', userController.register);
+authRouter.post('/register', authController.register);
 
 /**
  * @openapi
@@ -79,7 +79,7 @@ authRouter.post('/register', userController.register);
  *       401:
  *         description: Invalid credentials
  */
-authRouter.post('/login', userController.login);
+authRouter.post('/login', authController.login);
 
 /**
  * @openapi
@@ -99,7 +99,7 @@ authRouter.post('/login', userController.login);
  *       401:
  *         description: Unauthorized
  */
-authRouter.get('/me', authenticateToken.authenticateToken, userController.getProfile);
+authRouter.get('/me', authenticateToken.authenticateToken, authController.getProfile);
 
 /**
  * @openapi
@@ -119,7 +119,7 @@ authRouter.get('/me', authenticateToken.authenticateToken, userController.getPro
  *       400:
  *         description: Invalid Google credential
  */
-authRouter.post('/google-login', userController.googleLogin);
+// authRouter.post('/google-login', authController.googleLogin);
 
 /**
  * @openapi
@@ -144,7 +144,7 @@ authRouter.post('/google-login', userController.googleLogin);
  *       401:
  *         description: Unauthorized
  */
-authRouter.post('/logout/:userId', authenticateToken.authenticateToken, userController.logout);
+authRouter.post('/logout/:userId', authenticateToken.authenticateToken, authController.logout);
 
 /**
  * @openapi
@@ -164,7 +164,7 @@ authRouter.post('/logout/:userId', authenticateToken.authenticateToken, userCont
  *       401:
  *         description: Unauthorized / invalid token
  */
-authRouter.get('/verify-token', authenticateToken.authenticateToken, userController.verifyToken);
+// authRouter.get('/verify-token', authenticateToken.authenticateToken, authController.verifyToken);
 
 /**
  * @openapi
@@ -180,7 +180,7 @@ authRouter.get('/verify-token', authenticateToken.authenticateToken, userControl
  *       429:
  *         description: Rate limited
  */
-authRouter.post('/send-verification-email', userController.sendVerificationEmail);
+// authRouter.post('/send-verification-email', authController.sendVerificationEmail);
 
 /**
  * @openapi
@@ -199,7 +199,7 @@ authRouter.post('/send-verification-email', userController.sendVerificationEmail
  *       400:
  *         description: Invalid or expired token
  */
-authRouter.get('/verify-email', userController.verifyEmail);
+// authRouter.get('/verify-email', authController.verifyEmail);
 
 /**
  * @openapi
@@ -217,7 +217,7 @@ authRouter.get('/verify-email', userController.verifyEmail);
  *       200:
  *         description: Reset email sent (always generic)
  */
-authRouter.post('/password/request', userController.requestPassword);
+// authRouter.post('/password/request', authController.requestPassword);
 
 /**
  * @openapi
@@ -237,7 +237,7 @@ authRouter.post('/password/request', userController.requestPassword);
  *       400:
  *         description: Invalid token / payload
  */
-authRouter.post('/password/reset', userController.resetPassword);
+// authRouter.post('/password/reset', authController.resetPassword);
 
 /**
  * @openapi
@@ -261,7 +261,7 @@ authRouter.post('/password/reset', userController.resetPassword);
  *       401:
  *         description: Unauthorized
  */
-authRouter.post('/password/change', authenticateToken.authenticateToken, userController.changePassword);
+authRouter.post('/password/change', authenticateToken.authenticateToken, authController.changePassword);
 
 module.exports = {
     authRouter

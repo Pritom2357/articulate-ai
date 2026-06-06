@@ -11,9 +11,16 @@ create table users(
   password_hash CHAR(60) NOT NULL,
   updated_at TIMESTAMP DEFAULT now(),
   mic_verified BOOLEAN DEFAULT FALSE,
-  mic_quality_score FLOAT,
-  guide_prefernce varchar(6) check (guide_preference in ('MALE', 'FEMALE'))
-)
+  mic_quality_score FLOAT
+);
+
+alter table users add guide_preference varchar(6) check (guide_preference in ('MALE', 'FEMALE')) default 'MALE'
+ALTER TABLE users ADD is_active boolean DEFAULT true;
+alter table users add refresh_token TEXT;
+alter table users add last_login TIMESTAMP DEFAULT now();
+alter table users drop column age;
+alter table users add column date_of_birth DATE;
+
 
 CREATE TABLE onboarding_assessments (
   id serial PRIMARY KEY,
@@ -123,6 +130,7 @@ CREATE TABLE tests (
 );
 
 
+CREATE TABLE test_questions (
    id SERIAL PRIMARY KEY,
   test_id INTEGER NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
   question_text TEXT NOT NULL,

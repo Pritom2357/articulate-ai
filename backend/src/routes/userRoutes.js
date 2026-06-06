@@ -1,12 +1,12 @@
 const express = require('express');
-const UserController = require('../controllers/userController.js');
+const AuthController = require('../controllers/auth.controller.js');
 const AuthenticateToken = require('../middlewares/authenticateToken.js');
 const multer = require('multer');
 const upload = multer({storage: multer.memoryStorage()});
 
 // essential modules
 const userRouter = express.Router();
-const userController = new UserController();
+const authController = new AuthController();
 const authenticateToken = new AuthenticateToken();
 
 /**
@@ -32,7 +32,7 @@ const authenticateToken = new AuthenticateToken();
  *       404:
  *         description: Not found
  */
-userRouter.get('/get-profile/:userId', authenticateToken.authenticateToken, userController.getProfile);
+userRouter.get('/get-profile/:userId', authenticateToken.authenticateToken, authController.getProfile);
 
 /**
  * @openapi
@@ -61,7 +61,7 @@ userRouter.get('/get-profile/:userId', authenticateToken.authenticateToken, user
  *       403:
  *         description: Forbidden
  */
-userRouter.patch('/update-profile/:userId', authenticateToken.authenticateToken, userController.updateProfile);
+userRouter.patch('/update-profile/:userId', authenticateToken.authenticateToken, authController.updateProfile);
 
 /**
  * @openapi
@@ -90,7 +90,7 @@ userRouter.patch('/update-profile/:userId', authenticateToken.authenticateToken,
  *       403:
  *         description: Forbidden
  */
-userRouter.patch('/subscription/:userId', authenticateToken.authenticateToken, userController.changeSubscription);
+// userRouter.patch('/subscription/:userId', authenticateToken.authenticateToken, authController.changeSubscription);
 
 /**
  * @openapi
@@ -130,7 +130,7 @@ userRouter.patch('/subscription/:userId', authenticateToken.authenticateToken, u
 userRouter.post('/avatar/:userId',
     authenticateToken.authenticateToken,
     upload.single('avatar'),
-    userController.uploadAvatar
+    authController.uploadProfilePhoto
 );
 
 module.exports = {
