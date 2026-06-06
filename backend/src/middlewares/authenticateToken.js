@@ -1,23 +1,23 @@
 const dotenv = require('dotenv');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const UserModel = require('../models/userModel');
+const AuthModel = require('../models/auth.model.js');
 
 // dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-class AuthenticateToken{
-    constructor(){
-        this.userModel = new UserModel();
+class AuthenticateToken {
+    constructor() {
+        this.authModel = new AuthModel();
     }
-    
-    authenticateToken = async(req, res, next)=>{
+
+    authenticateToken = async (req, res, next) => {
         try {
             console.log("Authenticating users");
-            
+
             const authHeader = req.headers['authorization'] || req.headers['Authorization'];
             const token = authHeader && authHeader.split(' ')[1];
-            
-            if(!token){
+
+            if (!token) {
                 console.log("Access token not provided");
                 return res.status(401).json({
                     success: false,
@@ -29,9 +29,9 @@ class AuthenticateToken{
 
             const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
             const userId = decoded.sub || decoded.id;
-            const user = await this.userModel.getUserById(userId);
+            const user = await this.authModel.getUserById(userId);
 
-            if(!user){
+            if (!user) {
                 return res.status(401).json({
                     success: false,
                     message: "User not found"
@@ -42,16 +42,16 @@ class AuthenticateToken{
             next();
         } catch (error) {
             console.error('Token verification error:', error.message);
-        
+
             if (error.name === 'TokenExpiredError') {
-                return res.status(401).json({ 
-                    success: false, 
-                    message: 'Token expired' 
+                return res.status(401).json({
+                    success: false,
+                    message: 'Token expired'
                 });
             }
-            return res.status(403).json({ 
-                success: false, 
-                message: 'Invalid token' 
+            return res.status(403).json({
+                success: false,
+                message: 'Invalid token'
             });
         }
     }
