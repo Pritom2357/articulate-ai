@@ -9,7 +9,7 @@ const swaggerJsdocOptions = {
       description: 'Reusable Node.js authentication & user management template.'
     },
     servers: [
-      { url: 'http://localhost:3000', description: 'Local Dev' }
+      { url: 'http://localhost:8000', description: 'Local Dev' }
     ],
     components: {
       securitySchemes: {
@@ -22,22 +22,29 @@ const swaggerJsdocOptions = {
       },
       schemas: {
         User: {
-            type: 'object',
-            properties: {
-              id: { type: 'integer' },
-              username: { type: 'string' },
-              email: { type: 'string', format: 'email' },
-              email_verified: { type: 'boolean' },
-              subscription_type: { type: 'string', enum: ['free','plus','premium'] },
-              avatar_url: { type: 'string' },
-              created_at: { type: 'string', format: 'date-time' }
-            }
+          type: 'object',
+          properties: {
+            id: { type: 'integer' },
+            name: { type: 'string' },
+            email: { type: 'string', format: 'email' },
+            phone: { type: 'string' },
+            gender: { type: 'string' },
+            date_of_birth: { type: 'string', format: 'date' },
+            role: { type: 'string' },
+            is_active: { type: 'boolean' },
+            profile_photo: { type: 'string' },
+            mic_verified: { type: 'boolean' },
+            mic_quality_score: { type: 'integer' },
+            guide_preference: { type: 'string' },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' }
+          }
         },
         AuthLoginRequest: {
           type: 'object',
-          required: ['username','password'],
+          required: ['email', 'password'],
           properties: {
-            username: { type: 'string' },
+            email: { type: 'string', format: 'email' },
             password: { type: 'string', format: 'password' }
           }
         },
@@ -52,11 +59,14 @@ const swaggerJsdocOptions = {
         },
         RegisterRequest: {
           type: 'object',
-          required: ['username','email','password'],
+          required: ['name', 'email', 'password', 'phone'],
           properties: {
-            username: { type: 'string' },
+            name: { type: 'string' },
             email: { type: 'string', format: 'email' },
-            password: { type: 'string', format: 'password' }
+            password: { type: 'string', format: 'password' },
+            phone: { type: 'string' },
+            gender: { type: 'string' },
+            date_of_birth: { type: 'string', format: 'date' }
           }
         },
         BasicSuccess: {
@@ -72,6 +82,32 @@ const swaggerJsdocOptions = {
             success: { type: 'boolean', example: false },
             error: { type: 'string' }
           }
+        },
+        PasswordChangeRequest: {
+          type: 'object',
+          required: ['oldPassword', 'newPassword'],
+          properties: {
+            oldPassword: { type: 'string', format: 'password' },
+            newPassword: { type: 'string', format: 'password' }
+          }
+        },
+        UserUpdateRequest: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            phone: { type: 'string' },
+            gender: { type: 'string' },
+            date_of_birth: { type: 'string', format: 'date' },
+            guide_preference: { type: 'string' }
+          }
+        },
+        AvatarUploadResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+            profile_photo: { type: 'string' }
+          }
         }
       }
     },
@@ -84,8 +120,8 @@ const swaggerJsdocOptions = {
     ]
   },
   apis: [
-    path.join(__dirname, '..', 'routes', '*.js'),
-    path.join(__dirname, '..', 'controllers', '*.js')
+    './src/routes/*.js',
+    './src/controllers/*.js'
   ]
 };
 

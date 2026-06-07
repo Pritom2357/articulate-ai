@@ -2,7 +2,7 @@ const express = require('express');
 const AuthController = require('../controllers/auth.controller.js');
 const AuthenticateToken = require('../middlewares/authenticateToken.js');
 const multer = require('multer');
-const upload = multer({storage: multer.memoryStorage()});
+const upload = multer({ storage: multer.memoryStorage() });
 
 // essential modules
 const userRouter = express.Router();
@@ -63,7 +63,7 @@ userRouter.get('/get-profile/:userId', authenticateToken.authenticateToken, auth
  */
 userRouter.patch('/update-profile/:userId', authenticateToken.authenticateToken, authController.updateProfile);
 
-/**
+/* Omitted
  * @openapi
  * /api/user/subscription/{userId}:
  *   patch:
