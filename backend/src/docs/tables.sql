@@ -13,8 +13,8 @@ create table users(
   mic_verified BOOLEAN DEFAULT FALSE,
   mic_quality_score FLOAT
 );
-
-alter table users add guide_preference varchar(6) check (guide_preference in ('MALE', 'FEMALE')) default 'MALE'
+alter table users add guide_preference varchar(6)
+  check (guide_preference in ('MALE', 'FEMALE')) default 'MALE'
 ALTER TABLE users ADD is_active boolean DEFAULT true;
 alter table users add refresh_token TEXT;
 alter table users add last_login TIMESTAMP DEFAULT now();
@@ -25,11 +25,11 @@ alter table users add column date_of_birth DATE;
 CREATE TABLE onboarding_assessments (
   id serial PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  assessed_level VARCHAR(20) NOT NULL,                 -- e.g. 'A1', 'A2', 'B1'
+  assessed_level VARCHAR(20) NOT NULL, -- e.g. 'A1', 'A2', 'B1'
   vocab_score FLOAT,
-  pronunciation_score  FLOAT,                                -- 0-100
-  ai_notes            TEXT,                                 -- AI feedback summary
-  assessed_at         TIMESTAMP NOT NULL DEFAULT NOW()
+  pronunciation_score FLOAT, -- 0-100
+  ai_notes TEXT, -- AI feedback summary
+  assessed_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 
@@ -43,13 +43,13 @@ CREATE TABLE user_progress (
 );
 
 
-
 CREATE TABLE IF NOT EXISTS chapters (
   id SERIAL PRIMARY KEY,
   title VARCHAR(100) NOT NULL,
   title_bn VARCHAR(255) NOT NULL,
   order_num INTEGER UNIQUE NOT NULL,
-  skill_type VARCHAR(20) NOT NULL CHECK (skill_type IN ('READING', 'LISTENING', 'SPEAKING', 'MIXED')),
+  skill_type VARCHAR(20) NOT NULL
+    CHECK (skill_type IN ('READING', 'LISTENING', 'SPEAKING', 'MIXED')),
   description TEXT NOT NULL,
   conversation_key_points JSONB NOT NULL DEFAULT '[]'
 );
@@ -74,7 +74,8 @@ CREATE TABLE words (
   word VARCHAR(50) NOT NULL UNIQUE,
   bangla_meaning TEXT NOT NULL,
   frequency_rank INTEGER NOT NULL,
-  difficulty_level VARCHAR(20) check (difficulty_level in ('BEGINNER', 'INTERMEDIATE', 'ADVANCED')) DEFAULT 'BEGINNER',
+  difficulty_level VARCHAR(20) DEFAULT 'BEGINNER'
+    check (difficulty_level in ('BEGINNER', 'INTERMEDIATE', 'ADVANCED')),
   ipa VARCHAR(100),
   syllables VARCHAR(100),
   audio_url TEXT
@@ -94,7 +95,8 @@ CREATE TABLE user_word_progress (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   word_id INTEGER NOT NULL REFERENCES words(id) ON DELETE CASCADE,
-  familiarity VARCHAR(20) NOT NULL DEFAULT 'NEW' CHECK (familiarity IN ('NEW', 'LEARNING', 'FAMILIAR', 'MASTERED')),
+  familiarity VARCHAR(20) NOT NULL DEFAULT 'NEW'
+    CHECK (familiarity IN ('NEW', 'LEARNING', 'FAMILIAR', 'MASTERED')),
   correct_count INTEGER NOT NULL DEFAULT 0,
   wrong_count INTEGER NOT NULL DEFAULT 0,
   last_reviewed  TIMESTAMP,
@@ -122,7 +124,8 @@ CREATE TABLE tests (
   id SERIAL PRIMARY KEY,
   lesson_id INTEGER REFERENCES lessons(id) ON DELETE CASCADE,
   title VARCHAR(255) NOT NULL,
-  skill_type VARCHAR(20) NOT NULL CHECK (skill_type IN ('READING', 'LISTENING', 'SPEAKING', 'MIXED')),
+  skill_type VARCHAR(20) NOT NULL
+    CHECK (skill_type IN ('READING', 'LISTENING', 'SPEAKING', 'MIXED')),
   difficulty_level INT, -- like 1 to 5
   total_marks INTEGER,
   time_limit_seconds INTEGER,
@@ -148,24 +151,17 @@ CREATE TABLE test_questions (
 );
 
 
-
-CREATE TABLE pronunciation_attempts (
-  id serial PRIMARY KEY,
-  user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  attempt_type VARCHAR(10) NOT NULL CHECK (attempt_type IN ('WORD', 'PHRASE')),
-  word_id integer REFERENCES words(id),
-  sentence_test_id integer REFERENCES test_questions(id),
-  audio_url text,
-  accuracy_score FLOAT,
-  feedback TEXT,
-  passed BOOLEAN DEFAULT FALSE,
-  attempted_at TIMESTAMP NOT NULL DEFAULT NOW(),
-
-  -- make sure at least one reference is always filled
-  CHECK (
-    (attempt_type = 'WORD' AND word_id IS NOT NULL) OR
-    (attempt_type = 'SENTENCE' AND sentence_test_id IS NOT NULL)
-  )
+CREATE TABLE test_progress (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  test_id INTEGER NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
+  started_at TIMESTAMP DEFAULT NOW(),
+  completed_at TIMESTAMP,
+  score NUMERIC(5,2),
+  obtained_marks INTEGER,
+  status VARCHAR(20) NOT NULL DEFAULT 'IN PROGRESS'
+    CHECK (status IN ('IN PROGRESS', 'SUBMITTED', 'EVALUATED')),
+  attempt_no INTEGER DEFAULT 1
 );
 
 
@@ -183,27 +179,14 @@ CREATE TABLE test_attempts (
 alter table test_attempts drop column answer_text;
 alter table test_attempts add audio_url text;
 
-CREATE TABLE test_progress (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  test_id INTEGER NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
-  started_at TIMESTAMP DEFAULT NOW(),
-  completed_at TIMESTAMP,
-  score NUMERIC(5,2),
-  obtained_marks INTEGER,
-  status VARCHAR(20) NOT NULL DEFAULT 'IN PROGRESS'
-    CHECK (status IN ('IN PROGRESS', 'SUBMITTED', 'EVALUATED')),
-  attempt_no INTEGER DEFAULT 1
-);
-
-
 
 CREATE TABLE phrases (
   id SERIAL PRIMARY KEY,
   phrase_en VARCHAR(300) NOT NULL UNIQUE,
   phrase_bn VARCHAR(400) NOT NULL, 
   audio_url TEXT, 
-  difficulty VARCHAR(20) DEFAULT 'BEGINNER' CHECK (difficulty IN ('BEGINNER', 'INTERMEDIATE', 'ADVANCED'))
+  difficulty VARCHAR(20) DEFAULT 'BEGINNER'
+    CHECK (difficulty IN ('BEGINNER', 'INTERMEDIATE', 'ADVANCED'))
 );
 
 
@@ -220,7 +203,8 @@ CREATE TABLE pronunciation_attempts (
   id SERIAL PRIMARY KEY,
   attempt_id INTEGER NOT NULL REFERENCES test_progress(id) ON DELETE CASCADE,
   question_id INTEGER NOT NULL REFERENCES test_questions(id) ON DELETE CASCADE,
-  attempt_type VARCHAR(10) NOT NULL CHECK (attempt_type IN ('WORD', 'PHRASE')),
+  attempt_type VARCHAR(10) NOT NULL
+    CHECK (attempt_type IN ('WORD', 'PHRASE')),
   word_id INTEGER REFERENCES words(id),
   phrase_id INTEGER REFERENCES phrases(id),
   audio_url TEXT,
@@ -233,5 +217,3 @@ CREATE TABLE pronunciation_attempts (
     (attempt_type = 'PHRASE' AND phrase_id IS NOT NULL)
   )
 );
-
-

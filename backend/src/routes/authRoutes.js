@@ -9,28 +9,6 @@ const authenticateToken = new AuthenticateToken();
 
 /**
  * @openapi
- * /api/auth/init-table:
- *   get:
- *     tags: [Auth]
- *     summary: Initialize (create) users table if it does not exist
- *     responses:
- *       200:
- *         description: Table created or already exists
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/BasicSuccess'
- *       500:
- *         description: Internal error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-// authRouter.get('/init-table', authController.createTable);
-
-/**
- * @openapi
  * /api/auth/register:
  *   post:
  *     tags: [Auth]
@@ -62,7 +40,7 @@ authRouter.post('/register', authController.register);
  * /api/auth/login:
  *   post:
  *     tags: [Auth]
- *     summary: Login with username & password
+ *     summary: Login with email & password
  *     requestBody:
  *       required: true
  *       content:
@@ -103,26 +81,6 @@ authRouter.get('/me', authenticateToken.authenticateToken, authController.getPro
 
 /**
  * @openapi
- * /api/auth/google-login:
- *   post:
- *     tags: [Auth]
- *     summary: Login / register via Google OAuth ID token
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/GoogleLoginRequest'
- *     responses:
- *       200:
- *         description: Google login success
- *       400:
- *         description: Invalid Google credential
- */
-// authRouter.post('/google-login', authController.googleLogin);
-
-/**
- * @openapi
  * /api/auth/logout/{userId}:
  *   post:
  *     tags: [Auth]
@@ -145,99 +103,6 @@ authRouter.get('/me', authenticateToken.authenticateToken, authController.getPro
  *         description: Unauthorized
  */
 authRouter.post('/logout/:userId', authenticateToken.authenticateToken, authController.logout);
-
-/**
- * @openapi
- * /api/auth/verify-token:
- *   get:
- *     tags: [Auth]
- *     summary: Verify validity of access token
- *     security:
- *       - BearerAuth: []
- *     responses:
- *       200:
- *         description: Token valid
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/BasicSuccess'
- *       401:
- *         description: Unauthorized / invalid token
- */
-// authRouter.get('/verify-token', authenticateToken.authenticateToken, authController.verifyToken);
-
-/**
- * @openapi
- * /api/auth/send-verification-email:
- *   post:
- *     tags: [Auth]
- *     summary: Send verification email (if not verified)
- *     requestBody:
- *       required: false
- *     responses:
- *       200:
- *         description: Email sent (or already verified)
- *       429:
- *         description: Rate limited
- */
-// authRouter.post('/send-verification-email', authController.sendVerificationEmail);
-
-/**
- * @openapi
- * /api/auth/verify-email:
- *   get:
- *     tags: [Auth]
- *     summary: Verify email using token
- *     parameters:
- *       - in: query
- *         name: token
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200:
- *         description: Email verified
- *       400:
- *         description: Invalid or expired token
- */
-// authRouter.get('/verify-email', authController.verifyEmail);
-
-/**
- * @openapi
- * /api/auth/password/request:
- *   post:
- *     tags: [Auth]
- *     summary: Request password reset email
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/PasswordResetRequestInit'
- *     responses:
- *       200:
- *         description: Reset email sent (always generic)
- */
-// authRouter.post('/password/request', authController.requestPassword);
-
-/**
- * @openapi
- * /api/auth/password/reset:
- *   post:
- *     tags: [Auth]
- *     summary: Reset password using reset token
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/PasswordResetConfirm'
- *     responses:
- *       200:
- *         description: Password reset success
- *       400:
- *         description: Invalid token / payload
- */
-// authRouter.post('/password/reset', authController.resetPassword);
 
 /**
  * @openapi
