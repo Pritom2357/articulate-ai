@@ -35,7 +35,6 @@ function sm2(card, pronunciationScore) {
     repetitions += 1;
   }
 
-  // Update easiness factor (minimum 1.3)
   easiness = easiness + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
   if (easiness < 1.3) easiness = 1.3;
 
