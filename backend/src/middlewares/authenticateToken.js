@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const AuthModel = require('../models/auth.model.js');
 
-// dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 class AuthenticateToken {
     constructor() {
