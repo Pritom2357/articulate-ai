@@ -1,13 +1,57 @@
 const express = require('express');
-const AuthController = require('../controllers/auth.controller.js');
+const UserController = require('../controllers/user.controller.js');
 const AuthenticateToken = require('../middlewares/authenticateToken.js');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 
 // essential modules
 const userRouter = express.Router();
-const authController = new AuthController();
+const userController = new UserController();
 const authenticateToken = new AuthenticateToken();
+
+/**
+ * @openapi
+ * /api/user/me:
+ *   get:
+ *     tags: [User]
+ *     summary: Get current logged in user
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ */
+userRouter.get('/me', authenticateToken.authenticateToken, userController.getProfile);
+
+/**
+ * @openapi
+ * /api/user/password/change:
+ *   post:
+ *     tags: [User]
+ *     summary: Change password (authenticated)
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/PasswordChangeRequest'
+ *     responses:
+ *       200:
+ *         description: Password changed
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
+userRouter.post('/password/change', authenticateToken.authenticateToken, userController.changePassword);
 
 /**
  * @openapi
@@ -32,7 +76,7 @@ const authenticateToken = new AuthenticateToken();
  *       404:
  *         description: Not found
  */
-userRouter.get('/get-profile/:userId', authenticateToken.authenticateToken, authController.getProfile);
+userRouter.get('/get-profile/:userId', authenticateToken.authenticateToken, userController.getProfile);
 
 /**
  * @openapi
@@ -61,7 +105,7 @@ userRouter.get('/get-profile/:userId', authenticateToken.authenticateToken, auth
  *       403:
  *         description: Forbidden
  */
-userRouter.patch('/update-profile/:userId', authenticateToken.authenticateToken, authController.updateProfile);
+userRouter.patch('/update-profile/:userId', authenticateToken.authenticateToken, userController.updateProfile);
 
 /* Omitted
  * @openapi
@@ -90,7 +134,7 @@ userRouter.patch('/update-profile/:userId', authenticateToken.authenticateToken,
  *       403:
  *         description: Forbidden
  */
-// userRouter.patch('/subscription/:userId', authenticateToken.authenticateToken, authController.changeSubscription);
+// userRouter.patch('/subscription/:userId', authenticateToken.authenticateToken, userController.changeSubscription);
 
 /**
  * @openapi
@@ -130,7 +174,7 @@ userRouter.patch('/update-profile/:userId', authenticateToken.authenticateToken,
 userRouter.post('/avatar/:userId',
     authenticateToken.authenticateToken,
     upload.single('avatar'),
-    authController.uploadProfilePhoto
+    userController.uploadProfilePhoto
 );
 
 module.exports = {

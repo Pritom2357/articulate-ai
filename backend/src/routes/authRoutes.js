@@ -59,25 +59,6 @@ authRouter.post('/register', authController.register);
  */
 authRouter.post('/login', authController.login);
 
-/**
- * @openapi
- * /api/auth/me:
- *   get:
- *     tags: [Auth]
- *     summary: Get current logged in user
- *     security:
- *       - BearerAuth: []
- *     responses:
- *       200:
- *         description: Current user
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- *       401:
- *         description: Unauthorized
- */
-authRouter.get('/me', authenticateToken.authenticateToken, authController.getProfile);
 
 /**
  * @openapi
@@ -104,29 +85,6 @@ authRouter.get('/me', authenticateToken.authenticateToken, authController.getPro
  */
 authRouter.post('/logout/:userId', authenticateToken.authenticateToken, authController.logout);
 
-/**
- * @openapi
- * /api/auth/password/change:
- *   post:
- *     tags: [Auth]
- *     summary: Change password (authenticated)
- *     security:
- *       - BearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/PasswordChangeRequest'
- *     responses:
- *       200:
- *         description: Password changed
- *       400:
- *         description: Validation error
- *       401:
- *         description: Unauthorized
- */
-authRouter.post('/password/change', authenticateToken.authenticateToken, authController.changePassword);
 
 module.exports = {
     authRouter
