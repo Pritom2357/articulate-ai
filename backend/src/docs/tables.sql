@@ -217,3 +217,28 @@ CREATE TABLE pronunciation_attempts (
     (attempt_type = 'PHRASE' AND phrase_id IS NOT NULL)
   )
 );
+
+
+-- added later
+CREATE TABLE badges (
+  badge_id serial PRIMARY KEY,
+  title VARCHAR(100) NOT NULL,
+  description TEXT,
+  xp_reward INTEGER NOT NULL DEFAULT 0,
+  icon_url TEXT
+);
+
+-- User earned badges
+CREATE TABLE user_badges (
+  user_id   INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  badge_id  INTEGER NOT NULL REFERENCES badges(badge_id) ON DELETE CASCADE,
+  earned_at TIMESTAMP   NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, badge_id)
+);
+
+-- user_word_progress X user_word_srs
+ALTER TABLE user_word_progress
+  ADD COLUMN streak INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN easiness FLOAT NOT NULL DEFAULT 2.5,
+  ADD COLUMN interval_days INTEGER NOT NULL DEFAULT 1,
+  ADD COLUMN next_review DATE NOT NULL DEFAULT CURRENT_DATE;
