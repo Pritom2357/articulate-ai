@@ -219,7 +219,7 @@ CREATE TABLE pronunciation_attempts (
 );
 
 
--- added later
+------------------ added later -----------------
 CREATE TABLE badges (
   badge_id serial PRIMARY KEY,
   title VARCHAR(100) NOT NULL,
@@ -230,9 +230,9 @@ CREATE TABLE badges (
 
 -- User earned badges
 CREATE TABLE user_badges (
-  user_id   INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  badge_id  INTEGER NOT NULL REFERENCES badges(badge_id) ON DELETE CASCADE,
-  earned_at TIMESTAMP   NOT NULL DEFAULT NOW(),
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  badge_id INTEGER NOT NULL REFERENCES badges(badge_id) ON DELETE CASCADE,
+  earned_at TIMESTAMP NOT NULL DEFAULT NOW(),
   PRIMARY KEY (user_id, badge_id)
 );
 
@@ -242,3 +242,12 @@ ALTER TABLE user_word_progress
   ADD COLUMN easiness FLOAT NOT NULL DEFAULT 2.5,
   ADD COLUMN interval_days INTEGER NOT NULL DEFAULT 1,
   ADD COLUMN next_review DATE NOT NULL DEFAULT CURRENT_DATE;
+
+
+CREATE TABLE user_xp_log (
+  log_id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL,
+  reason VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
