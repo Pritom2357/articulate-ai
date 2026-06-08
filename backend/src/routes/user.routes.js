@@ -177,6 +177,4 @@ userRouter.post('/avatar/:userId',
     userController.uploadProfilePhoto
 );
 
-module.exports = {
-    userRouter
-};
+module.exports = { userRouter };

@@ -18,10 +18,12 @@ const { swaggerJsdocOptions } = require('./docs/swaggerConfig.js');
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
+
 // app setup --> add our necessary routes here...
 const app = express();
-const { authRouter } = require('./routes/authRoutes.js');
-const { userRouter } = require('./routes/userRoutes.js');
+const { authRouter } = require('./routes/auth.routes.js');
+const { userRouter } = require('./routes/user.routes.js');
+const { curriculumRouter } = require('./routes/curriculum.routes.js');
 
 const PORT = process.env.PORT || 8000;
 const server = http.createServer(app);
@@ -123,10 +125,14 @@ app.use(
             route: req.route ? req.route.path : req.path,
             status_code: res.statusCode
         }).observe(time)
-    }))
+    })
+)
 
+
+//////////// ad our apis here /////////////////
 app.use('/api/auth', loginLimiter, authRouter);
 app.use('/api/user', apiLimiter, userRouter);
+app.use('/api/curriculum', apiLimiter, curriculumRouter);
 
 const options = {
     transports: [
