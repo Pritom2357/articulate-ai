@@ -12,27 +12,30 @@ function scoreToQuality(score) {
 }
 
 /**
- * @param {object} card - { repetitions, easiness, interval_days }
+ * @param {object} card - { streak, easiness, interval_days }
  * @param {number} pronunciationScore - 0–100
- * @returns {{ repetitions, easiness, interval_days, next_review }}
+ * @returns {{ streak, easiness, interval_days, next_review }}
  */
 function sm2(card, pronunciationScore) {
   const quality = scoreToQuality(pronunciationScore);
 
-  let { repetitions, easiness, interval_days } = card;
+  let { streak, easiness, interval_days } = card;
 
   if (quality < 3) {
-    repetitions = 0;
+    streak = 0;
     interval_days = 1;
-  } else {
-    if (repetitions === 0) {
+  }
+  else {
+    if (streak === 0) {
       interval_days = 1;
-    } else if (repetitions === 1) {
+    }
+    else if (streak === 1) {
       interval_days = 6;
-    } else {
+    }
+    else {
       interval_days = Math.round(interval_days * easiness);
     }
-    repetitions += 1;
+    streak += 1;
   }
 
   easiness = easiness + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
@@ -42,7 +45,7 @@ function sm2(card, pronunciationScore) {
   next_review.setDate(next_review.getDate() + interval_days);
 
   return {
-    repetitions,
+    streak,
     easiness: parseFloat(easiness.toFixed(4)),
     interval_days,
     next_review,
