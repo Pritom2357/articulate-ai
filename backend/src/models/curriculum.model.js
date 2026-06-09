@@ -10,17 +10,7 @@ class CurriculumModel {
     getAllChapters = async () => {
         try {
             const query = `
-                SELECT
-                    id,
-                    title,
-                    title_bn,
-                    order_num,
-                    skill_type,
-                    description,
-                    desc_audio_m,
-                    desc_audio_f,
-                    (Select Count(*) From lessons Where chapter_id = chapters.id) AS lesson_count
-                FROM chapters
+                SELECT * from vw_chapters
                 ORDER BY order_num ASC;
             `
             const result = await this.db_connection.query_executor(query)
@@ -36,17 +26,7 @@ class CurriculumModel {
     getChapterById = async (chapterId) => {
         try {
             const query = `
-                SELECT
-                    id,
-                    title,
-                    title_bn,
-                    order_num,
-                    skill_type,
-                    description,
-                    desc_audio_m,
-                    desc_audio_f,
-                    (Select Count(*) From lessons Where chapter_id = chapters.id) AS lesson_count
-                FROM chapters
+                SELECT * from vw_chapters
                 WHERE id = $1
                 ORDER BY order_num ASC;
             `
