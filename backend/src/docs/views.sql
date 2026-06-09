@@ -74,3 +74,26 @@ SELECT
 FROM users u
 CROSS JOIN vw_chapters c
 LEFT JOIN user_progress up ON up.user_id = u.id AND up.chapter_id = c.id;
+
+
+
+create or replace view vw_user_stats as
+SELECT
+    up.user_id,
+    up.xp,
+    up.level,
+    up.streak_days,
+    up.last_active,
+    (
+        SELECT COUNT(*) FROM user_lesson_progress lp
+        WHERE lp.user_id = up.user_id AND lp.status = 'COMPLETED'
+    ) AS completed_lessons,
+    (
+        SELECT COUNT(*) FROM test_progress tp
+        WHERE tp.user_id = up.user_id AND tp.status = 'SUBMITTED'
+    ) AS completed_tests,
+    (
+        SELECT COUNT(*) FROM test_progress tp
+        WHERE tp.user_id = up.user_id AND tp.score = 100
+    ) AS perfect_tests
+FROM user_progress up;

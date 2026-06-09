@@ -24,6 +24,7 @@ const app = express();
 const { authRouter } = require('./routes/auth.routes.js');
 const { userRouter } = require('./routes/user.routes.js');
 const { curriculumRouter } = require('./routes/curriculum.routes.js');
+const { progressRouter } = require('./routes/progress.routes.js');
 
 const PORT = process.env.PORT || 8000;
 const server = http.createServer(app);
@@ -133,6 +134,7 @@ app.use(
 app.use('/api/auth', loginLimiter, authRouter);
 app.use('/api/user', apiLimiter, userRouter);
 app.use('/api/curriculum', apiLimiter, curriculumRouter);
+app.use('/api/progress', apiLimiter, progressRouter);
 
 const options = {
     transports: [
