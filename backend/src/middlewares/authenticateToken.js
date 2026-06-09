@@ -1,13 +1,13 @@
 const dotenv = require('dotenv');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const AuthModel = require('../models/auth.model.js');
+const UserModel = require('../models/user.model.js');
 
 // dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 class AuthenticateToken {
     constructor() {
-        this.authModel = new AuthModel();
+        this.userModel = new UserModel();
     }
 
     authenticateToken = async (req, res, next) => {
@@ -29,7 +29,7 @@ class AuthenticateToken {
 
             const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
             const userId = decoded.sub || decoded.id;
-            const user = await this.authModel.getUserById(userId);
+            const user = await this.userModel.getUserById(userId);
 
             if (!user) {
                 return res.status(401).json({

@@ -1,5 +1,7 @@
 const DB_Connection = require('../database/db')
 const { sm2 } = require('../services/srs')
+const bus = require('../events/eventBus.js')
+const Events = require('../events/eventsNames.js')
 
 
 // XP constants
@@ -182,7 +184,7 @@ class ProgressModel {
     }
 
 
-    checkAndAwardBadges = async (userId, socketPush = null) => {
+    checkAndAwardBadges = async (userId) => {
         try {
             const statsQuery = `
                 SELECT * FROM vw_user_stats
@@ -284,17 +286,17 @@ class ProgressModel {
                 await this.db_connection.query_executor(xpQuery, xpParams)
 
 
-                // to show a real-time notification to  user
-                if (socketPush) {
-                    socketPush(userId, 'badge_earned', {
-                        badge_id: badge.badge_id,
-                        title: badge.title,
-                        description: badge.description,
-                        xp_reward: badge.xp_reward,
-                        icon_url: badge.icon_url,
-                        earned_at: new Date()
-                    })
-                }
+                // Shout the event to the Event Bus ->  to show a real-time notification to  user
+                bus.emit(Events.BADGE_UNLOCKED, {
+                    userId,
+                    badge_id: badge.badge_id,
+                    title: badge.title,
+                    description: badge.description,
+                    xp_reward: badge.xp_reward,
+                    icon_url: badge.icon_url,
+                    earned_at: new Date()
+                })
+
             }
 
         } catch (error) {

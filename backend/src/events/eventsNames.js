@@ -4,5 +4,6 @@ module.exports = {
     USER_LOGIN: 'user.login',
     USER_PROFILE_UPDATED: 'user.profile.updated',
     PASSWORD_RESET_REQUESTED: 'user.password.reset.requested',
-    PASSWORD_CHANGED: 'user.password.changed'
+    PASSWORD_CHANGED: 'user.password.changed',
+    BADGE_UNLOCKED: 'user.badge.unlocked'
 };
