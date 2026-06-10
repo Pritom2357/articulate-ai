@@ -226,6 +226,37 @@ class UserModel {
         }
     }
 
+    saveOnboardingAssessment = async (userId, assessmentData) => {
+        try {
+            const { assessed_level, vocab_score, pronunciation_score, ai_notes } = assessmentData;
+            const query = `
+                INSERT INTO onboarding_assessments (user_id, assessed_level, vocab_score, pronunciation_score, ai_notes)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id, user_id, assessed_level, vocab_score, pronunciation_score, ai_notes, assessed_at;
+            `;
+            const params = [userId, assessed_level, vocab_score, pronunciation_score, ai_notes];
+            const result = await this.db_connection.query_executor(query, params);
+            
+            // Map level to placement chapter: A1 -> 1, A2 -> 2, B1 -> 3
+            let placementChapter = 1;
+            if (assessed_level === 'A2') placementChapter = 2;
+            else if (assessed_level === 'B1') placementChapter = 3;
+            else if (assessed_level === 'B2' || assessed_level === 'C1') placementChapter = 4;
+            
+            // Upsert user progress with placement chapter
+            const upsertProgressQuery = `
+                INSERT INTO user_progress (user_id, placement_chapter)
+                VALUES ($1, $2)
+                ON CONFLICT (user_id) DO UPDATE SET placement_chapter = $2;
+            `;
+            await this.db_connection.query_executor(upsertProgressQuery, [userId, placementChapter]);
+
+            return result.rows[0];
+        } catch (error) {
+            throw new Error(`Saving onboarding assessment failed: ${error.message}`);
+        }
+    }
+
 }
 
 module.exports = UserModel

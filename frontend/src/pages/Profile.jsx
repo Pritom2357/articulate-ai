@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
 import { updateProfile, uploadAvatar } from '../api/user.js';
 import AvatarUploader from '../components/AvatarUploader.jsx';
+import maleAvatar from '../assets/articulate_male.jpeg';
+import femaleAvatar from '../assets/articucate_female.jpeg';
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
@@ -10,6 +12,7 @@ export default function Profile() {
   const [phone, setPhone] = useState('');
   const [gender, setGender] = useState('');
   const [dob, setDob] = useState('');
+  const [guidePref, setGuidePref] = useState('MALE');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -19,6 +22,7 @@ export default function Profile() {
       setPhone(user.phone || '');
       setGender(user.gender || '');
       setDob(user.date_of_birth || '');
+      setGuidePref(user.guide_preference || 'MALE');
     }
   }, [user]);
 
@@ -26,7 +30,13 @@ export default function Profile() {
     event.preventDefault();
     try {
       setError('');
-      await updateProfile(user.id, { name, phone, gender, date_of_birth: dob });
+      await updateProfile(user.id, {
+        name,
+        phone,
+        gender,
+        date_of_birth: dob,
+        guide_preference: guidePref
+      });
       setMessage('Profile saved successfully.');
       refreshUser();
     } catch (err) {
@@ -95,12 +105,50 @@ export default function Profile() {
               />
             </label>
             <label className="form-label">
+              Active Tutor Guide
+              <div className="flex gap-4 mt-2 mb-4">
+                <div
+                  onClick={() => setGuidePref('MALE')}
+                  className={`flex-1 flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${
+                    guidePref === 'MALE'
+                      ? 'border-indigo-600 bg-indigo-50/20'
+                      : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200">
+                    <img src={maleAvatar} alt="Rohit" className="w-full h-full object-cover" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-xs text-slate-800">Rohit (রোহিত)</div>
+                    <div className="text-slate-500" style={{ fontSize: '10px' }}>Male Tutor Guide</div>
+                  </div>
+                </div>
+                <div
+                  onClick={() => setGuidePref('FEMALE')}
+                  className={`flex-1 flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${
+                    guidePref === 'FEMALE'
+                      ? 'border-indigo-600 bg-indigo-50/20'
+                      : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200">
+                    <img src={femaleAvatar} alt="Riya" className="w-full h-full object-cover" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-xs text-slate-800">Riya (রিয়া)</div>
+                    <div className="text-slate-500" style={{ fontSize: '10px' }}>Female Tutor Guide</div>
+                  </div>
+                </div>
+              </div>
+            </label>
+
+            <label className="form-label">
               Gender
               <select className="form-input" value={gender} onChange={(event) => setGender(event.target.value)}>
                 <option value="">Select</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="NON-BINARY">Other</option>
               </select>
             </label>
             <label className="form-label">

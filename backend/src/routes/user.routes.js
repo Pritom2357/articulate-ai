@@ -177,4 +177,14 @@ userRouter.post('/avatar/:userId',
     userController.uploadProfilePhoto
 );
 
+userRouter.patch('/mic/:userId',
+    authenticateToken.authenticateToken,
+    userController.updateMicStatus
+);
+
+userRouter.post('/onboarding',
+    authenticateToken.authenticateToken,
+    userController.saveOnboarding
+);
+
 module.exports = { userRouter };

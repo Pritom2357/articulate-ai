@@ -495,6 +495,135 @@ class ProgressModel {
             throw new Error(`Failed to get user progress: ${error.message}`)
         }
     }
+
+    getChapterConversationPoints = async (chapterId) => {
+        try {
+            const query = `
+                SELECT conversation_key_points
+                FROM chapters
+                WHERE id = $1;
+            `;
+            const result = await this.db_connection.query_executor(query, [chapterId]);
+            return result.rows[0] || null;
+        } catch (error) {
+            throw new Error(`Failed to get chapter conversation points: ${error.message}`);
+        }
+    }
+
+    saveConversationScore = async (userId, chapterId, score) => {
+        try {
+            // Find a lesson of type 'TEST' or similar for this chapter to mark complete
+            const lessonQuery = `
+                SELECT id FROM lessons
+                WHERE chapter_id = $1 AND type = 'TEST'
+                LIMIT 1;
+            `;
+            const lessonResult = await this.db_connection.query_executor(lessonQuery, [chapterId]);
+            const lessonId = lessonResult.rows[0]?.id;
+
+            if (lessonId) {
+                // Mark completion of the test lesson
+                await this.markLessonComplete(userId, lessonId, score);
+            }
+            return true;
+        } catch (error) {
+            throw new Error(`Failed to save conversation score: ${error.message}`);
+        }
+    }
+
+    getUserProfile = async (userId) => {
+        try {
+            const query = `
+                SELECT u.id, u.name, u.email, u.guide_preference, oa.assessed_level
+                FROM users u
+                LEFT JOIN onboarding_assessments oa ON oa.user_id = u.id
+                WHERE u.id = $1
+                ORDER BY oa.assessed_at DESC
+                LIMIT 1;
+            `;
+            const result = await this.db_connection.query_executor(query, [userId]);
+            return result.rows[0] || null;
+        } catch (error) {
+            throw new Error(`Failed to get user profile: ${error.message}`);
+        }
+    }
+
+    getUserWeakWords = async (userId) => {
+        try {
+            const query = `
+                SELECT w.word, w.bangla_meaning, uwp.wrong_count
+                FROM user_word_progress uwp
+                JOIN words w ON w.id = uwp.word_id
+                WHERE uwp.user_id = $1 AND uwp.wrong_count > 0
+                ORDER BY uwp.wrong_count DESC
+                LIMIT 10;
+            `;
+            const result = await this.db_connection.query_executor(query, [userId]);
+            return result.rows || [];
+        } catch (error) {
+            throw new Error(`Failed to get user weak words: ${error.message}`);
+        }
+    }
+
+    logPronunciationAttempt = async (userId, data) => {
+        try {
+            const { testId, questionId, attemptType, wordId, phraseId, score, feedback, isCorrect } = data;
+            
+            // Check if test_progress row exists, otherwise create it
+            const selectProgress = `
+                SELECT id FROM test_progress
+                WHERE user_id = $1 AND test_id = $2 AND status = 'IN PROGRESS'
+                LIMIT 1;
+            `;
+            let progressRes = await this.db_connection.query_executor(selectProgress, [userId, testId]);
+            let attemptId = progressRes.rows[0]?.id;
+
+            if (!attemptId) {
+                const insertProgress = `
+                    INSERT INTO test_progress (user_id, test_id, status)
+                    VALUES ($1, $2, 'IN PROGRESS')
+                    RETURNING id;
+                `;
+                const newProgress = await this.db_connection.query_executor(insertProgress, [userId, testId]);
+                attemptId = newProgress.rows[0].id;
+            }
+
+            // Insert into pronunciation_attempts
+            const insertAttempt = `
+                INSERT INTO pronunciation_attempts (attempt_id, question_id, attempt_type, word_id, phrase_id, accuracy_score, feedback, is_correct)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING id;
+            `;
+            await this.db_connection.query_executor(insertAttempt, [
+                attemptId,
+                questionId,
+                attemptType,
+                wordId,
+                phraseId,
+                score,
+                feedback,
+                isCorrect
+            ]);
+
+            // Update test_progress status to EVALUATED and save score
+            const updateProgress = `
+                UPDATE test_progress
+                SET completed_at = NOW(),
+                    score = $1,
+                    obtained_marks = $2,
+                    status = 'EVALUATED'
+                WHERE id = $3;
+            `;
+            await this.db_connection.query_executor(updateProgress, [score, Math.round(score), attemptId]);
+
+            // Add XP for completing a test
+            await this.addXP(userId, 30, 'test_complete');
+
+            return true;
+        } catch (error) {
+            throw new Error(`Failed to log pronunciation attempt: ${error.message}`);
+        }
+    }
 }
 
 module.exports = ProgressModel

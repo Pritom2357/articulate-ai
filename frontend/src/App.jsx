@@ -12,6 +12,8 @@ import LessonDetails from './pages/LessonDetails.jsx';
 import WordDetails from './pages/WordDetails.jsx';
 import Flashcards from './pages/Flashcards.jsx';
 import Progress from './pages/Progress.jsx';
+import Onboarding from './pages/Onboarding.jsx';
+import IELTSConversation from './pages/IELTSConversation.jsx';
 import './App.css';
 
 function App() {
@@ -27,6 +29,22 @@ function App() {
             <Route path="chapters/:id" element={<ChapterDetails />} />
             <Route path="lessons/:id" element={<LessonDetails />} />
             <Route path="words/:id" element={<WordDetails />} />
+            <Route
+              path="onboarding"
+              element={
+                <ProtectedRoute>
+                  <Onboarding />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="chapters/:id/conversation"
+              element={
+                <ProtectedRoute>
+                  <IELTSConversation />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="flashcards"
               element={

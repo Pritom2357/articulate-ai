@@ -55,12 +55,22 @@ class AuthController {
 
             const passwordHash = await bcrypt.hash(password, this.salt_round);
 
+            let normalizedGender = null;
+            if (gender) {
+                const upper = gender.toUpperCase();
+                if (upper === 'MALE' || upper === 'FEMALE') {
+                    normalizedGender = upper;
+                } else if (upper === 'OTHER' || upper === 'NON-BINARY') {
+                    normalizedGender = 'NON-BINARY';
+                }
+            }
+
             const newUser = await this.authModel.createUser({
                 name,
                 email,
                 passwordHash,
                 phone,
-                gender: gender || null,
+                gender: normalizedGender,
                 date_of_birth: date_of_birth || null
             });
 

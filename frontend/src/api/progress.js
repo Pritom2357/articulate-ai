@@ -26,3 +26,32 @@ export async function getProgress() {
   const response = await request('/progress');
   return response.progress;  // was returning raw response
 }
+
+export async function assessPronunciation(formData) {
+  const token = localStorage.getItem('articulate_access_token');
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/progress/pronunciation/assess`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error || 'Pronunciation assessment failed');
+  }
+
+  return response.json();
+}
+
+export async function assessConversation(payload) {
+  return request('/progress/conversation/assess', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getRagSession() {
+  return request('/progress/rag-session');
+}

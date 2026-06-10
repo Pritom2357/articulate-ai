@@ -8,7 +8,7 @@ BEGIN
         VALUES (
             NEW.user_id,
             NEW.xp - OLD.xp,
-            COALESCE(NEW.reason, 'XP update via trigger')
+            'XP gained'
         );
     END IF;
     RETURN NEW;

@@ -44,3 +44,18 @@ export async function uploadAvatar(userId, file) {
 
   return response.json();
 }
+
+export async function updateMicStatus(userId, payload) {
+  return request(`/user/mic/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function saveOnboarding(payload) {
+  return request('/user/onboarding', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+

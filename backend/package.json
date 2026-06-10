@@ -29,6 +29,7 @@
   "license": "ISC",
   "description": "A ready to use node backend template with authentication and user management pipeline",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "autocannon": "^8.0.0",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.7.0",

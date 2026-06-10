@@ -93,7 +93,17 @@ class CurriculumModel {
 
             const result2 = await this.getWordsByLessonId(id)
 
-            return { lesson, words: result2 }
+            // Fetch linked phrases for the lesson
+            const phraseQuery = `
+                SELECT p.id, p.phrase_en, p.phrase_bn, p.difficulty, p.audio_url
+                FROM phrases p
+                JOIN lesson_phrases lp ON lp.phrase_id = p.id
+                WHERE lp.lesson_id = $1
+                ORDER BY p.id ASC;
+            `;
+            const result3 = await this.db_connection.query_executor(phraseQuery, [id]);
+
+            return { lesson, words: result2, phrases: result3.rows || [] }
         } catch (error) {
             throw new Error(`Failed to fetch lesson: ${error.message}`)
         }

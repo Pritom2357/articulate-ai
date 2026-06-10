@@ -20,7 +20,7 @@ select
     w.bangla_meaning,
     w.ipa,
     w.syllables,
-    w.audio_url
+    w.audio_url,
     uwp.familiarity,
     uwp.streak,
     uwp.correct_count,

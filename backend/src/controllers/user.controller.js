@@ -155,34 +155,64 @@ class UserController {
     };
 
 
-    // // given by claude but needs AI implementation. So skipped for now
-    // updateMicStatus = async (req, res) => {
-    //     try {
-    //         const userId = parseInt(req.params.userId)
-    //         if (!userId) {
-    //             return res.status(400).json({ success: false, error: 'userId param required' })
-    //         }
+    updateMicStatus = async (req, res) => {
+        try {
+            const userId = parseInt(req.params.userId || req.user?.id)
+            if (!userId) {
+                return res.status(400).json({ success: false, error: 'userId param required' })
+            }
 
-    //         if (userId !== req.user.id && req.user.role !== 'ADMIN') {
-    //             return res.status(403).json({ success: false, error: 'Forbidden' })
-    //         }
+            if (userId !== req.user.id && req.user.role !== 'ADMIN') {
+                return res.status(403).json({ success: false, error: 'Forbidden' })
+            }
 
-    //         const { mic_verified, mic_quality_score } = req.body || {}
-    //         if (mic_verified === undefined || mic_quality_score === undefined) {
-    //             return res.status(400).json({ success: false, error: 'mic_verified and mic_quality_score are required' })
-    //         }
+            const { mic_verified, mic_quality_score } = req.body || {}
+            if (mic_verified === undefined || mic_quality_score === undefined) {
+                return res.status(400).json({ success: false, error: 'mic_verified and mic_quality_score are required' })
+            }
 
-    //         const updated = await this.userModel.updateMicStatus(userId, mic_verified, mic_quality_score)
-    //         if (!updated) {
-    //             return res.status(500).json({ success: false, error: 'Failed to update mic status' })
-    //         }
+            const updated = await this.userModel.updateMicStatus(userId, mic_verified, mic_quality_score)
+            if (!updated) {
+                return res.status(500).json({ success: false, error: 'Failed to update mic status' })
+            }
 
-    //         return res.status(200).json({ success: true, ...updated })
-    //     } catch (error) {
-    //         console.error('Update mic status error:', error.message)
-    //         return res.status(500).json({ success: false, error: 'Internal server error' })
-    //     }
-    // }
+            return res.status(200).json({ success: true, ...updated })
+        } catch (error) {
+            console.error('Update mic status error:', error.message)
+            return res.status(500).json({ success: false, error: 'Internal server error' })
+        }
+    }
+
+    saveOnboarding = async (req, res) => {
+        try {
+            const userId = req.user?.id;
+            if (!userId) {
+                return res.status(401).json({ success: false, error: 'Unauthorized' });
+            }
+
+            const { assessed_level, vocab_score, pronunciation_score, ai_notes } = req.body || {};
+            if (!assessed_level) {
+                return res.status(400).json({ success: false, error: 'assessed_level is required' });
+            }
+
+            const assessment = await this.userModel.saveOnboardingAssessment(userId, {
+                assessed_level,
+                vocab_score: vocab_score || 0,
+                pronunciation_score: pronunciation_score || 0,
+                ai_notes: ai_notes || ''
+            });
+
+            return res.status(201).json({
+                success: true,
+                message: 'Onboarding assessment saved and level assigned successfully.',
+                assessment
+            });
+        } catch (error) {
+            console.error('Save onboarding error:', error);
+            return res.status(500).json({ success: false, error: 'Internal server error' });
+        }
+    }
+
 
 
     /////////// Deletions ///////////
