@@ -188,10 +188,10 @@ export default function IELTSConversation() {
     <div className="page-container" style={{ maxWidth: '800px' }}>
       
       {/* Chapter header info */}
-      <div className="page-header border-b pb-4 mb-6">
+      <div className="page-header border-b border-white/10 pb-4 mb-6">
         <div>
-          <h1 className="page-title text-indigo-900">IELTS Speaking Test</h1>
-          <p className="page-subtitle text-slate-500">
+          <h1 className="page-title text-indigo-400">IELTS Speaking Test</h1>
+          <p className="page-subtitle text-slate-400">
             Chapter {chapter?.order_num}: {chapter?.title} ({chapter?.title_bn})
           </p>
         </div>
@@ -201,15 +201,15 @@ export default function IELTSConversation() {
 
       {!assessment ? (
         /* CHAT INTERFACE */
-        <div className="card-card p-0 overflow-hidden flex flex-col h-[550px] bg-slate-900/5 border border-slate-200/80 shadow-md">
+        <div className="card-card p-0 overflow-hidden flex flex-col h-[550px] bg-slate-950/40 border border-white/10 shadow-xl">
           {/* Active Tutor Header */}
-          <div className="bg-indigo-900 text-white p-4 flex items-center gap-3">
+          <div className="bg-indigo-950/80 text-white p-4 flex items-center gap-3 border-b border-white/5">
             <div className="w-10 h-10 rounded-full overflow-hidden border border-white/20">
               <img src={tutorAvatar} alt="Tutor" className="w-full h-full object-cover" />
             </div>
             <div>
               <div className="font-bold text-sm">{tutorName}</div>
-              <div className="text-xs text-indigo-200">IELTS Speaking Examiner</div>
+              <div className="text-xs text-indigo-300">IELTS Speaking Examiner</div>
             </div>
           </div>
 
@@ -223,15 +223,15 @@ export default function IELTSConversation() {
                 }`}
               >
                 {msg.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border">
+                  <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-white/10">
                     <img src={tutorAvatar} alt="Tutor" className="w-full h-full object-cover" />
                   </div>
                 )}
                 <div
                   className={`p-3 rounded-2xl text-sm leading-relaxed ${
                     msg.role === 'user'
-                      ? 'bg-indigo-600 text-white rounded-tr-none'
-                      : 'bg-white border text-slate-800 rounded-tl-none shadow-sm'
+                      ? 'bg-indigo-600 text-white rounded-tr-none shadow-md'
+                      : 'bg-slate-800 text-white rounded-tl-none border border-slate-700/50 shadow-sm'
                   }`}
                 >
                   {msg.content}
@@ -241,10 +241,10 @@ export default function IELTSConversation() {
 
             {isTutorTyping && (
               <div className="flex gap-3 max-w-[80%]">
-                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border">
+                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-white/10">
                   <img src={tutorAvatar} alt="Tutor" className="w-full h-full object-cover" />
                 </div>
-                <div className="bg-white border p-3 rounded-2xl rounded-tl-none text-slate-400 text-xs shadow-sm flex items-center gap-1.5 font-bold">
+                <div className="bg-slate-800 border border-slate-700/50 p-3 rounded-2xl rounded-tl-none text-slate-400 text-xs shadow-sm flex items-center gap-1.5 font-bold">
                   <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce"></span>
                   <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0.15s' }}></span>
                   <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0.3s' }}></span>
@@ -256,14 +256,14 @@ export default function IELTSConversation() {
 
           {/* Chat Input or End Assessment Trigger */}
           {questionIndex < 3 ? (
-            <form onSubmit={handleSendMessage} className="p-3 bg-white border-t flex gap-2 items-center">
+            <form onSubmit={handleSendMessage} className="p-3 bg-slate-900/60 border-t border-white/5 flex gap-2 items-center">
               <button
                 type="button"
                 onClick={toggleListening}
                 className={`w-10 h-10 rounded-full border-none flex items-center justify-center cursor-pointer transition ${
                   isListening
                     ? 'bg-red-500 text-white animate-pulse'
-                    : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600'
+                    : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/25'
                 }`}
                 style={{ fontSize: '1.2rem' }}
                 title="Speak to type"
@@ -271,7 +271,7 @@ export default function IELTSConversation() {
                 🎙️
               </button>
               <input
-                className="flex-grow p-3 rounded-xl border border-slate-200 outline-none text-sm focus:border-indigo-600 transition"
+                className="flex-grow p-3 rounded-xl bg-slate-950/60 border border-white/10 text-white outline-none text-sm focus:border-indigo-500 transition placeholder-slate-500"
                 placeholder={isListening ? 'কথা বলুন...' : 'উত্তর লিখুন বা মাইক আইকন ক্লিক করে বলুন...'}
                 value={currentInput}
                 onChange={(e) => setCurrentInput(e.target.value)}
@@ -286,8 +286,8 @@ export default function IELTSConversation() {
               </button>
             </form>
           ) : (
-            <div className="p-4 bg-white border-t text-center space-y-3">
-              <div className="text-xs text-slate-500 font-semibold">
+            <div className="p-4 bg-slate-900/80 border-t border-white/5 text-center space-y-3">
+              <div className="text-xs text-slate-400 font-semibold">
                 কথোপকথন সম্পন্ন হয়েছে! এবার মূল্যায়নের সময়।
               </div>
               <button
@@ -315,14 +315,14 @@ export default function IELTSConversation() {
         <div className="space-y-6 animate-fade-in">
           
           {/* IELTS Scorecard */}
-          <div className="card-card p-6 bg-slate-900 text-white border border-slate-700/50 shadow-xl relative overflow-hidden">
+          <div className="card-card p-6 bg-slate-900/60 text-white border border-white/10 shadow-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl"></div>
             
             <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400 mb-6">
               IELTS Speaking Scorecard
             </h2>
 
-            <div className="grid grid-cols-[140px_1fr] gap-6 items-center border-b border-slate-800 pb-6 mb-6">
+            <div className="grid grid-cols-[140px_1fr] gap-6 items-center border-b border-white/5 pb-6 mb-6">
               {/* Band Circle */}
               <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-indigo-600 to-cyan-400 flex flex-col items-center justify-center border-4 border-slate-800 shadow-lg">
                 <div className="text-xs uppercase tracking-widest text-indigo-100 font-bold">IELTS Band</div>
@@ -381,7 +381,7 @@ export default function IELTSConversation() {
             </div>
 
             {/* Bangla Feedback */}
-            <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-800 text-slate-300 text-sm leading-relaxed">
+            <div className="bg-slate-950/40 p-4 rounded-xl border border-white/5 text-slate-300 text-sm leading-relaxed">
               <div className="font-bold text-white mb-1">✍🏼 Examiner Feedback (রিপোর্ট):</div>
               <div>{assessment.feedback_bn}</div>
             </div>
@@ -389,14 +389,14 @@ export default function IELTSConversation() {
 
           {/* RAG Next Session STUDY PLAN */}
           {ragSessionData && (
-            <div className="card-card p-6 bg-white border border-slate-200 shadow-md">
-              <h3 className="card-title text-indigo-900 mb-4 flex items-center gap-2 border-b pb-2">
+            <div className="card-card p-6 bg-slate-900/60 border border-white/10 shadow-xl">
+              <h3 className="card-title text-indigo-400 mb-4 flex items-center gap-2 border-b border-white/5 pb-2">
                 <span>📚</span> Next Session Guide (RAG-ভিত্তিক কাস্টম স্টাডি প্ল্যান)
               </h3>
               
               {/* Custom formatted AI instructions */}
               <div
-                className="prose prose-indigo max-w-none text-sm text-slate-700 leading-relaxed space-y-4"
+                className="prose prose-indigo max-w-none text-sm text-slate-300 leading-relaxed space-y-4"
                 style={{ whiteSpace: 'pre-line' }}
               >
                 {ragSessionData}

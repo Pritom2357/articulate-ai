@@ -111,32 +111,32 @@ export default function Profile() {
                   onClick={() => setGuidePref('MALE')}
                   className={`flex-1 flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${
                     guidePref === 'MALE'
-                      ? 'border-indigo-600 bg-indigo-50/20'
-                      : 'border-slate-200 hover:bg-slate-50'
+                      ? 'border-indigo-500 bg-indigo-500/10'
+                      : 'border-white/10 hover:bg-white/5'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200">
+                  <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10">
                     <img src={maleAvatar} alt="Rohit" className="w-full h-full object-cover" />
                   </div>
                   <div>
-                    <div className="font-bold text-xs text-slate-800">Rohit (রোহিত)</div>
-                    <div className="text-slate-500" style={{ fontSize: '10px' }}>Male Tutor Guide</div>
+                    <div className="font-bold text-xs text-white">Rohit (রোহিত)</div>
+                    <div className="text-slate-400" style={{ fontSize: '10px' }}>Male Tutor Guide</div>
                   </div>
                 </div>
                 <div
                   onClick={() => setGuidePref('FEMALE')}
                   className={`flex-1 flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${
                     guidePref === 'FEMALE'
-                      ? 'border-indigo-600 bg-indigo-50/20'
-                      : 'border-slate-200 hover:bg-slate-50'
+                      ? 'border-indigo-500 bg-indigo-500/10'
+                      : 'border-white/10 hover:bg-white/5'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200">
+                  <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10">
                     <img src={femaleAvatar} alt="Riya" className="w-full h-full object-cover" />
                   </div>
                   <div>
-                    <div className="font-bold text-xs text-slate-800">Riya (রিয়া)</div>
-                    <div className="text-slate-500" style={{ fontSize: '10px' }}>Female Tutor Guide</div>
+                    <div className="font-bold text-xs text-white">Riya (রিয়া)</div>
+                    <div className="text-slate-400" style={{ fontSize: '10px' }}>Female Tutor Guide</div>
                   </div>
                 </div>
               </div>

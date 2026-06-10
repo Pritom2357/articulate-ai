@@ -32,15 +32,15 @@ export default function Progress() {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="card-card">
               <h2 className="card-title">XP</h2>
-              <p className="text-3xl font-semibold text-slate-900">{progress.xp ?? 0}</p>
+              <p className="text-3xl font-semibold text-indigo-400">{progress.xp ?? 0}</p>
             </div>
             <div className="card-card">
               <h2 className="card-title">Level</h2>
-              <p className="text-3xl font-semibold text-slate-900">{progress.level ?? 1}</p>
+              <p className="text-3xl font-semibold text-cyan-400">{progress.level ?? 1}</p>
             </div>
             <div className="card-card">
               <h2 className="card-title">Streak</h2>
-              <p className="text-3xl font-semibold text-slate-900">{progress.streak_days ?? 0} days</p>
+              <p className="text-3xl font-semibold text-pink-400">{progress.streak_days ?? 0} days</p>
             </div>
           </div>
 
@@ -52,12 +52,12 @@ export default function Progress() {
                   {progress.badges.map((badge) => (
                     <li key={badge.badge_id} className="badge-item">
                       <div className="font-semibold">{badge.title}</div>
-                      <div className="text-slate-500 text-sm">{badge.description}</div>
+                      <div className="text-slate-400 text-sm">{badge.description}</div>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-slate-500">No badges yet. Keep learning!</p>
+                <p className="text-slate-400">No badges yet. Keep learning!</p>
               )}
             </div>
 
@@ -68,12 +68,12 @@ export default function Progress() {
                   {Object.entries(progress.chapters).map(([chapterId, chapter]) => (
                     <li key={chapterId}>
                       <div className="font-semibold">{chapter.chapter_title || `Chapter ${chapterId}`}</div>
-                      <div className="text-slate-500 text-sm">{chapter.completion_pct ?? 0}% complete</div>
+                      <div className="text-slate-400 text-sm">{chapter.completion_pct ?? 0}% complete</div>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-slate-500">No chapter progress available.</p>
+                <p className="text-slate-400">No chapter progress available.</p>
               )}
             </div>
           </div>

@@ -4,8 +4,22 @@ import { updateProfile } from '../api/user.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articucate_female.jpeg';
 
-const ARTICULATE_LETTERS = ['A','R','T','I','C','U','L','A','T','E'];
-const AI_LETTERS = ['A','I'];
+
+function AnimatedBrandText({ text, baseDelay = 0, className = "" }) {
+  return (
+    <span className={className}>
+      {text.split('').map((char, index) => (
+        <span 
+          key={index} 
+          className="brand-letter" 
+          style={{ animationDelay: `${baseDelay + index * 0.04}s` }}
+        >
+          {char}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 function SidebarBrand() {
   return (
@@ -14,17 +28,9 @@ function SidebarBrand() {
         <div className="brand-icon">🎙️</div>
         <div>
           <div className="brand-name">
-            <span className="brand-word brand-word-articulate">
-              {ARTICULATE_LETTERS.map((l, i) => (
-                <span key={i} className="brand-letter" style={{ animationDelay: `${i * 0.08}s` }}>{l}</span>
-              ))}
-            </span>
-            <span className="brand-dot" style={{ animationDelay: '0.85s' }}>·</span>
-            <span className="brand-word brand-word-ai">
-              {AI_LETTERS.map((l, i) => (
-                <span key={i} className="brand-letter" style={{ animationDelay: `${(ARTICULATE_LETTERS.length + i) * 0.08}s` }}>{l}</span>
-              ))}
-            </span>
+            <AnimatedBrandText text="Articulate" baseDelay={0} className="brand-word brand-word-articulate" />
+            <span className="brand-dot">·</span>
+            <AnimatedBrandText text="AI" baseDelay={0.4} className="brand-word brand-word-ai" />
           </div>
           <div className="brand-tagline">English Learning Platform</div>
         </div>
@@ -38,23 +44,23 @@ function GuideIndicator({ user, onUpdate }) {
   const avatarImg = isFemale ? femaleAvatar : maleAvatar;
   
   return (
-    <div className="bg-slate-100 rounded-xl p-3 mb-4 mt-2 border border-slate-200/50 text-xs">
-      <div className="flex items-center gap-2 mb-1.5 font-bold text-slate-700">
+    <div className="bg-white/3 rounded-xl p-3 mb-4 mt-2 border border-white/5 text-xs">
+      <div className="flex items-center gap-2 mb-1.5 font-bold text-slate-300">
         <span>🤖</span> Active Tutor:
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full overflow-hidden border border-indigo-500/20 shadow-sm">
+          <div className="w-8 h-8 rounded-full overflow-hidden border border-indigo-500/30 shadow-sm">
             <img src={avatarImg} alt="Tutor" className="w-full h-full object-cover" />
           </div>
           <div>
-            <div className="font-semibold text-slate-900">{isFemale ? 'Riya (রিয়া)' : 'Rohit (রোহিত)'}</div>
-            <div className="text-slate-500 font-medium">{isFemale ? 'Female Guide' : 'Male Guide'}</div>
+            <div className="font-semibold text-white">{isFemale ? 'Riya (রিয়া)' : 'Rohit (রোহিত)'}</div>
+            <div className="text-slate-400 font-medium">{isFemale ? 'Female Guide' : 'Male Guide'}</div>
           </div>
         </div>
         <button
           onClick={() => onUpdate(isFemale ? 'MALE' : 'FEMALE')}
-          className="text-indigo-600 hover:text-indigo-800 font-bold border-none bg-transparent cursor-pointer"
+          className="text-indigo-400 hover:text-indigo-300 font-bold border-none bg-transparent cursor-pointer transition-colors"
         >
           Change
         </button>

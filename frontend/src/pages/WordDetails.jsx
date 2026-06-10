@@ -36,10 +36,10 @@ export default function WordDetails() {
                     <div className="card-card space-y-4">
                         <div>
                             <h2 className="text-3xl font-semibold">{word.word || `Word ${id}`}</h2>
-                            <p className="text-slate-500">{word.bangla_meaning || word.definition || 'No translation available.'}</p>
+                            <p className="text-slate-400">{word.bangla_meaning || word.definition || 'No translation available.'}</p>
                         </div>
 
-                        <div className="space-y-3 text-sm text-slate-700">
+                        <div className="space-y-3 text-sm text-slate-300">
                             <div>
                                 <strong>Phonetic</strong>
                                 <p>{word.ipa || 'N/A'}</p>

@@ -37,20 +37,20 @@ export default function ChapterDetails() {
             <div className="card-card hover:border-indigo-500/50 hover:shadow-md transition">
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="card-title text-indigo-900">{lesson.title || `Lesson ${lesson.id}`}</h2>
-                  <p className="text-sm text-slate-500">{lesson.summary || lesson.objective_bn || 'Start this lesson.'}</p>
+                  <h2 className="card-title text-indigo-400">{lesson.title || `Lesson ${lesson.id}`}</h2>
+                  <p className="text-sm text-slate-400">{lesson.summary || lesson.objective_bn || 'Start this lesson.'}</p>
                 </div>
-                <span className="text-indigo-500 text-sm font-semibold">Start Lesson 📖</span>
+                <span className="text-indigo-400 text-sm font-semibold">Start Lesson 📖</span>
               </div>
             </div>
           </Link>
         ))}
 
         {lessons.length > 0 && (
-          <div className="border-t border-dashed border-slate-200 pt-6 mt-2">
-            <h3 className="font-bold text-slate-700 text-sm mb-3">🎓 Chapter Final speaking Evaluation</h3>
+          <div className="border-t border-dashed border-white/10 pt-6 mt-2">
+            <h3 className="font-bold text-slate-300 text-sm mb-3">🎓 Chapter Final speaking Evaluation</h3>
             <Link to={`/chapters/${id}/conversation`} className="card-link">
-              <div className="card-card bg-indigo-900 text-white hover:bg-indigo-950 transition-all duration-300 border-none shadow-md">
+              <div className="card-card bg-gradient-to-r from-indigo-950/40 to-cyan-950/40 text-white hover:from-indigo-900/40 hover:to-cyan-900/40 transition-all duration-300 border border-indigo-500/30 shadow-md">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="text-4xl">🎙️</div>

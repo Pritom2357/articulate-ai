@@ -75,7 +75,7 @@ export default function Flashcards() {
       {currentCard ? (
         <div className="grid gap-6 md:grid-cols-[1fr_260px] max-w-4xl mx-auto">
           {/* Flip Card Area */}
-          <div className="card-card flex flex-col justify-between items-center p-6 bg-slate-900/10 backdrop-blur-md border border-slate-200/50">
+          <div className="card-card flex flex-col justify-between items-center p-6 bg-white/3 backdrop-blur-md border border-white/10">
             <div className="w-full text-center mb-2 text-xs text-indigo-400 uppercase tracking-widest font-bold">
               Card {selectedIndex + 1} of {cards.length}
             </div>
@@ -122,7 +122,7 @@ export default function Flashcards() {
 
             {/* SRS Review Actions */}
             <div className="w-full mt-4 space-y-4">
-              <div className="text-center text-xs text-slate-500 font-semibold">
+              <div className="text-center text-xs text-slate-400 font-semibold">
                 আপনার শব্দটির অর্থ মনে আছে কি? নিচের বাটনে চাপুন:
               </div>
               <div className="flex justify-center gap-4">
@@ -158,13 +158,13 @@ export default function Flashcards() {
           </div>
 
           {/* Active Tutor Encouragement Sidebar */}
-          <div className="card-card flex flex-col items-center justify-center p-6 text-center border border-slate-200/50 bg-slate-50">
+          <div className="card-card flex flex-col items-center justify-center p-6 text-center border border-white/5 bg-white/3 backdrop-blur-md">
             <div className="w-20 h-20 rounded-full overflow-hidden mb-3 border-2 border-indigo-500/30">
               <img src={tutorAvatar} alt="Tutor" className="w-full h-full object-cover" />
             </div>
-            <div className="font-bold text-slate-800 text-sm mb-1">{tutorName}</div>
-            <div className="text-xs text-indigo-600 font-semibold mb-4">Your Active Guide</div>
-            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+            <div className="font-bold text-white text-sm mb-1">{tutorName}</div>
+            <div className="text-xs text-indigo-400 font-semibold mb-4">Your Active Guide</div>
+            <p className="text-xs text-slate-300 leading-relaxed font-medium">
               "আমি আপনাকে এই শব্দগুলো সহজে মনে রাখতে সাহায্য করব। প্রতিদিন চর্চা করুন, আপনার ইংরেজি জড়তা কেটে যাবেই!"
             </p>
           </div>

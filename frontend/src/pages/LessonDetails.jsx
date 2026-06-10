@@ -214,30 +214,30 @@ export default function LessonDetails() {
   return (
     <div className="page-container">
       {/* Lesson Header */}
-      <div className="page-header border-b border-slate-200 pb-4 mb-6">
+      <div className="page-header border-b border-white/10 pb-4 mb-6">
         <div>
-          <h1 className="page-title text-indigo-900">{lesson?.title || `Lesson ${id}`}</h1>
-          <p className="page-subtitle text-slate-500">{lesson?.title_bn}</p>
+          <h1 className="page-title text-indigo-400">{lesson?.title || `Lesson ${id}`}</h1>
+          <p className="page-subtitle text-slate-400">{lesson?.title_bn}</p>
         </div>
-        <div className="flex items-center gap-2 text-xs bg-slate-100 rounded-full px-3 py-1 font-bold text-slate-600">
+        <div className="flex items-center gap-2 text-xs bg-white/5 border border-white/5 rounded-full px-3 py-1 font-bold text-slate-300">
           <span>🎯 Lesson Type:</span>
-          <span className="text-indigo-600 uppercase">{lesson?.type}</span>
+          <span className="text-indigo-400 uppercase">{lesson?.type}</span>
         </div>
       </div>
 
       {error && <div className="glass-alert glass-alert-error mb-4">{error}</div>}
 
       {/* Tutor Speech Bubble Area */}
-      <div className="flex gap-4 p-4 rounded-2xl bg-white border border-slate-200/80 mb-6 shadow-sm">
+      <div className="flex gap-4 p-4 rounded-2xl bg-white/3 border border-white/10 mb-6 shadow-md">
         <div className={`w-16 h-16 rounded-full overflow-hidden border-2 border-indigo-500/30 flex-shrink-0 transition-all duration-300 ${isSpeaking ? 'scale-108 animate-pulse shadow-md' : ''}`}>
           <img src={tutorAvatar} alt="Tutor" className="w-full h-full object-cover" />
         </div>
         <div className="flex-1">
-          <div className="font-bold text-indigo-900 text-sm">{tutorName} (গাইড)</div>
-          <div className="text-sm text-slate-700 leading-relaxed mt-1 font-medium italic">
+          <div className="font-bold text-indigo-400 text-sm">{tutorName} (গাইড)</div>
+          <div className="text-sm text-slate-200 leading-relaxed mt-1 font-medium italic">
             {wizardStep === 1 && `"স্বাগতম! আজকে আমরা নতুন শব্দ শিখব। প্রতিটি শব্দ শুনুন এবং তা বাংলা অর্থের সাথে মুখস্থ করুন।"`}
             {wizardStep === 2 && `"এবার ফ্ল্যাশ-কার্ড দিয়ে প্র্যাকটিস করার পালা। কার্ডগুলো উল্টে তার বাংলা অর্থ মেলাবার চেষ্টা করুন।"`}
-            {wizardStep === 3 && `"উৎকারণ টেস্ট শুরু করা যাক! মাইক চেপে ধরে শব্দটি বলুন। কমপক্ষে ৬০% নির্ভুল হতে হবে।"`}
+            {wizardStep === 3 && `"উচ্চারণ টেস্ট শুরু করা যাক! মাইক চেপে ধরে শব্দটি বলুন। কমপক্ষে ৬০% নির্ভুল হতে হবে।"`}
             {wizardStep === 4 && `"খুব ভালো করেছেন! এবার আমরা শব্দগুলো নিয়ে সম্পূর্ণ বাক্য বলব। মাইক চেপে পুরো বাক্যটি বলুন।"`}
             {wizardStep === 5 && `"অভিনন্দন! আপনার আজকের লেসনটি সম্পূর্ণ সফল হয়েছে। আপনার প্রোগ্রেস সেভ করা হয়েছে এবং আপনি ৫০ XP পেয়েছেন।"`}
           </div>
@@ -248,18 +248,18 @@ export default function LessonDetails() {
       {wizardStep === 1 && (
         <div className="space-y-6">
           <div className="card-card p-6">
-            <h2 className="card-title text-slate-800 mb-4 flex items-center gap-2">
+            <h2 className="card-title text-white mb-4 flex items-center gap-2">
               <span>📚</span> Vocabulary List (শব্দভান্ডার)
             </h2>
             <div className="space-y-3">
               {words.map((word) => (
-                <div key={word.id} className="word-item flex items-center justify-between p-4 border border-slate-100 rounded-xl hover:bg-slate-50 transition">
+                <div key={word.id} className="word-item flex items-center justify-between p-4 border border-white/5 rounded-xl bg-white/2 hover:bg-white/5 hover:border-white/10 transition">
                   <div>
-                    <div className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+                    <div className="font-extrabold text-white text-lg flex items-center gap-2">
                       {word.word}
                       {word.ipa && <span className="font-mono text-xs text-slate-400">[{word.ipa}]</span>}
                     </div>
-                    <div className="text-sm text-slate-500 mt-1 font-semibold">অর্থ: {word.bangla_meaning}</div>
+                    <div className="text-sm text-slate-400 mt-1 font-semibold">অর্থ: {word.bangla_meaning}</div>
                   </div>
                   <div className="flex items-center gap-3">
                     <button
@@ -267,7 +267,7 @@ export default function LessonDetails() {
                       className={`w-10 h-10 rounded-full border-none flex items-center justify-center cursor-pointer transition ${
                         speakingWordId === word.id
                           ? 'bg-red-500 text-white animate-pulse'
-                          : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600'
+                          : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20'
                       }`}
                       style={{ fontSize: '1.2rem' }}
                     >
@@ -287,7 +287,7 @@ export default function LessonDetails() {
       {/* STEP 2: PRACTICE (FLASHCARDS) */}
       {wizardStep === 2 && (
         <div className="space-y-6 text-center">
-          <div className="card-card p-6 bg-slate-50/50">
+          <div className="card-card p-6 bg-white/3 border border-white/10">
             <div className="text-xs text-slate-400 font-bold mb-4 uppercase">
               Word {practiceIndex + 1} of {words.length}
             </div>
@@ -338,14 +338,14 @@ export default function LessonDetails() {
       {/* STEP 3: WORD SPEAKING TEST */}
       {wizardStep === 3 && (
         <div className="space-y-6">
-          <div className="card-card p-6 text-center bg-slate-50/50">
+          <div className="card-card p-6 text-center bg-white/3 border border-white/10">
             <div className="text-xs text-slate-400 font-bold mb-2 uppercase">
               Word {testWordIndex + 1} of {words.length}
             </div>
-            <h2 className="text-3xl font-extrabold text-slate-900 tracking-wide mb-1">
+            <h2 className="text-3xl font-extrabold text-white tracking-wide mb-1">
               "{words[testWordIndex]?.word}"
             </h2>
-            <div className="text-xs text-slate-500 font-semibold mb-6">
+            <div className="text-xs text-slate-400 font-semibold mb-6">
               [{words[testWordIndex]?.ipa || 'no ipa'}] | অর্থ: {words[testWordIndex]?.bangla_meaning}
             </div>
 
@@ -365,29 +365,29 @@ export default function LessonDetails() {
               >
                 {recording ? '🛑' : '🎙️'}
               </button>
-              <div className="text-xs text-slate-500 mt-3 font-semibold">
+              <div className="text-xs text-slate-400 mt-3 font-semibold">
                 {recording ? 'শব্দটি বলুন (ছেড়ে দিলে মূল্যায়িত হবে)' : 'রেকর্ড করতে চেপে ধরে রাখুন'}
               </div>
             </div>
 
             {isEvaluating && (
-              <div className="text-sm text-indigo-600 font-bold animate-pulse mt-4">
+              <div className="text-sm text-indigo-400 font-bold animate-pulse mt-4">
                 Tutor Guide আপনার উচ্চারণ শুনছে...
               </div>
             )}
 
             {pronScore !== null && (
-              <div className="max-w-md mx-auto p-4 rounded-xl bg-white border border-slate-200/80 mt-6 animate-bounce-in">
-                <div className="flex items-center justify-between border-b pb-2 mb-2">
-                  <span className="text-sm text-slate-500 font-semibold">AI Accuracy Score:</span>
+              <div className="max-w-md mx-auto p-4 rounded-xl bg-slate-900/60 border border-white/10 mt-6 animate-bounce-in">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
+                  <span className="text-sm text-slate-400 font-semibold">AI Accuracy Score:</span>
                   <span className={`text-2xl font-black ${pronScore >= 60 ? 'text-green-500' : 'text-red-500'}`}>
                     {pronScore}%
                   </span>
                 </div>
-                <p className="text-sm text-slate-700 font-medium">{pronFeedback}</p>
+                <p className="text-sm text-slate-200 font-medium">{pronFeedback}</p>
                 {recognizedText && (
                   <div className="text-xs text-slate-400 mt-2">
-                    শনাক্ত শব্দ: <span className="italic font-bold text-slate-600">"{recognizedText}"</span>
+                    শনাক্ত শব্দ: <span className="italic font-bold text-slate-300">"{recognizedText}"</span>
                   </div>
                 )}
 
@@ -409,14 +409,14 @@ export default function LessonDetails() {
       {/* STEP 4: SENTENCE SPEAKING TEST */}
       {wizardStep === 4 && (
         <div className="space-y-6">
-          <div className="card-card p-6 text-center bg-indigo-50/20 border border-indigo-200/50">
+          <div className="card-card p-6 text-center bg-indigo-950/20 border border-indigo-500/20">
             <div className="text-xs text-indigo-400 font-bold mb-2 uppercase">
               Sentence Challenge {testPhraseIndex + 1} of {phrases.length}
             </div>
-            <h2 className="text-2xl font-extrabold text-indigo-900 tracking-wide mb-2">
+            <h2 className="text-2xl font-extrabold text-white tracking-wide mb-2">
               "{phrases[testPhraseIndex]?.phrase_en}"
             </h2>
-            <div className="text-sm text-slate-500 font-semibold mb-6">
+            <div className="text-sm text-slate-400 font-semibold mb-6">
               অর্থ: {phrases[testPhraseIndex]?.phrase_bn}
             </div>
 
@@ -436,29 +436,29 @@ export default function LessonDetails() {
               >
                 {recording ? '🛑' : '🎙️'}
               </button>
-              <div className="text-xs text-slate-500 mt-3 font-semibold">
+              <div className="text-xs text-slate-400 mt-3 font-semibold">
                 {recording ? 'বাক্যটি বলুন (ছেড়ে দিলে মূল্যায়িত হবে)' : 'রেকর্ড করতে চেপে ধরে রাখুন'}
               </div>
             </div>
 
             {isEvaluating && (
-              <div className="text-sm text-indigo-600 font-bold animate-pulse mt-4">
+              <div className="text-sm text-indigo-400 font-bold animate-pulse mt-4">
                 Tutor Guide বাক্যটি বিশ্লেষণ করছে...
               </div>
             )}
 
             {pronScore !== null && (
-              <div className="max-w-md mx-auto p-4 rounded-xl bg-white border border-slate-200/80 mt-6 animate-bounce-in">
-                <div className="flex items-center justify-between border-b pb-2 mb-2">
-                  <span className="text-sm text-slate-500 font-semibold">AI Sentence Accuracy:</span>
+              <div className="max-w-md mx-auto p-4 rounded-xl bg-slate-900/60 border border-white/10 mt-6 animate-bounce-in">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
+                  <span className="text-sm text-slate-400 font-semibold">AI Sentence Accuracy:</span>
                   <span className={`text-2xl font-black ${pronScore >= 60 ? 'text-green-500' : 'text-red-500'}`}>
                     {pronScore}%
                   </span>
                 </div>
-                <p className="text-sm text-slate-700 font-medium">{pronFeedback}</p>
+                <p className="text-sm text-slate-200 font-medium">{pronFeedback}</p>
                 {recognizedText && (
                   <div className="text-xs text-slate-400 mt-2">
-                    শনাক্ত বাক্য: <span className="italic font-bold text-slate-600">"{recognizedText}"</span>
+                    শনাক্ত বাক্য: <span className="italic font-bold text-slate-300">"{recognizedText}"</span>
                   </div>
                 )}
 
@@ -481,19 +481,19 @@ export default function LessonDetails() {
       {wizardStep === 5 && (
         <div className="space-y-6 text-center animate-fade-in py-8">
           <div className="text-7xl animate-bounce">🎉🏆</div>
-          <h1 className="text-3xl font-black text-indigo-900 mt-4">লেসন সফলভাবে সম্পন্ন হয়েছে!</h1>
-          <p className="text-slate-600 max-w-md mx-auto">
+          <h1 className="text-3xl font-black text-white mt-4">লেসন সফলভাবে সম্পন্ন হয়েছে!</h1>
+          <p className="text-slate-300 max-w-md mx-auto">
             আপনি আজকের লেসন সম্পূর্ণ করেছেন। এর মাধ্যমে আপনি ইংরেজি উচ্চারণে আরও এক ধাপ এগিয়ে গেলেন।
           </p>
 
           <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto my-8">
-            <div className="card-card p-4 bg-indigo-50 border border-indigo-200">
+            <div className="card-card p-4 bg-indigo-950/30 border border-indigo-500/20">
               <div className="text-slate-400 text-xs uppercase font-bold">XP Reward</div>
-              <div className="text-3xl font-black text-indigo-600 mt-1">+50 XP</div>
+              <div className="text-3xl font-black text-indigo-400 mt-1">+50 XP</div>
             </div>
-            <div className="card-card p-4 bg-emerald-50 border border-emerald-200">
+            <div className="card-card p-4 bg-emerald-950/30 border border-emerald-500/20">
               <div className="text-slate-400 text-xs uppercase font-bold">Your Status</div>
-              <div className="text-3xl font-black text-emerald-600 mt-1">PASSED</div>
+              <div className="text-3xl font-black text-emerald-400 mt-1">PASSED</div>
             </div>
           </div>
 
