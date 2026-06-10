@@ -150,6 +150,32 @@ class CurriculumController {
         }
     }
 
+    getTests = async (req, res) => {
+        try {
+            const tests = await this.curriculumModel.getTests();
+            return res.status(200).json({ success: true, tests });
+        } catch (error) {
+            console.error('Failed to fetch tests:', error);
+            return res.status(500).json({ success: false, error: 'Internal server error' });
+        }
+    }
+
+    getTestById = async (req, res) => {
+        try {
+            const id = parseInt(req.params.id);
+            if (!id) {
+                return res.status(400).json({ success: false, error: 'Invalid test ID' });
+            }
+            const testData = await this.curriculumModel.getTestById(id);
+            if (!testData) {
+                return res.status(404).json({ success: false, error: 'Test not found' });
+            }
+            return res.status(200).json({ success: true, ...testData });
+        } catch (error) {
+            console.error('Failed to fetch test details:', error);
+            return res.status(500).json({ success: false, error: 'Internal server error' });
+        }
+    }
 }
 
 module.exports = CurriculumController

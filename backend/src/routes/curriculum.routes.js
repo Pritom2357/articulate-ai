@@ -17,4 +17,8 @@ curriculumRouter.get('/lessons/:lessonId/words', curriculumController.getWordsBy
 curriculumRouter.get('/words/:id', curriculumController.getWordById);
 curriculumRouter.post('/words/bulk', curriculumController.getWordsByIds);
 
+// Tests
+curriculumRouter.get('/tests', curriculumController.getTests);
+curriculumRouter.get('/tests/:id', curriculumController.getTestById);
+
 module.exports = { curriculumRouter };

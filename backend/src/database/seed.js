@@ -11,41 +11,6 @@ async function seed() {
   try {
     console.log('Starting database seeding...');
 
-    // 1. Seed Badges
-    console.log('Seeding badges...');
-    const badges = [
-      { id: 'streak_3', title: 'Streak Starter', desc: 'Maintain a 3-day learning streak', xp: 50 },
-      { id: 'streak_7', title: 'Week Warrior', desc: 'Maintain a 7-day learning streak', xp: 100 },
-      { id: 'streak_15', title: 'Consistent Learner', desc: 'Maintain a 15-day learning streak', xp: 150 },
-      { id: 'streak_30', title: 'Streak Master', desc: 'Maintain a 30-day learning streak', xp: 200 },
-      { id: 'streak_60', title: 'Streak Legend', desc: 'Maintain a 60-day learning streak', xp: 300 },
-      { id: 'streak_100', title: 'Centurion', desc: 'Maintain a 100-day learning streak', xp: 500 },
-      { id: 'words_10', title: 'Word Explorer', desc: 'Master or become familiar with 10 words', xp: 50 },
-      { id: 'words_50', title: 'Vocab Builder', desc: 'Master or become familiar with 50 words', xp: 100 },
-      { id: 'words_100', title: 'Word Weaver', desc: 'Master or become familiar with 100 words', xp: 150 },
-      { id: 'words_250', title: 'Linguist In Training', desc: 'Master or become familiar with 250 words', xp: 200 },
-      { id: 'words_500', title: 'Vocabulary Giant', desc: 'Master or become familiar with 500 words', xp: 350 },
-      { id: 'words_750', title: 'Lexicon Scholar', desc: 'Master or become familiar with 750 words', xp: 500 },
-      { id: 'words_1000', title: 'Articulate Pro', desc: 'Master or become familiar with 1000 words', xp: 800 },
-      { id: 'chapter_1', title: 'Chapter 1 Graduate', desc: 'Complete Chapter 1', xp: 100 },
-      { id: 'chapter_2', title: 'Chapter 2 Graduate', desc: 'Complete Chapter 2', xp: 100 },
-      { id: 'chapter_3', title: 'Chapter 3 Graduate', desc: 'Complete Chapter 3', xp: 150 },
-      { id: 'chapter_4', title: 'Chapter 4 Graduate', desc: 'Complete Chapter 4', xp: 200 },
-      { id: 'first_lesson', title: 'First Step', desc: 'Complete your first lesson', xp: 20 },
-      { id: 'first_test', title: 'Test Taker', desc: 'Complete your first pronunciation test', xp: 30 },
-      { id: 'perfect_test', title: 'Perfect Pronunciation', desc: 'Get a perfect 100% score on a test', xp: 100 }
-    ];
-
-    for (const badge of badges) {
-      await pool.query(
-        `INSERT INTO badges (badge_id, title, description, xp_reward, icon_url)
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (badge_id) DO UPDATE SET title = $2, description = $3, xp_reward = $4;`,
-        [badge.id, badge.title, badge.desc, badge.xp, `https://img.icons8.com/color/96/badge.png`]
-      );
-    }
-    console.log('✅ Badges seeded.');
-
     // 2. Seed Chapters
     console.log('Seeding chapters...');
     const chapters = [

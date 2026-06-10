@@ -3,6 +3,7 @@ import useAuth from '../hooks/useAuth.js';
 import { updateProfile } from '../api/user.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articucate_female.jpeg';
+import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key } from 'lucide-react';
 
 
 function AnimatedBrandText({ text, baseDelay = 0, className = "" }) {
@@ -97,20 +98,31 @@ export default function Layout() {
         <nav className="sidebar-nav">
           <div className="nav-section-label">Learn</div>
           <NavLink to="/curriculum" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon">📚</span> Curriculum
+            <span className="nav-icon"><BookOpen size={16} /></span> Curriculum
           </NavLink>
           <NavLink to="/flashcards" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon">🃏</span> Flashcards
+            <span className="nav-icon"><Layers size={16} /></span> Flashcards
           </NavLink>
           <NavLink to="/progress" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon">📈</span> My Progress
+            <span className="nav-icon"><BarChart2 size={16} /></span> My Progress
           </NavLink>
 
           {user && (
             <>
+              <div className="nav-section-label" style={{ marginTop: '0.5rem' }}>AI Assistant</div>
+              <NavLink to="/ai-chat" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+                <span className="nav-icon"><Sparkles size={16} /></span> AI Chat
+              </NavLink>
+              <NavLink to="/tests" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+                <span className="nav-icon"><ClipboardList size={16} /></span> Tests
+              </NavLink>
+              <NavLink to="/notifications" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+                <span className="nav-icon"><Bell size={16} /></span> Notifications
+              </NavLink>
+
               <div className="nav-section-label" style={{ marginTop: '0.5rem' }}>Account</div>
               <NavLink to="/profile" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="nav-icon">👤</span> Profile
+                <span className="nav-icon"><User size={16} /></span> Profile
               </NavLink>
             </>
           )}
@@ -119,11 +131,11 @@ export default function Layout() {
         <div className="sidebar-footer">
           {user ? (
             <button className="nav-button" onClick={handleLogout}>
-              <span className="nav-icon">🚪</span> Sign out
+              <span className="nav-icon"><LogOut size={16} /></span> Sign out
             </button>
           ) : (
             <Link to="/login" className="nav-link" style={{ display: 'flex', gap: '0.75rem', padding: '0.65rem 0.75rem' }}>
-              <span className="nav-icon">🔑</span> Sign in
+              <span className="nav-icon"><Key size={16} /></span> Sign in
             </Link>
           )}
         </div>

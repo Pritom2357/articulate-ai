@@ -215,6 +215,43 @@ class AIService {
     }
   }
 
+  /**
+   * General AI English chat response
+   * @param {Array} chatMessages - List of { role: 'user'|'assistant', content: string }
+   * @returns {Promise<string>} - AI response
+   */
+  async generateChatResponse(chatMessages) {
+    if (!this.ai) {
+      return "Hello! I am your Articulate AI English Guide. I am here to help you practice English! (Note: Gemini API key is not configured, so I am running in demo mode. Try typing some English sentences!)";
+    }
+
+    try {
+      const model = this.ai.models.get('gemini-1.5-flash');
+      const systemInstruction = `
+        You are "Articulate AI English Guide", a friendly, encouraging personal English tutor helping a Bengali-speaking student learn and practice English.
+        - Respond primarily in simple, correct, and friendly English.
+        - If the student makes spelling, grammar, or word choice errors in their message, gently point them out and show how to say it correctly, using a mix of English and simple Bangla where helpful.
+        - Keep your responses concise (2-4 sentences max) so it feels like a real chat conversation.
+      `;
+
+      // Map chat messages to the format Gemini expects
+      const formattedContents = chatMessages.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }));
+
+      const result = await model.generateContent({
+        contents: formattedContents,
+        systemInstruction: systemInstruction
+      });
+
+      return result.response.text().trim();
+    } catch (error) {
+      console.error('Gemini general chat failed:', error.message);
+      return "Hello! I noticed a connection issue, but let's keep practicing. Tell me about your day in English!";
+    }
+  }
+
   // --- PRIVATE MOCK FALLBACKS ---
 
   _mockPronunciationAssessment(referenceText) {

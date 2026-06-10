@@ -41,6 +41,24 @@ progressRouter.get(
     progressController.ragSession
 );
 
+progressRouter.post(
+    '/ai-chat',
+    authenticateToken.authenticateToken,
+    progressController.generalChat
+);
+
+progressRouter.get(
+    '/notifications',
+    authenticateToken.authenticateToken,
+    progressController.getUserNotifications
+);
+
+progressRouter.post(
+    '/tests/submit',
+    authenticateToken.authenticateToken,
+    progressController.submitTestAttempt
+);
+
 // Progress endpoints
 progressRouter.post(
     '/lesson',

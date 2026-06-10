@@ -193,6 +193,47 @@ class CurriculumModel {
             throw new Error(`Failed to fetch words: ${error.message}`)
         }
     }
+
+    getTests = async () => {
+        try {
+            const query = `
+                SELECT t.*, l.title as lesson_title, c.title as chapter_title, c.title_bn as chapter_title_bn
+                FROM tests t
+                LEFT JOIN lessons l ON t.lesson_id = l.id
+                LEFT JOIN chapters c ON l.chapter_id = c.id
+                ORDER BY t.id ASC;
+            `;
+            const result = await this.db_connection.query_executor(query);
+            return result.rows || [];
+        } catch (error) {
+            throw new Error(`Failed to fetch tests: ${error.message}`);
+        }
+    }
+
+    getTestById = async (id) => {
+        try {
+            const query = `
+                SELECT t.*, l.title as lesson_title
+                FROM tests t
+                LEFT JOIN lessons l ON t.lesson_id = l.id
+                WHERE t.id = $1;
+            `;
+            const testResult = await this.db_connection.query_executor(query, [id]);
+            const test = testResult.rows[0] || null;
+            if (!test) return null;
+
+            const questionsQuery = `
+                SELECT * FROM test_questions
+                WHERE test_id = $1
+                ORDER BY order_num ASC;
+            `;
+            const questionsResult = await this.db_connection.query_executor(questionsQuery, [id]);
+
+            return { test, questions: questionsResult.rows || [] };
+        } catch (error) {
+            throw new Error(`Failed to fetch test details: ${error.message}`);
+        }
+    }
 }
 
 module.exports = CurriculumModel

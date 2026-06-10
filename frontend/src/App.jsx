@@ -14,6 +14,9 @@ import Flashcards from './pages/Flashcards.jsx';
 import Progress from './pages/Progress.jsx';
 import Onboarding from './pages/Onboarding.jsx';
 import IELTSConversation from './pages/IELTSConversation.jsx';
+import AIChat from './pages/AIChat.jsx';
+import Tests from './pages/Tests.jsx';
+import Notifications from './pages/Notifications.jsx';
 import './App.css';
 
 function App() {
@@ -58,6 +61,30 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Progress />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="ai-chat"
+              element={
+                <ProtectedRoute>
+                  <AIChat />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="tests"
+              element={
+                <ProtectedRoute>
+                  <Tests />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="notifications"
+              element={
+                <ProtectedRoute>
+                  <Notifications />
                 </ProtectedRoute>
               }
             />
