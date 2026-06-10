@@ -26,6 +26,45 @@ class AuthModel {
     }
 
 
+
+    getUserByEmail = async (email) => {
+        const query = `
+        SELECT * FROM users
+        WHERE email = $1
+        LIMIT 1;
+    `;
+
+        const result = await this.db_connection.query_executor(query, [email]);
+        return result.rows[0] || null;
+    };
+
+
+
+
+    setLastLogin = async (userId) => {
+        const query = `
+        UPDATE users
+        SET last_login = NOW()
+        WHERE id = $1;
+    `;
+
+        await this.db_connection.query_executor(query, [userId]);
+    };
+
+
+
+
+    findByRefreshToken = async (token) => {
+        const query = `
+        SELECT * FROM users
+        WHERE refresh_token = $1
+        LIMIT 1;
+    `;
+
+        const result = await this.db_connection.query_executor(query, [token]);
+        return result.rows[0] || null;
+    };
+
     ///////////////// checks //////////////////////
     isEmailTaken = async (email) => {
         try {

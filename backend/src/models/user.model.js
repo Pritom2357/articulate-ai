@@ -66,7 +66,9 @@ class UserModel {
             if (!updates || Object.keys(updates).length === 0) {
                 throw new Error("No updates were sent from frontend");
             }
-
+            if (updates.date_of_birth === "") updates.date_of_birth = null;
+            if (updates.gender === "") updates.gender = null;
+            if (updates.gender) updates.gender = updates.gender.toUpperCase();
             const allowed = new Set(["name", "phone", "gender", "date_of_birth", "guide_preference"]);
             const sets = [];
             const values = [];

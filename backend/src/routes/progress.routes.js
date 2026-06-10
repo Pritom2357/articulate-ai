@@ -21,13 +21,13 @@ progressRouter.post(
 
 // Progress endpoints
 progressRouter.post(
-    '/progress/lesson',
+    '/lesson',
     authenticateToken.authenticateToken,
     progressController.markLessonComplete
 );
 
 progressRouter.get(
-    '/progress',
+    '/',
     authenticateToken.authenticateToken,
     progressController.getProgress
 );

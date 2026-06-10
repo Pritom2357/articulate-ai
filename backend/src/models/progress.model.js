@@ -14,7 +14,7 @@ const XP_PHONEME_MASTERED = 100
 
 class ProgressModel {
     constructor() {
-        this.db_connection = DB_Connection.getInstance().pool
+        this.db_connection = DB_Connection.getInstance();
     }
 
     getUserBadges = async (userId) => {

@@ -136,15 +136,19 @@ app.use('/api/user', apiLimiter, userRouter);
 app.use('/api/curriculum', apiLimiter, curriculumRouter);
 app.use('/api/progress', apiLimiter, progressRouter);
 
-const options = {
-    transports: [
+const loggerTransports = [];
+
+if (process.env.ENABLE_LOKI === 'true') {
+    loggerTransports.push(
         new LokiTransport({
             host: "http://loki:3100",
             handleExceptions: true,
             labels: { app: 'node-backend' }
         })
-    ]
-};
+    );
+}
+
+const options = { transports: loggerTransports };
 const logger = createLogger(options);
 
 if (process.env.ENABLE_SWAGGER !== 'false') {
