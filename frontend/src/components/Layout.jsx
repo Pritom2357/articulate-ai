@@ -5,7 +5,7 @@ import { updateProfile } from '../api/user.js';
 import { getNotifications } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articucate_female.jpeg';
-import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key } from 'lucide-react';
+import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key, Bookmark } from 'lucide-react';
 
 
 function AnimatedBrandText({ text, baseDelay = 0, className = "" }) {
@@ -148,6 +148,9 @@ export default function Layout() {
           </NavLink>
           <NavLink to="/progress" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
             <span className="nav-icon"><BarChart2 size={16} /></span> My Progress
+          </NavLink>
+          <NavLink to="/vocabulary" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <span className="nav-icon"><Bookmark size={16} /></span> My Vocabulary
           </NavLink>
 
           {user && (

@@ -2,8 +2,9 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getLesson } from '../api/curriculum.js';
 import { markLessonComplete, assessPronunciation } from '../api/progress.js';
+import { getBookmarks, addBookmark, removeBookmark } from '../api/vocabulary.js';
 import useAuth from '../hooks/useAuth.js';
-import { Award, BookOpen, Volume2, ShieldAlert, Sparkles, Mic } from 'lucide-react';
+import { Award, BookOpen, Volume2, ShieldAlert, Sparkles, Mic, Bookmark } from 'lucide-react';
 
 // Import tutor assets
 import maleAvatar from '../assets/articulate_male.jpeg';
@@ -45,25 +46,33 @@ export default function LessonDetails() {
   const [pronFeedback, setPronFeedback] = useState('');
   const [recognizedText, setRecognizedText] = useState('');
   const [passCount, setPassCount] = useState(0);
+  const [bookmarkedWordIds, setBookmarkedWordIds] = useState(new Set());
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
   useEffect(() => {
-    async function loadLesson() {
+    async function loadLessonAndBookmarks() {
       try {
         setLoading(true);
         const result = await getLesson(id);
         setLesson(result.lesson);
         setWords(result.words || []);
         setPhrases(result.phrases || []);
+
+        try {
+          const bookmarks = await getBookmarks();
+          setBookmarkedWordIds(new Set(bookmarks.map(b => b.word_id)));
+        } catch (bErr) {
+          console.error('Failed to load bookmarks', bErr);
+        }
       } catch (err) {
         setError(err.payload?.error || err.message || 'লেসন লোড করতে সমস্যা হয়েছে।');
       } finally {
         setLoading(false);
       }
     }
-    loadLesson();
+    loadLessonAndBookmarks();
   }, [id]);
 
   // TTS pronunciation player
@@ -87,6 +96,29 @@ export default function LessonDetails() {
       window.speechSynthesis.speak(utterance);
     } else {
       alert('আপনার ব্রাউজার টেক্সট-টু-স্পিচ সাপোর্ট করে না।');
+    }
+  };
+
+  const handleToggleBookmark = async (wordId) => {
+    try {
+      const isBookmarked = bookmarkedWordIds.has(wordId);
+      if (isBookmarked) {
+        await removeBookmark(wordId);
+        setBookmarkedWordIds(prev => {
+          const next = new Set(prev);
+          next.delete(wordId);
+          return next;
+        });
+      } else {
+        await addBookmark(wordId);
+        setBookmarkedWordIds(prev => {
+          const next = new Set(prev);
+          next.add(wordId);
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error('Failed to toggle bookmark', err);
     }
   };
 
@@ -323,6 +355,17 @@ export default function LessonDetails() {
                     <div className="text-sm text-slate-400 mt-1 font-semibold">অর্থ: {word.bangla_meaning}</div>
                   </div>
                   <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleToggleBookmark(word.id)}
+                      className={`w-10 h-10 rounded-full border flex items-center justify-center cursor-pointer transition ${
+                        bookmarkedWordIds.has(word.id)
+                          ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400'
+                          : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:border-white/20'
+                      }`}
+                      title={bookmarkedWordIds.has(word.id) ? "সংরক্ষণ তালিকা থেকে বাদ দিন" : "সংরক্ষণ করুন"}
+                    >
+                      <Bookmark size={16} className={bookmarkedWordIds.has(word.id) ? 'fill-cyan-400' : ''} />
+                    </button>
                     <button
                       onClick={() => playTTS(word.word, word.id)}
                       className={`w-10 h-10 rounded-full border-none flex items-center justify-center cursor-pointer transition ${

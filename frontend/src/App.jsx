@@ -17,6 +17,7 @@ import IELTSConversation from './pages/IELTSConversation.jsx';
 import AIChat from './pages/AIChat.jsx';
 import Tests from './pages/Tests.jsx';
 import Notifications from './pages/Notifications.jsx';
+import Vocabulary from './pages/Vocabulary.jsx';
 import './App.css';
 
 function App() {
@@ -61,6 +62,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Progress />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="vocabulary"
+              element={
+                <ProtectedRoute>
+                  <Vocabulary />
                 </ProtectedRoute>
               }
             />
