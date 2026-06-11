@@ -21,4 +21,8 @@ curriculumRouter.post('/words/bulk', curriculumController.getWordsByIds);
 curriculumRouter.get('/tests', curriculumController.getTests);
 curriculumRouter.get('/tests/:id', curriculumController.getTestById);
 
+// Search
+curriculumRouter.get('/search', curriculumController.search);
+
+
 module.exports = { curriculumRouter };

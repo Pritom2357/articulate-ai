@@ -253,3 +253,12 @@ CREATE TABLE user_xp_log (
   reason VARCHAR(100) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+
+-- Word Bookmarks (saved/starred words per user)
+CREATE TABLE word_bookmarks (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  word_id INTEGER NOT NULL REFERENCES words(id) ON DELETE CASCADE,
+  saved_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, word_id)
+);

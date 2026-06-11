@@ -194,6 +194,8 @@ class CurriculumModel {
         }
     }
 
+
+    // tests
     getTests = async () => {
         try {
             const query = `
@@ -232,6 +234,84 @@ class CurriculumModel {
             return { test, questions: questionsResult.rows || [] };
         } catch (error) {
             throw new Error(`Failed to fetch test details: ${error.message}`);
+        }
+    }
+
+
+    // global search
+    search = async (keyWord, type = 'all') => {
+        try {
+            const term = `%${keyWord}%`
+            const results = {}
+
+            if (type === 'all' || type === 'words') {
+                const query = `
+                    SELECT
+                        id,
+                        word,
+                        bangla_meaning,
+                        frequency_rank,
+                        difficulty_level,
+                        ipa,
+                        syllables,
+                        audio_url
+                    FROM words
+                    WHERE
+                        word ILIKE $1
+                        OR bangla_meaning ILIKE $1
+                    ORDER BY word ASC;
+                `
+
+                const result1 = await this.db_connection.query_executor(query, [term])
+                results.words = result1.rows || []
+            }
+
+            if (type === 'all' || type === 'phrases') {
+                const query = `
+                    SELECT
+                        id,
+                        phrase_en,
+                        phrase_bn,
+                        audio_url,
+                        difficulty
+                    FROM phrases
+                    WHERE
+                        phrase_en ILIKE $1
+                        OR phrase_bn ILIKE $1
+                    ORDER BY id ASC;
+                `
+
+                const result2 = await this.db_connection.query_executor(query, [term])
+                results.phrases = result2.rows || []
+            }
+
+            if (type === 'all' || type === 'lessons') {
+                const query = `
+                    SELECT
+                        l.id,
+                        l.title,
+                        l.title_bn,
+                        l.type,
+                        l.objective_bn,
+                        c.id AS chapter_id,
+                        c.title AS chapter_title
+                    FROM lessons l
+                    JOIN chapters c ON c.id = l.chapter_id
+                    WHERE l.title ILIKE $1
+                        OR l.title_bn ILIKE $1
+                        OR l.objective_bn ILIKE $1
+                        OR c.title ILIKE $1
+                        OR c.title_bn ILIKE $1
+                    ORDER BY l.id ASC;
+                `
+
+                const result3 = await this.db_connection.query_executor(query, [term])
+                results.lessons = result3.rows || []
+            }
+
+            return results
+        } catch (error) {
+            throw new Error(`Search failed: ${error.message}`)
         }
     }
 }
