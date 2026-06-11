@@ -454,13 +454,21 @@ class ProgressModel {
                 SELECT * FROM user_lesson_progress
                 WHERE user_id = $1;
             `
+            const onboardingQuery = `
+                SELECT assessed_level, vocab_score, pronunciation_score, assessed_at, ai_notes
+                FROM onboarding_assessments
+                WHERE user_id = $1
+                ORDER BY assessed_at DESC
+                LIMIT 1;
+            `
 
             // run all queries parallely
-            const [progressResult, badges, lessonsResult, chaptersResult] = await Promise.all([
+            const [progressResult, badges, lessonsResult, chaptersResult, onboardingResult] = await Promise.all([
                 this.db_connection.query_executor(progressQuery, [userId]),
                 this.getUserBadges(userId),
                 this.db_connection.query_executor(lessonsQuery, [userId]),
-                this.db_connection.query_executor(chaptersQuery, [userId])
+                this.db_connection.query_executor(chaptersQuery, [userId]),
+                this.db_connection.query_executor(onboardingQuery, [userId])
             ])
 
             const progress = progressResult.rows[0] || {
@@ -502,7 +510,8 @@ class ProgressModel {
                 streak_days: progress.streak_days,
                 badges: badges || [],
                 lessons: lessonMap,
-                chapters: chapterMap
+                chapters: chapterMap,
+                onboarding: onboardingResult.rows[0] || null
             }
         }
 

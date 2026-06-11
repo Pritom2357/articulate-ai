@@ -44,6 +44,55 @@ export default function Progress() {
             </div>
           </div>
 
+          {progress.onboarding && (
+            <div className="card-card bg-gradient-to-br from-indigo-950/20 via-slate-950/40 to-cyan-950/20 border border-indigo-500/20 relative overflow-hidden p-6 rounded-2xl shadow-lg">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full filter blur-xl pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-cyan-500/5 rounded-full filter blur-xl pointer-events-none"></div>
+              
+              <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 mb-4 flex items-center gap-2">
+                <span>🎙️</span> Onboarding Placement Assessment (প্লেসমেন্ট টেস্টের ফলাফল)
+              </h3>
+              
+              <div className="grid gap-6 md:grid-cols-3 items-center">
+                <div className="bg-white/3 border border-white/5 rounded-2xl p-4 text-center">
+                  <div className="text-xs text-slate-400 uppercase tracking-widest font-bold">Assessed Level</div>
+                  <div className="text-4xl font-black text-cyan-400 my-1">{progress.onboarding.assessed_level}</div>
+                  <div className="text-[10px] text-slate-500 font-semibold">
+                    Placed at Chapter {progress.onboarding.assessed_level === 'B1' ? '3' : progress.onboarding.assessed_level === 'A2' ? '2' : '1'}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-sm font-semibold">
+                    <span className="text-slate-400">Vocabulary Score:</span>
+                    <span className="text-indigo-400">{Math.round(progress.onboarding.vocab_score)}%</span>
+                  </div>
+                  <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
+                    <div className="bg-indigo-500 h-full transition-all duration-300" style={{ width: `${progress.onboarding.vocab_score}%` }}></div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-sm font-semibold">
+                    <span className="text-slate-400">Pronunciation Accuracy:</span>
+                    <span className="text-cyan-400">{Math.round(progress.onboarding.pronunciation_score)}%</span>
+                  </div>
+                  <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
+                    <div className="bg-cyan-500 h-full transition-all duration-300" style={{ width: `${progress.onboarding.pronunciation_score}%` }}></div>
+                  </div>
+                </div>
+
+                <div className="text-xs text-slate-300 leading-relaxed bg-slate-900/40 p-3.5 rounded-xl border border-white/5 h-full flex flex-col justify-between">
+                  <div>
+                    <span className="font-bold text-white block mb-1">AI Analyst Notes:</span>
+                    <span className="italic">"{progress.onboarding.ai_notes || 'No notes available'}"</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-semibold mt-3">
+                    Assessed on: {new Date(progress.onboarding.assessed_at).toLocaleDateString('bn-BD')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="card-card">
               <h3 className="card-title">Badges</h3>

@@ -2,8 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getUserVocabulary, getBookmarks, addBookmark, removeBookmark } from '../api/vocabulary.js';
 import { Bookmark, Volume2, Search, Sparkles, ShieldAlert, Award, Eye } from 'lucide-react';
+import useAuth from '../hooks/useAuth.js';
+import { speakText } from '../utils/tts.js';
 
 export default function Vocabulary() {
+  const { user } = useAuth();
+  const activeTutor = user?.guide_preference || 'MALE';
+
   const [activeTab, setActiveTab] = useState('vocabulary'); // 'vocabulary' | 'bookmarks'
   const [vocabFilter, setVocabFilter] = useState('all'); // 'all', 'new', 'learning', 'familiar', 'mastered'
   const [vocabulary, setVocabulary] = useState([]);
@@ -36,15 +41,12 @@ export default function Vocabulary() {
 
   const playTTS = (text, wordId) => {
     if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      utterance.rate = 0.8;
-
-      utterance.onstart = () => setSpeakingWordId(wordId);
-      utterance.onend = () => setSpeakingWordId(null);
-
-      window.speechSynthesis.speak(utterance);
+      speakText(
+        text,
+        activeTutor,
+        () => setSpeakingWordId(wordId),
+        () => setSpeakingWordId(null)
+      );
     } else {
       alert('আপনার ব্রাউজার টেক্সট-টু-স্পিচ সাপোর্ট করে না।');
     }

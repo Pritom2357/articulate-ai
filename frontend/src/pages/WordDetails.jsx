@@ -3,8 +3,13 @@ import { useParams, Link } from 'react-router-dom';
 import { getWord } from '../api/curriculum.js';
 import { getBookmarks, addBookmark, removeBookmark } from '../api/vocabulary.js';
 import { Bookmark, Volume2, ChevronLeft } from 'lucide-react';
+import useAuth from '../hooks/useAuth.js';
+import { speakText } from '../utils/tts.js';
 
 export default function WordDetails() {
+    const { user } = useAuth();
+    const activeTutor = user?.guide_preference || 'MALE';
+
     const { id } = useParams();
     const [word, setWord] = useState(null);
     const [isBookmarked, setIsBookmarked] = useState(false);
@@ -33,15 +38,12 @@ export default function WordDetails() {
 
     const playTTS = (text) => {
         if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.rate = 0.8;
-
-            utterance.onstart = () => setIsSpeaking(true);
-            utterance.onend = () => setIsSpeaking(false);
-
-            window.speechSynthesis.speak(utterance);
+            speakText(
+                text,
+                activeTutor,
+                () => setIsSpeaking(true),
+                () => setIsSpeaking(false)
+            );
         } else {
             alert('Your browser does not support text-to-speech.');
         }

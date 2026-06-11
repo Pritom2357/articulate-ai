@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getDueFlashcards, reviewFlashcard } from '../api/progress.js';
 import useAuth from '../hooks/useAuth.js';
 import { Award, Volume2, Sparkles, ShieldAlert } from 'lucide-react';
+import { speakText } from '../utils/tts.js';
 
 // Import tutor assets for decoration/encouragement
 import maleAvatar from '../assets/articulate_male.jpeg';
@@ -36,20 +37,12 @@ export default function Flashcards() {
   const playTTS = (text, e) => {
     if (e) e.stopPropagation(); // Prevent flipping card when clicking speaker
     if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      utterance.rate = 0.8; // slightly slower for Bangla audience to hear clearly
-
-      utterance.onstart = () => {
-        setIsSpeaking(true);
-      };
-
-      utterance.onend = () => {
-        setIsSpeaking(false);
-      };
-
-      window.speechSynthesis.speak(utterance);
+      speakText(
+        text,
+        activeTutor,
+        () => setIsSpeaking(true),
+        () => setIsSpeaking(false)
+      );
     } else {
       alert('আপনার ব্রাউজার টেক্সট-টু-স্পিচ সাপোর্ট করে না।');
     }

@@ -152,6 +152,9 @@ export default function Layout() {
           <NavLink to="/vocabulary" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
             <span className="nav-icon"><Bookmark size={16} /></span> My Vocabulary
           </NavLink>
+          <NavLink to="/onboarding" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <span className="nav-icon"><ClipboardList size={16} /></span> Placement Test
+          </NavLink>
 
           {user && (
             <>

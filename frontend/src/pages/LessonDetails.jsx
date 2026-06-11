@@ -5,6 +5,7 @@ import { markLessonComplete, assessPronunciation } from '../api/progress.js';
 import { getBookmarks, addBookmark, removeBookmark } from '../api/vocabulary.js';
 import useAuth from '../hooks/useAuth.js';
 import { Award, BookOpen, Volume2, ShieldAlert, Sparkles, Mic, Bookmark } from 'lucide-react';
+import { speakText } from '../utils/tts.js';
 
 // Import tutor assets
 import maleAvatar from '../assets/articulate_male.jpeg';
@@ -78,22 +79,18 @@ export default function LessonDetails() {
   // TTS pronunciation player
   const playTTS = (text, wordId = null) => {
     if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      utterance.rate = 0.8; // slightly slower for learners
-
-      utterance.onstart = () => {
-        setIsSpeaking(true);
-        if (wordId) setSpeakingWordId(wordId);
-      };
-
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        setSpeakingWordId(null);
-      };
-
-      window.speechSynthesis.speak(utterance);
+      speakText(
+        text,
+        activeTutor,
+        () => {
+          setIsSpeaking(true);
+          if (wordId) setSpeakingWordId(wordId);
+        },
+        () => {
+          setIsSpeaking(false);
+          setSpeakingWordId(null);
+        }
+      );
     } else {
       alert('আপনার ব্রাউজার টেক্সট-টু-স্পিচ সাপোর্ট করে না।');
     }
