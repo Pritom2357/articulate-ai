@@ -1,7 +1,7 @@
 create table users(
   id SERIAL PRIMARY KEY,
   name VARCHAR(50) NOT null,
-  email VARCHAR(30) UNIQUE NOT null,
+  email VARCHAR(254) UNIQUE NOT null,
   phone VARCHAR(11) unique NOT NULL,
   profile_photo TEXT,
   gender VARCHAR(10) check(gender in ('MALE', 'FEMALE', 'NON-BINARY')),

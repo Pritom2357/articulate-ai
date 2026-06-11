@@ -236,6 +236,7 @@ class UserController {
         }
     };
 
+    
     deleteAccount = async (req, res) => {
         try {
             const userId = parseInt(req.params.userId);
