@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import useAuth from '../hooks/useAuth.js';
 import { Sparkles, Send, Mic, MicOff, AlertCircle } from 'lucide-react';
+import { generalChat } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articucate_female.jpeg';
 
@@ -82,20 +83,7 @@ export default function AIChat() {
     setIsTyping(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/progress/ai-chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        },
-        body: JSON.stringify({ messages: updatedMessages })
-      });
-
-      if (!response.ok) {
-        throw new Error('Chat failed');
-      }
-
-      const data = await response.json();
+      const data = await generalChat({ messages: updatedMessages });
       if (data.success) {
         setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
       } else {

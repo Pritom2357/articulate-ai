@@ -1,6 +1,8 @@
-import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Outlet, Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
 import { updateProfile } from '../api/user.js';
+import { getNotifications } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articucate_female.jpeg';
 import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key } from 'lucide-react';
@@ -73,6 +75,47 @@ function GuideIndicator({ user, onUpdate }) {
 export default function Layout() {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
+
+    async function fetchUnread() {
+      try {
+        const notifications = await getNotifications();
+        const readIds = JSON.parse(localStorage.getItem('read_notification_ids') || '[]');
+        const clearedIds = JSON.parse(localStorage.getItem('cleared_notification_ids') || '[]');
+        
+        // Filter out cleared ones
+        const activeNotifs = notifications.filter(n => !clearedIds.includes(n.id));
+
+        if (location.pathname === '/notifications') {
+          const newReadIds = Array.from(new Set([...readIds, ...activeNotifs.map(n => n.id)]));
+          localStorage.setItem('read_notification_ids', JSON.stringify(newReadIds));
+          setUnreadCount(0);
+        } else {
+          const unread = activeNotifs.filter(n => !readIds.includes(n.id));
+          setUnreadCount(unread.length);
+        }
+      } catch (err) {
+        console.error('Failed to fetch notifications for badge:', err);
+      }
+    }
+
+    fetchUnread();
+
+    const interval = setInterval(fetchUnread, 30000);
+    window.addEventListener('notifications_updated', fetchUnread);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notifications_updated', fetchUnread);
+    };
+  }, [user, location.pathname]);
 
   async function handleToggleGuide(newGuide) {
     try {
@@ -117,7 +160,21 @@ export default function Layout() {
                 <span className="nav-icon"><ClipboardList size={16} /></span> Tests
               </NavLink>
               <NavLink to="/notifications" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="nav-icon"><Bell size={16} /></span> Notifications
+                <span className="nav-icon" style={{ position: 'relative' }}>
+                  <Bell size={16} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                    </span>
+                  )}
+                </span>
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center">
+                    {unreadCount}
+                  </span>
+                )}
               </NavLink>
 
               <div className="nav-section-label" style={{ marginTop: '0.5rem' }}>Account</div>

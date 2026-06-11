@@ -43,3 +43,14 @@ export async function getWordsBulk(ids) {
   });
   return response.words || [];  // was returning raw response
 }
+
+export async function getTests() {
+  const response = await request('/curriculum/tests');
+  return response.tests || [];
+}
+
+export async function getTestDetails(testId) {
+  const response = await request(`/curriculum/tests/${testId}`);
+  return response;
+}
+

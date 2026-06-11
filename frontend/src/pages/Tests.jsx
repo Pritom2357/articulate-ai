@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Play, ArrowLeft, Mic, Award, CheckCircle, XCircle } from 'lucide-react';
+import { getTests, getTestDetails } from '../api/curriculum.js';
+import { assessPronunciation, submitTestAttempt } from '../api/progress.js';
 
 export default function Tests() {
   const navigate = useNavigate();
@@ -26,16 +28,9 @@ export default function Tests() {
   const fetchTests = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/curriculum/tests`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      if (!response.ok) throw new Error('Failed to load tests');
-      const data = await response.json();
-      if (data.success) {
-        setTests(data.tests || []);
-      }
+      setError('');
+      const data = await getTests();
+      setTests(data);
     } catch (err) {
       console.error(err);
       setError('Tests could not be loaded.');
@@ -48,13 +43,7 @@ export default function Tests() {
     try {
       setLoading(true);
       setError('');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/curriculum/tests/${test.id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-      if (!response.ok) throw new Error('Failed to load test details');
-      const data = await response.json();
+      const data = await getTestDetails(test.id);
       if (data.success) {
         setSelectedTest(data.test);
         setQuestions(data.questions || []);
@@ -118,16 +107,7 @@ export default function Tests() {
       formData.append('questionId', question.id);
       formData.append('attemptType', 'PHRASE'); // Test prompts are treated as phrases
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/progress/pronunciation/assess`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        },
-        body: formData
-      });
-
-      if (!response.ok) throw new Error('Speech grading failed');
-      const result = await response.json();
+      const result = await assessPronunciation(formData);
 
       if (result.success) {
         const score = result.overall_score || result.accuracy_score || 0;
@@ -170,21 +150,11 @@ export default function Tests() {
   const submitFinalTest = async (finalScore) => {
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/progress/tests/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        },
-        body: JSON.stringify({
-          testId: selectedTest.id,
-          score: finalScore,
-          obtainedMarks: Math.round((finalScore / 100) * selectedTest.total_marks)
-        })
+      const data = await submitTestAttempt({
+        testId: selectedTest.id,
+        score: finalScore,
+        obtainedMarks: Math.round((finalScore / 100) * selectedTest.total_marks)
       });
-
-      if (!response.ok) throw new Error('Submission failed');
-      const data = await response.json();
 
       if (data.success) {
         setTestResult({

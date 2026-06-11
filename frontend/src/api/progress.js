@@ -55,3 +55,22 @@ export async function assessConversation(payload) {
 export async function getRagSession() {
   return request('/progress/rag-session');
 }
+
+export async function getNotifications() {
+  const response = await request('/progress/notifications');
+  return response.notifications || [];
+}
+
+export async function generalChat(payload) {
+  return request('/progress/ai-chat', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function submitTestAttempt(payload) {
+  return request('/progress/tests/submit', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
