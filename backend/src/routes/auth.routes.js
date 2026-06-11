@@ -86,4 +86,7 @@ authRouter.post('/login', authController.login);
 authRouter.post('/logout/:userId', authenticateToken.authenticateToken, authController.logout);
 
 
+// refresh
+authRouter.post('/refresh', authController.refreshTokens);
+
 module.exports = { authRouter };

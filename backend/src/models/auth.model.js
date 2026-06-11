@@ -19,12 +19,20 @@ class AuthModel {
             const params = [name, email, passwordHash, phone, gender ?? null, date_of_birth ?? null]
             const result = await this.db_connection.query_executor(query, params)
 
+            const userId = result.rows[0].id
+
+            // create user progress
+            const progressQuery = `
+                INSERT INTO user_progress (user_id)
+                VALUES ($1);
+            `
+            await this.db_connection.query_executor(progressQuery, [userId])
+
             return result.rows[0]
         } catch (error) {
             throw new Error(`User creation failed: ${error.message}`)
         }
     }
-
 
 
     getUserByEmail = async (email) => {
@@ -39,8 +47,6 @@ class AuthModel {
     };
 
 
-
-
     setLastLogin = async (userId) => {
         const query = `
         UPDATE users
@@ -50,8 +56,6 @@ class AuthModel {
 
         await this.db_connection.query_executor(query, [userId]);
     };
-
-
 
 
     findByRefreshToken = async (token) => {
@@ -65,6 +69,7 @@ class AuthModel {
         return result.rows[0] || null;
     };
 
+
     ///////////////// checks //////////////////////
     isEmailTaken = async (email) => {
         try {
@@ -76,7 +81,7 @@ class AuthModel {
             const params = [email]
             const result = await this.db_connection.query_executor(query, params)
 
-            return result.rows[0].cnt > 0
+            return parseInt(result.rows[0].cnt) > 0
         } catch (error) {
             throw new Error(`is email taken checking failed: ${error.message}`)
         }
@@ -94,7 +99,7 @@ class AuthModel {
             const params = [phone]
             const result = await this.db_connection.query_executor(query, params)
 
-            return result.rows[0].cnt > 0
+            return parseInt(result.rows[0].cnt) > 0
         } catch (error) {
             throw new Error(`Phone check failed: ${error.message}`)
         }

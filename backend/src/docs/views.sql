@@ -14,6 +14,7 @@ FROM chapters;
 
 create or replace view vw_due_cards as
 select
+    uwp.user_id,
     uwp.id AS progress_id,
     uwp.word_id,
     w.word,
@@ -76,7 +77,6 @@ CROSS JOIN vw_chapters c
 LEFT JOIN user_progress up ON up.user_id = u.id AND up.chapter_id = c.id;
 
 
-
 create or replace view vw_user_stats as
 SELECT
     up.user_id,
@@ -90,7 +90,7 @@ SELECT
     ) AS completed_lessons,
     (
         SELECT COUNT(*) FROM test_progress tp
-        WHERE tp.user_id = up.user_id AND tp.status = 'SUBMITTED'
+        WHERE tp.user_id = up.user_id AND tp.status IN ('SUBMITTED', 'EVALUATED')
     ) AS completed_tests,
     (
         SELECT COUNT(*) FROM test_progress tp

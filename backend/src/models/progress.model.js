@@ -326,6 +326,7 @@ class ProgressModel {
             }
 
             const { streak_days, last_active } = result.rows[0]
+            let newStreak
 
             const today = new Date()
             today.setHours(0, 0, 0, 0) // normalize to midnight
@@ -340,8 +341,8 @@ class ProgressModel {
                 )
 
                 if (diffDays === 0) return streak_days // already active today -> no change
-                else if (diffDays === 1) streak_days++
-                else streak_days = 1 // missed a day or more -> streak resets
+                else if (diffDays === 1) newStreak = streak_days + 1
+                else newStreak = 1 // missed a day or more -> streak resets
             }
 
             // Save the updated streak and set last_active to today
@@ -353,7 +354,7 @@ class ProgressModel {
                 RETURNING streak_days;
             `
 
-            const params = [streak_days, userId]
+            const params = [newStreak, userId]
             const updateResult = await this.db_connection.query_executor(updateQuery, params)
 
             return updateResult.rows[0]
@@ -565,10 +566,11 @@ class ProgressModel {
         }
     }
 
+
     logPronunciationAttempt = async (userId, data) => {
         try {
             const { testId, questionId, attemptType, wordId, phraseId, score, feedback, isCorrect } = data;
-            
+
             // Check if test_progress row exists, otherwise create it
             const selectProgress = `
                 SELECT id FROM test_progress
