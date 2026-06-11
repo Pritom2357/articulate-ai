@@ -61,6 +61,11 @@ export async function getNotifications() {
   return response.notifications || [];
 }
 
+export async function getXpLog(limit = 100) {
+  const response = await request(`/progress/xp-log?limit=${limit}`);
+  return response.logs || [];
+}
+
 export async function generalChat(payload) {
   return request('/assess/ai-chat', {
     method: 'POST',

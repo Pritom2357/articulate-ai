@@ -117,6 +117,82 @@ export default function Layout() {
     };
   }, [user, location.pathname]);
 
+  // Active Screen Time tracking (runs globally under Layout shell)
+  useEffect(() => {
+    if (!user) return;
+
+    let activeStartTime = Date.now();
+    let isWindowFocused = true;
+
+    const getTodayKey = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const updateScreenTime = () => {
+      const now = Date.now();
+      const diffSeconds = Math.round((now - activeStartTime) / 1000);
+      if (diffSeconds <= 0) return;
+
+      activeStartTime = now; // Reset timer anchor
+
+      const storageKey = 'articulate_screen_time';
+      const rawData = localStorage.getItem(storageKey);
+      let data = {};
+      try {
+        if (rawData) data = JSON.parse(rawData);
+      } catch (e) {
+        console.error('Failed to parse screen time data', e);
+      }
+
+      const today = getTodayKey();
+      data[today] = (data[today] || 0) + diffSeconds;
+      localStorage.setItem(storageKey, JSON.stringify(data));
+    };
+
+    const handleFocus = () => {
+      if (!isWindowFocused) {
+        isWindowFocused = true;
+        activeStartTime = Date.now();
+      }
+    };
+
+    const handleBlur = () => {
+      if (isWindowFocused) {
+        updateScreenTime();
+        isWindowFocused = false;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        handleBlur();
+      } else {
+        handleFocus();
+      }
+    };
+
+    // Periodically update active time every 10 seconds
+    const interval = setInterval(() => {
+      if (isWindowFocused && !document.hidden) {
+        updateScreenTime();
+      }
+    }, 10000);
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      updateScreenTime(); // Save final session slice on component unmount
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user]);
+
+
   async function handleToggleGuide(newGuide) {
     try {
       await updateProfile(user.id, { guide_preference: newGuide });
