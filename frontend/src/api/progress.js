@@ -29,7 +29,7 @@ export async function getProgress() {
 
 export async function assessPronunciation(formData) {
   const token = localStorage.getItem('articulate_access_token');
-  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/progress/pronunciation/assess`, {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/assess/pronunciation/assess`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -46,31 +46,31 @@ export async function assessPronunciation(formData) {
 }
 
 export async function assessConversation(payload) {
-  return request('/progress/conversation/assess', {
+  return request('/assess/conversation/assess', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
 export async function getRagSession() {
-  return request('/progress/rag-session');
+  return request('/assess/rag-session');
 }
 
 export async function getNotifications() {
-  const response = await request('/progress/notifications');
+  const response = await request('/notifications');
   return response.notifications || [];
 }
 
 export async function generalChat(payload) {
-  return request('/progress/ai-chat', {
+  return request('/assess/ai-chat', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
 export async function submitTestAttempt(payload) {
-  return request('/progress/tests/submit', {
+  return request('/assess/tests/submit', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
-}
+}

@@ -255,7 +255,7 @@ class CurriculumController {
     ////// global search /////////////
     search = async (req, res) => {
         try {
-            const { keyWord, type = 'all' } = req.body
+            const { keyWord, type = 'all' } = req.query
 
             if (!keyWord || keyWord.trim().length == 0) return res.status(400).json({
                 success: false,
@@ -264,7 +264,7 @@ class CurriculumController {
 
             const results = await this.curriculumModel.search(keyWord.trim(), type)
 
-            if (!results || results.length === 0) return res.status(404).json({
+            if (!results || Object.values(results).every(arr => arr.length === 0)) return res.status(404).json({
                 success: false,
                 error: 'No results found'
             })

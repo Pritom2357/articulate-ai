@@ -2,7 +2,7 @@ const DB_Connection = require('../database/db.js')
 
 class AuthModel {
     constructor() {
-        this.db_connection = new DB_Connection()
+        this.db_connection = DB_Connection.getInstance()
     }
 
 
@@ -36,14 +36,19 @@ class AuthModel {
 
 
     getUserByEmail = async (email) => {
-        const query = `
-        SELECT * FROM users
-        WHERE email = $1
-        LIMIT 1;
-    `;
+        try {
+            const query = `
+                SELECT * FROM users
+                WHERE email = $1
+                LIMIT 1;
+            `;
 
-        const result = await this.db_connection.query_executor(query, [email]);
-        return result.rows[0] || null;
+            const result = await this.db_connection.query_executor(query, [email]);
+
+            return result.rows[0] || null;
+        } catch (error) {
+            throw new Error(`Couldn't find user: ${error.message}`)
+        }
     };
 
 

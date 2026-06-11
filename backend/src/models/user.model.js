@@ -26,41 +26,6 @@ class UserModel {
     }
 
 
-    getUserByEmail = async (email) => {
-        try {
-            const query = `
-                SELECT * FROM users
-                WHERE email = $1
-                LIMIT 1;
-            `
-            const params = [email]
-            const result = await this.db_connection.query_executor(query, params)
-
-            return result.rows[0] || null
-        } catch (error) {
-            throw new Error(`Couldn't find user: ${error.message}`)
-        }
-    }
-
-
-    findByRefreshToken = async (refreshToken) => {
-        try {
-            const query = `
-                SELECT id, name, email, role, is_active
-                FROM users
-                WHERE refresh_token = $1 AND is_active = TRUE
-                LIMIT 1;
-            `
-            const params = [refreshToken]
-            const result = await this.db_connection.query_executor(query, params)
-
-            return result.rows[0] || null
-        } catch (error) {
-            throw new Error(`Finding by refresh token failed: ${error.message}`)
-        }
-    }
-
-
     updateUser = async (userId, updates) => {
         try {
             if (!updates || Object.keys(updates).length === 0) {
@@ -144,25 +109,6 @@ class UserModel {
     }
 
 
-    setLastLogin = async (userId) => {
-        try {
-            const query = `
-                UPDATE users
-                SET last_login = NOW()
-                WHERE id = $1
-                RETURNING id
-            `
-
-            const params = [userId]
-            const result = await this.db_connection.query_executor(query, params)
-
-            return result.rows[0]
-        } catch (error) {
-            throw new Error(`Couldn't set last login: ${error.message}`)
-        }
-    }
-
-
     updatePassword = async (userId, newPasswordHash) => {
         try {
             const query = `
@@ -236,13 +182,13 @@ class UserModel {
             `;
             const params = [userId, assessed_level, vocab_score, pronunciation_score, ai_notes];
             const result = await this.db_connection.query_executor(query, params);
-            
+
             // Map level to placement chapter: A1 -> 1, A2 -> 2, B1 -> 3
             let placementChapter = 1;
             if (assessed_level === 'A2') placementChapter = 2;
             else if (assessed_level === 'B1') placementChapter = 3;
             else if (assessed_level === 'B2' || assessed_level === 'C1') placementChapter = 4;
-            
+
             // Upsert user progress with placement chapter
             const upsertProgressQuery = `
                 INSERT INTO user_progress (user_id, placement_chapter)
