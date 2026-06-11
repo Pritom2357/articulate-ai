@@ -15,7 +15,7 @@ const XP_PHONEME_MASTERED = 100
 class ProgressModel {
     constructor() {
         this.db_connection = DB_Connection.getInstance();
-        this._flagBadgeCheck = false; // re-entrancy guard for addXP <-> checkAndAwardBadges
+        this._badgeCheckInProgress = new Set(); // re-entrancy guard for addXP <-> checkAndAwardBadges
     }
 
     ///////////// due cards ////////
@@ -197,8 +197,8 @@ class ProgressModel {
 
 
     checkAndAwardBadges = async (userId) => {
-        if (this._flagBadgeCheck) return null // re-entrancy guard
-        this._flagBadgeCheck = true
+        if (this._badgeCheckInProgress.has(userId)) return null // re-entrancy guard
+        this._badgeCheckInProgress.add(userId)
 
         try {
             const statsQuery = `
@@ -314,7 +314,7 @@ class ProgressModel {
             throw new Error(`Failed to check/award badges: ${error.message}`)
         }
         finally {
-            this._flagBadgeCheck = false  // reset the guard
+            this._badgeCheckInProgress.delete(userId)  // reset the guard
         }
     }
 
