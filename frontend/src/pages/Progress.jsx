@@ -46,13 +46,20 @@ export default function Progress() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="card-card">
-              <h3 className="card-title">Badges earned</h3>
+              <h3 className="card-title">Badges</h3>
               {progress.badges?.length ? (
                 <ul className="space-y-2">
                   {progress.badges.map((badge) => (
-                    <li key={badge.badge_id} className="badge-item">
-                      <div className="font-semibold">{badge.title}</div>
-                      <div className="text-slate-400 text-sm">{badge.description}</div>
+                    <li key={badge.badge_id} className={`badge-item p-3 rounded-lg border ${badge.earned ? 'border-indigo-500/30 bg-indigo-500/10' : 'border-slate-800 bg-slate-900/50 opacity-60'}`}>
+                      <div className="font-semibold flex items-center gap-2">
+                        <span className={badge.earned ? 'text-indigo-300' : 'text-slate-500'}>{badge.title}</span>
+                        {badge.earned ? (
+                          <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full ml-auto">✓ Earned</span>
+                        ) : (
+                          <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full ml-auto">🔒 Locked</span>
+                        )}
+                      </div>
+                      <div className="text-slate-400 text-sm mt-1">{badge.description}</div>
                     </li>
                   ))}
                 </ul>

@@ -26,10 +26,35 @@ progressRouter.post(
     progressController.markLessonComplete
 );
 
+// GET /api/progress
 progressRouter.get(
     '/',
     authenticateToken.authenticateToken,
     progressController.getProgress
+);
+
+progressRouter.get(
+    '/leaderboard',
+    authenticateToken.authenticateToken,
+    progressController.getLeaderboard
+);
+
+progressRouter.get(
+    '/streak-calendar',
+    authenticateToken.authenticateToken,
+    progressController.getStreakCalendar
+);
+
+progressRouter.get(
+    '/badges',
+    authenticateToken.authenticateToken,
+    progressController.getBadges
+);
+
+progressRouter.get(
+    '/xp-log',
+    authenticateToken.authenticateToken,
+    progressController.getXPLog
 );
 
 module.exports = { progressRouter };

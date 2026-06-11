@@ -99,9 +99,11 @@ SELECT
 FROM user_progress up;
 
 
-create or replace view vw_user_word AS
+-- user X user_word_progress X words
+create or replace view vw_user_words AS
   SELECT
-    uwp.id as user_id,
+    uwp.id,
+    uwp.user_id,
     uwp.word_id,
     w.word,
     w.bangla_meaning,
@@ -118,8 +120,26 @@ create or replace view vw_user_word AS
     uwp.last_reviewed,
     EXISTS (
         SELECT 1 FROM word_bookmarks wb
-        WHERE wb.user_id = uwp.id AND wb.word_id = uwp.word_id
+        WHERE wb.user_id = uwp.user_id AND wb.word_id = uwp.word_id
     ) AS is_bookmarked
 FROM user_word_progress uwp
 JOIN words w ON w.id = uwp.word_id
 ORDER BY w.word ASC;
+
+
+-- for montly streak calaender
+CREATE OR REPLACE VIEW vw_user_activity_dates AS
+(
+  SELECT 
+    user_id,
+    DATE(completed_at) AS active_date
+  FROM user_lesson_progress
+  WHERE status = 'COMPLETED'
+    AND completed_at IS NOT NULL
+) UNION (
+  SELECT 
+      user_id,
+      DATE(completed_at) AS active_date
+  FROM test_progress
+  WHERE completed_at IS NOT NULL
+);

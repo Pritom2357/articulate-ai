@@ -30,21 +30,21 @@ class VocabularyModel {
                     familiarity = `%`
             }
 
-            const whereClause = filter === 'all' ? '' : `AND uwp.familiarity = ${familiarity}`
+            const whereClause = filter === 'all' ? '' : `AND familiarity LIKE '${familiarity}'`
 
             const query = `
-                SELECT * FROM vw_user_word uwp
+                SELECT * FROM vw_user_words
                 WHERE
-                    uwp.user_id = $1
+                    user_id = $1
                     ${whereClause}
                 ORDER BY
-                    CASE uwp.familiarity
+                    CASE familiarity
                         WHEN 'NEW'      THEN 1
                         WHEN 'LEARNING' THEN 2
                         WHEN 'FAMILIAR' THEN 3
                         WHEN 'MASTERED' THEN 4
                     END,
-                    w.word ASC;
+                    word ASC;
             `
 
             const result = await this.db_connection.query_executor(query, [userId])
