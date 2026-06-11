@@ -4,24 +4,24 @@ const CurriculumController = require('../controllers/curriculum.controller.js');
 const curriculumRouter = express.Router();
 const curriculumController = new CurriculumController();
 
-// Chapters
+// chapters
 curriculumRouter.get('/chapters', curriculumController.getAllChapters);
 curriculumRouter.get('/chapters/:id', curriculumController.getChapterById);
 curriculumRouter.get('/chapters/:chapterId/lessons', curriculumController.getLessonsByChapterId);
 
-// Lessons
+// lessons
 curriculumRouter.get('/lessons/:id', curriculumController.getLessonById);
 curriculumRouter.get('/lessons/:lessonId/words', curriculumController.getWordsByLessonId);
 
-// Words
+// words
 curriculumRouter.get('/words/:id', curriculumController.getWordById);
 curriculumRouter.post('/words/bulk', curriculumController.getWordsByIds);
 
-// Tests
+// tests
 curriculumRouter.get('/tests', curriculumController.getTests);
 curriculumRouter.get('/tests/:id', curriculumController.getTestById);
 
-// Search
+// searchbar
 curriculumRouter.get('/search', curriculumController.search);
 
 

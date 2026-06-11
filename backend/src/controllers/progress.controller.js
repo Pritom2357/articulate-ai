@@ -5,8 +5,7 @@ class ProgressController {
     constructor() {
         this.progressModel = new ProgressModel()
     }
-
-
+    
     getDueCards = async (req, res) => {
         try {
             const userId = req.user.id
@@ -92,8 +91,6 @@ class ProgressController {
             return res.status(500).json({ success: false, error: 'Internal server error' })
         }
     }
-
-
 }
 
 module.exports = ProgressController
