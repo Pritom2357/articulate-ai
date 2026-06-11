@@ -1,8 +1,10 @@
 const ProgressModel = require('../models/progress.model')
+const DB_Connection = require('../database/db')
 
 class NotificationsController {
     constructor() {
         this.progressModel = new ProgressModel()
+        this.db_connection = DB_Connection.getInstance()
     }
 
     getUserNotifications = async (req, res) => {
@@ -87,4 +89,4 @@ class NotificationsController {
     }
 }
 
-module.exports = NotificationsController;
+module.exports = NotificationsController

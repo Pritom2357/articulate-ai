@@ -97,3 +97,29 @@ SELECT
         WHERE tp.user_id = up.user_id AND tp.score = 100
     ) AS perfect_tests
 FROM user_progress up;
+
+
+create or replace view vw_user_word AS
+  SELECT
+    uwp.id as user_id,
+    uwp.word_id,
+    w.word,
+    w.bangla_meaning,
+    w.ipa,
+    w.syllables,
+    w.audio_url,
+    w.difficulty_level,
+    w.frequency_rank,
+    uwp.familiarity,
+    uwp.correct_count,
+    uwp.wrong_count,
+    uwp.streak,
+    uwp.next_review,
+    uwp.last_reviewed,
+    EXISTS (
+        SELECT 1 FROM word_bookmarks wb
+        WHERE wb.user_id = uwp.id AND wb.word_id = uwp.word_id
+    ) AS is_bookmarked
+FROM user_word_progress uwp
+JOIN words w ON w.id = uwp.word_id
+ORDER BY w.word ASC;
