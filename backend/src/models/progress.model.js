@@ -497,6 +497,8 @@ class ProgressModel {
         }
     }
 
+
+    // later additions
     getChapterConversationPoints = async (chapterId) => {
         try {
             const query = `
