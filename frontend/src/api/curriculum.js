@@ -54,3 +54,8 @@ export async function getTestDetails(testId) {
   return response;
 }
 
+export async function searchCurriculum(keyWord, type = 'all') {
+  const response = await request(`/curriculum/search?keyWord=${encodeURIComponent(keyWord)}&type=${encodeURIComponent(type)}`);
+  return response.results;
+}
+

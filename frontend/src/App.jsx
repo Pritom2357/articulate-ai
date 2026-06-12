@@ -12,6 +12,7 @@ import LessonDetails from './pages/LessonDetails.jsx';
 import WordDetails from './pages/WordDetails.jsx';
 import Flashcards from './pages/Flashcards.jsx';
 import Progress from './pages/Progress.jsx';
+import Leaderboard from './pages/Leaderboard.jsx';
 import Onboarding from './pages/Onboarding.jsx';
 import IELTSConversation from './pages/IELTSConversation.jsx';
 import AIChat from './pages/AIChat.jsx';
@@ -62,6 +63,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Progress />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="leaderboard"
+              element={
+                <ProtectedRoute>
+                  <Leaderboard />
                 </ProtectedRoute>
               }
             />
