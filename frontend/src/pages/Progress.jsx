@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { getProgress, getXpLog } from '../api/progress.js';
+import { getProgress, getXpLog, getStreakCalendar } from '../api/progress.js';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Award, Clock, Flame, ShieldAlert, Sparkles, TrendingUp } from 'lucide-react';
+import { Award, Clock, Flame, ShieldAlert, Sparkles, TrendingUp, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const getLast7DaysData = (xpLogs, screenTimeData) => {
   const data = [];
@@ -43,16 +43,22 @@ export default function Progress() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
+  const [calendarActiveDates, setCalendarActiveDates] = useState([]);
+  const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(new Date().getMonth() + 1);
+
   useEffect(() => {
     async function loadProgressData() {
       try {
         setLoading(true);
-        const [progRes, logsRes] = await Promise.all([
+        const [progRes, logsRes, calRes] = await Promise.all([
           getProgress(),
-          getXpLog(100)
+          getXpLog(100),
+          getStreakCalendar(calYear, calMonth)
         ]);
         setProgress(progRes);
         setXpLogs(logsRes || []);
+        setCalendarActiveDates(calRes.map(r => new Date(r.active_date).getDate()));
       } catch (err) {
         setError(err.payload?.error || err.message || 'অগ্রগতি লোড করা যায়নি।');
       } finally {
@@ -61,7 +67,7 @@ export default function Progress() {
     }
 
     loadProgressData();
-  }, []);
+  }, [calYear, calMonth]);
 
   if (loading && !progress) {
     return (
@@ -173,6 +179,64 @@ export default function Progress() {
               </div>
             </div>
           )}
+
+          {/* Streak Calendar Banner */}
+          <div className="card-card p-6 bg-slate-950/40 border border-white/10 relative overflow-hidden">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="card-title text-white flex items-center gap-2 mb-1">
+                  <CalendarDays size={18} className="text-rose-400" />
+                  ধারাবাহিকতা ক্যালেন্ডার (Streak Calendar)
+                </h3>
+                <p className="text-xs text-slate-400">এই মাসে আপনার শেখার সক্রিয় দিনগুলো।</p>
+              </div>
+              <div className="flex items-center gap-3 bg-slate-900/50 rounded-lg p-1 border border-white/5">
+                <button 
+                  onClick={() => {
+                    if (calMonth === 1) { setCalMonth(12); setCalYear(calYear - 1); }
+                    else { setCalMonth(calMonth - 1); }
+                  }}
+                  className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="text-sm font-bold text-white min-w-[100px] text-center">
+                  {new Date(calYear, calMonth - 1).toLocaleString('bn-BD', { month: 'long', year: 'numeric' })}
+                </span>
+                <button 
+                  onClick={() => {
+                    if (calMonth === 12) { setCalMonth(1); setCalYear(calYear + 1); }
+                    else { setCalMonth(calMonth + 1); }
+                  }}
+                  className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                <div key={day} className="text-[10px] font-bold text-slate-500 uppercase py-1">{day}</div>
+              ))}
+              {Array.from({ length: new Date(calYear, calMonth - 1, 1).getDay() }).map((_, i) => (
+                <div key={`empty-${i}`} className="p-2"></div>
+              ))}
+              {Array.from({ length: new Date(calYear, calMonth, 0).getDate() }).map((_, i) => {
+                const dateNum = i + 1;
+                const isActive = calendarActiveDates.includes(dateNum);
+                const isToday = new Date().getDate() === dateNum && new Date().getMonth() + 1 === calMonth && new Date().getFullYear() === calYear;
+                return (
+                  <div 
+                    key={dateNum} 
+                    className={`aspect-square flex items-center justify-center rounded-xl text-sm font-bold transition-all duration-300 ${isActive ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-[0_0_10px_rgba(244,63,94,0.1)]' : 'bg-slate-900/40 text-slate-500 border border-white/5'} ${isToday && !isActive ? 'border-slate-400 text-slate-300 bg-slate-800' : ''}`}
+                  >
+                    {dateNum}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Recharts Composed Chart (Weekly Progress & Screen Time) */}
           <div className="card-card bg-slate-950/40 border border-white/10 p-6 rounded-2xl relative overflow-hidden">

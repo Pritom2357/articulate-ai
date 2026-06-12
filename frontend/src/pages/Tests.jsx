@@ -21,10 +21,6 @@ export default function Tests() {
   const [questionScores, setQuestionScores] = useState([]); // List of accuracy scores per question
   const [testResult, setTestResult] = useState(null);
 
-  useEffect(() => {
-    fetchTests();
-  }, []);
-
   const fetchTests = async () => {
     try {
       setLoading(true);
@@ -38,6 +34,11 @@ export default function Tests() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchTests();
+  }, []);
+
 
   const startTest = async (test) => {
     try {

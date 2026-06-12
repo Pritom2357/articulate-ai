@@ -66,6 +66,16 @@ export async function getXpLog(limit = 100) {
   return response.logs || [];
 }
 
+export async function getLeaderboard(limit = 100) {
+  const response = await request(`/progress/leaderboard?limit=${limit}`);
+  return response.leaderboard || [];
+}
+
+export async function getStreakCalendar(year, month) {
+  const response = await request(`/progress/streak-calendar?year=${year}&month=${month}`);
+  return response.activeDates || [];
+}
+
 export async function generalChat(payload) {
   return request('/assess/ai-chat', {
     method: 'POST',
