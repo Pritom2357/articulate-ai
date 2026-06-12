@@ -16,9 +16,12 @@ class DB_Connection {
 
         // console.log('Database URL:', process.env.DATABASE_URL);
 
+        const useSSL = process.env.DB_SSL === 'true' ||
+            (process.env.DATABASE_URL || '').includes('sslmode=require');
+
         const connectionConfig = {
             connectionString: process.env.DATABASE_URL,
-            ssl: { rejectUnauthorized: false }
+            ...(useSSL ? { ssl: { rejectUnauthorized: false } } : {})
         };
 
         this.pool = new Pool(connectionConfig);
