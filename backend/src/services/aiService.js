@@ -1,4 +1,4 @@
-const { GoogleGenAI } = require('@google/generative-ai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 class AIService {
   constructor() {
@@ -12,7 +12,7 @@ class AIService {
     if (this.geminiKey) {
       try {
         // Initialize Gemini client using GoogleGenAI
-        this.ai = new GoogleGenAI({ apiKey: this.geminiKey });
+        this.ai = new GoogleGenerativeAI(this.geminiKey);
       } catch (err) {
         console.error('Failed to initialize Gemini AI client:', err.message);
       }
@@ -133,7 +133,7 @@ class AIService {
     }
 
     try {
-      const model = this.ai.models.get('gemini-1.5-flash');
+      const model = this.ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
       const prompt = `
         You are an experienced IELTS Speaking Examiner. Evaluate the following conversation transcript between a student and an examiner.
         
@@ -153,9 +153,7 @@ class AIService {
         Format the output as a clean, parseable JSON block. DO NOT wrap it in markdown code fences (\`\`\`json).
       `;
 
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }]
-      });
+      const result = await model.generateContent(prompt);
 
       const responseText = result.response.text().trim();
       
@@ -186,7 +184,7 @@ class AIService {
     }
 
     try {
-      const model = this.ai.models.get('gemini-1.5-flash');
+      const model = this.ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
       const prompt = `
         You are an AI English Tutor guiding a Bengali student named "${name}" who is at level "${level}".
         
@@ -203,9 +201,7 @@ class AIService {
         Keep it concise, well-structured, and highly engaging. Output as standard markdown.
       `;
 
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }]
-      });
+      const result = await model.generateContent(prompt);
 
       return result.response.text().trim();
 
@@ -226,13 +222,13 @@ class AIService {
     }
 
     try {
-      const model = this.ai.models.get('gemini-1.5-flash');
-      const systemInstruction = `
-        You are "Articulate AI English Guide", a friendly, encouraging personal English tutor helping a Bengali-speaking student learn and practice English.
+      const model = this.ai.getGenerativeModel({
+        model: 'gemini-1.5-flash',
+        systemInstruction: `You are "Articulate AI English Guide", a friendly, encouraging personal English tutor helping a Bengali-speaking student learn and practice English.
         - Respond primarily in simple, correct, and friendly English.
         - If the student makes spelling, grammar, or word choice errors in their message, gently point them out and show how to say it correctly, using a mix of English and simple Bangla where helpful.
-        - Keep your responses concise (2-4 sentences max) so it feels like a real chat conversation.
-      `;
+        - Keep your responses concise (2-4 sentences max) so it feels like a real chat conversation.`
+      });
 
       // Map chat messages to the format Gemini expects
       const formattedContents = chatMessages.map(m => ({
@@ -240,10 +236,9 @@ class AIService {
         parts: [{ text: m.content }]
       }));
 
-      const result = await model.generateContent({
-        contents: formattedContents,
-        systemInstruction: systemInstruction
-      });
+      const chat = model.startChat({ history: formattedContents.slice(0, -1) });
+      const lastMessage = formattedContents[formattedContents.length - 1];
+      const result = await chat.sendMessage(lastMessage?.parts?.[0]?.text || '');
 
       return result.response.text().trim();
     } catch (error) {
@@ -301,7 +296,7 @@ class AIService {
       }
     }
 
-    const hitRatio = keyPointsFound.length / keyPoints.length;
+    const hitRatio = keyPoints.length > 0 ? keyPointsFound.length / keyPoints.length : 0;
     let ieltsBand = 5.0;
     if (hitRatio >= 0.8) ieltsBand = 7.5;
     else if (hitRatio >= 0.6) ieltsBand = 6.5;
