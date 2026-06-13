@@ -16,12 +16,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { swaggerJsdocOptions } = require('./docs/swaggerConfig.js');
 
-<<<<<<< HEAD
 dotenv.config({ path: path.resolve(__dirname, '.env') });
-=======
-dotenv.config({ path: path.resolve(__dirname, '', '.env') });
-
->>>>>>> df432a6e103dc224c394df7ce4da02da9c9efb0a
 
 // app setup --> add our necessary routes here...
 const app = express();
