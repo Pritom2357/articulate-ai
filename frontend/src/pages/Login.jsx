@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
 
@@ -7,8 +7,15 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect to curriculum if user is already authenticated
+  useEffect(() => {
+    if (user) {
+      navigate('/curriculum', { replace: true });
+    }
+  }, [user, navigate]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -17,7 +24,7 @@ export default function Login() {
 
     try {
       await login({ email, password });
-      navigate('/profile');
+      navigate('/curriculum');
     } catch (err) {
       setError(err.payload?.error || err.message || 'Login failed. Please check your credentials.');
     } finally {

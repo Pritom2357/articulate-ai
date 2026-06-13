@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import Landing from './pages/Landing.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import Profile from './pages/Profile.jsx';
@@ -26,103 +27,38 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Navigate replace to="/curriculum" />} />
-            <Route path="login" element={<Login />} />
-            <Route path="register" element={<Register />} />
-            <Route path="curriculum" element={<Curriculum />} />
-            <Route path="chapters/:id" element={<ChapterDetails />} />
-            <Route path="lessons/:id" element={<LessonDetails />} />
-            <Route path="words/:id" element={<WordDetails />} />
-            <Route
-              path="onboarding"
-              element={
-                <ProtectedRoute>
-                  <Onboarding />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="chapters/:id/conversation"
-              element={
-                <ProtectedRoute>
-                  <IELTSConversation />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="flashcards"
-              element={
-                <ProtectedRoute>
-                  <Flashcards />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="progress"
-              element={
-                <ProtectedRoute>
-                  <Progress />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="leaderboard"
-              element={
-                <ProtectedRoute>
-                  <Leaderboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="vocabulary"
-              element={
-                <ProtectedRoute>
-                  <Vocabulary />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="ai-chat"
-              element={
-                <ProtectedRoute>
-                  <AIChat />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="tests"
-              element={
-                <ProtectedRoute>
-                  <Tests />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="notifications"
-              element={
-                <ProtectedRoute>
-                  <Notifications />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="profile/change-password"
-              element={
-                <ProtectedRoute>
-                  <ChangePassword />
-                </ProtectedRoute>
-              }
-            />
+          {/* Public Routes (Full screen, no sidebar) */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+
+          {/* Protected App Routes (Wrapped in ProtectedRoute and Layout with sidebar) */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/curriculum" element={<Curriculum />} />
+            <Route path="/chapters/:id" element={<ChapterDetails />} />
+            <Route path="/lessons/:id" element={<LessonDetails />} />
+            <Route path="/words/:id" element={<WordDetails />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/chapters/:id/conversation" element={<IELTSConversation />} />
+            <Route path="/flashcards" element={<Flashcards />} />
+            <Route path="/progress" element={<Progress />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/vocabulary" element={<Vocabulary />} />
+            <Route path="/ai-chat" element={<AIChat />} />
+            <Route path="/tests" element={<Tests />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/change-password" element={<ChangePassword />} />
           </Route>
+
+          {/* Fallback redirect to home/landing */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
