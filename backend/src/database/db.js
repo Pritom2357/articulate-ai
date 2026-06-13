@@ -28,7 +28,10 @@ class DB_Connection {
 
         this.pool.query('SELECT NOW()')
             .then(() => console.log('✅ Database connected successfully'))
-            .catch((err) => console.error('❌ Database connection failed:', err.message));
+            .catch((err) => {
+                console.error('❌ Database connection failed:');
+                // console.error(err);
+            });
 
         DB_Connection.#instance = this;
     }
