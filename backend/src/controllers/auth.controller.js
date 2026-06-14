@@ -33,7 +33,10 @@ class AuthController {
             const { name, email, password, phone, gender, date_of_birth } = req.body || {};
 
             if (!name || !email || !password || !phone) {
-                return res.status(400).json({ success: false, error: 'Name, email, password, and phone are required' });
+                return res.status(400).json({
+                    success: false,
+                    error: 'Name, email, password, and phone are required'
+                });
             }
 
             if (password.length < 6) {
@@ -45,12 +48,18 @@ class AuthController {
 
             const emailTaken = await this.authModel.isEmailTaken(email);
             if (emailTaken) {
-                return res.status(409).json({ success: false, error: 'Email already taken' });
+                return res.status(409).json({
+                    success: false,
+                    error: 'Email already taken'
+                });
             }
 
             const phoneTaken = await this.authModel.isPhoneTaken(phone);
             if (phoneTaken) {
-                return res.status(409).json({ success: false, error: 'Phone number already taken' });
+                return res.status(409).json({
+                    success: false,
+                    error: 'Phone number already taken'
+                });
             }
 
             const passwordHash = await bcrypt.hash(password, this.salt_round);
@@ -75,7 +84,10 @@ class AuthController {
             });
 
             if (!newUser) {
-                return res.status(500).json({ success: false, error: "Failed to create new user" });
+                return res.status(500).json({
+                    success: false,
+                    error: "Failed to create new user"
+                });
             }
 
             const { accessToken, refreshToken } = this.generateTokens(newUser);
@@ -90,7 +102,10 @@ class AuthController {
 
         } catch (error) {
             console.error('Registration error:', error);
-            return res.status(500).json({ success: false, error: 'Internal server error during registration' });
+            return res.status(500).json({
+                success: false,
+                error: 'Internal server error during registration'
+            });
         }
     };
 
@@ -99,21 +114,33 @@ class AuthController {
         try {
             const { email, password } = req.body || {};
             if (!email || !password) {
-                return res.status(400).json({ success: false, error: 'Email and password are required' });
+                return res.status(400).json({
+                    success: false,
+                    error: 'Email and password are required'
+                });
             }
 
             const user = await this.authModel.getUserByEmail(email);
             if (!user) {
-                return res.status(401).json({ success: false, error: 'Invalid credentials' });
+                return res.status(401).json({
+                    success: false,
+                    error: 'Invalid credentials'
+                });
             }
 
             if (!user.is_active) {
-                return res.status(403).json({ success: false, error: 'Account is deactivated' });
+                return res.status(403).json({
+                    success: false,
+                    error: 'Account is deactivated'
+                });
             }
 
             const match = await bcrypt.compare(password, user.password_hash);
             if (!match) {
-                return res.status(401).json({ success: false, error: 'Invalid credentials' });
+                return res.status(401).json({
+                    success: false,
+                    error: 'Invalid credentials'
+                });
             }
 
             await this.authModel.setLastLogin(user.id);
@@ -130,9 +157,13 @@ class AuthController {
                 user: safeUser,
                 tokens: { accessToken, refreshToken }
             });
-        } catch (error) {
+        }
+        catch (error) {
             console.error('Login error:', error);
-            return res.status(500).json({ success: false, error: 'Internal server error during login' });
+            return res.status(500).json({
+                success: false,
+                error: 'Internal server error during login'
+            });
         }
     };
 
@@ -141,15 +172,25 @@ class AuthController {
         try {
             const userId = req.user?.id || req.body?.userId || req.params?.userId;
             if (!userId) {
-                return res.status(400).json({ success: false, error: 'Access Denied' });
+                return res.status(400).json({
+                    success: false,
+                    error: 'Access Denied'
+                });
             }
 
             await this.authModel.clearRefreshToken(userId);
 
-            return res.status(200).json({ success: true, message: 'Logged out successfully' });
-        } catch (error) {
+            return res.status(200).json({
+                success: true,
+                message: 'Logged out successfully'
+            });
+        }
+        catch (error) {
             console.error('Logout error:', error);
-            return res.status(500).json({ success: false, error: 'Internal server error during logout' });
+            return res.status(500).json({
+                success: false,
+                error: 'Internal server error during logout'
+            });
         }
     };
 
@@ -158,12 +199,27 @@ class AuthController {
         try {
             const { refreshToken } = req.body || {};
             if (!refreshToken) {
-                return res.status(400).json({ success: false, error: 'Refresh token is required' });
+                return res.status(400).json({
+                    success: false,
+                    error: 'Refresh token is required'
+                });
+            }
+
+            try {
+                jwt.verify(refreshToken, this.refresh_token_secret);
+            } catch (err) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'Invalid or expired refresh token'
+                });
             }
 
             const user = await this.authModel.findByRefreshToken(refreshToken);
             if (!user) {
-                return res.status(401).json({ success: false, error: 'Invalid refresh token' });
+                return res.status(401).json({
+                    success: false,
+                    error: 'Invalid refresh token'
+                });
             }
 
             const { accessToken, refreshToken: newRefreshToken } = this.generateTokens(user);
@@ -175,7 +231,10 @@ class AuthController {
             });
         } catch (error) {
             console.error('Refresh token error:', error);
-            return res.status(500).json({ success: false, error: 'Internal server error during token refresh' });
+            return res.status(500).json({
+                success: false,
+                error: 'Internal server error during token refresh'
+            });
         }
     };
 }

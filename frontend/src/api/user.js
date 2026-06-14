@@ -59,3 +59,15 @@ export async function saveOnboarding(payload) {
   });
 }
 
+export async function deactivateAccount(userId) {
+  return request(`/user/deactivate/${userId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function deleteAccount(userId) {
+  return request(`/user/delete/${userId}`, {
+    method: 'DELETE',
+  });
+}
+

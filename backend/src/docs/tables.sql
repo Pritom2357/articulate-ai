@@ -1,7 +1,7 @@
 create table users(
   id SERIAL PRIMARY KEY,
   name VARCHAR(50) NOT null,
-  email VARCHAR(30) UNIQUE NOT null,
+  email VARCHAR(254) UNIQUE NOT null,
   phone VARCHAR(11) unique NOT NULL,
   profile_photo TEXT,
   gender VARCHAR(10) check(gender in ('MALE', 'FEMALE', 'NON-BINARY')),
@@ -252,4 +252,13 @@ CREATE TABLE user_xp_log (
   amount INTEGER NOT NULL,
   reason VARCHAR(100) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+
+-- Word Bookmarks (saved/starred words per user)
+CREATE TABLE word_bookmarks (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  word_id INTEGER NOT NULL REFERENCES words(id) ON DELETE CASCADE,
+  saved_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, word_id)
 );

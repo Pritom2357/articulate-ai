@@ -1,33 +1,61 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getChapters } from '../api/curriculum.js';
+import { BookOpen, Sparkles, ShieldAlert } from 'lucide-react';
 
 export default function Curriculum() {
   const [chapters, setChapters] = useState([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchChapters() {
       try {
+        setLoading(true);
         const chaptersData = await getChapters();
         setChapters(chaptersData || []);
       } catch (err) {
-        setError(err.payload?.error || err.message || 'Could not load chapters');
+        setError(err.payload?.error || err.message || 'চ্যাপ্টার লোড করা যায়নি।');
+      } finally {
+        setLoading(false);
       }
     }
     fetchChapters();
   }, []);
 
+  if (loading) {
+    return (
+      <div className="page-container text-center py-20">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
+        <div className="text-slate-400 font-semibold">কারিকুলাম লোড হচ্ছে...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="page-container">
-      <div className="page-header">
+    <div className="page-container animate-fade-in">
+      <div className="page-header border-b border-white/10 pb-4 mb-6">
         <div>
-          <h1 className="page-title">Curriculum</h1>
-          <p className="page-subtitle">Browse chapters and start learning new lessons.</p>
+          <h1 className="page-title flex items-center gap-3 text-white">
+            <span className="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center">
+              <BookOpen className="text-indigo-400" size={24} />
+            </span>
+            লার্নিং কারিকুলাম (Curriculum)
+          </h1>
+          <p className="page-subtitle text-slate-400">
+            আপনার কাঙ্ক্ষিত চ্যাপ্টার নির্বাচন করুন এবং ইংরেজি ভোকাবুলারি ও স্পিকিং অনুশীলন শুরু করুন।
+          </p>
         </div>
       </div>
-      {error && <div className="alert alert-error">{error}</div>}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+
+      {error && (
+        <div className="glass-alert glass-alert-error mb-6 flex items-center gap-2">
+          <ShieldAlert size={16} />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {chapters.length > 0 ? (
           chapters.map((chapter) => (
             <Link
@@ -35,14 +63,39 @@ export default function Curriculum() {
               to={`/chapters/${chapter.id}`}
               className="card-link"
             >
-              <div className="card-card">
-                <h2 className="card-title">{chapter.title || `Chapter ${chapter.id}`}</h2>
-                <p className="text-sm text-slate-500">{chapter.description || 'View lessons and practice content.'}</p>
+              <div className="card-card h-full flex flex-col justify-between p-6 bg-slate-950/40 border border-white/10 hover:border-indigo-500/40 hover:scale-[1.02] hover:shadow-[0_15px_30px_rgba(99,102,241,0.05)] transition-all duration-300 relative group overflow-hidden">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/5 rounded-full filter blur-lg pointer-events-none group-hover:bg-indigo-500/10 transition-colors"></div>
+                
+                <div>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-full">
+                      Chapter {chapter.chapter_order || chapter.id}
+                    </span>
+                    <span className="text-xs text-slate-500 font-bold">
+                      {chapter.total_lessons || 5} Lessons
+                    </span>
+                  </div>
+                  <h2 className="text-xl font-extrabold text-white tracking-wide mb-2 group-hover:text-indigo-400 transition-colors">
+                    {chapter.title || `Chapter ${chapter.id}`}
+                  </h2>
+                  <p className="text-sm text-slate-400 leading-relaxed font-medium">
+                    {chapter.description || 'চ্যাপ্টারের লেসনগুলো সম্পন্ন করুন এবং আপনার ইংরেজি উচ্চারণ উন্নত করুন।'}
+                  </p>
+                </div>
+
+                <div className="mt-6 flex items-center justify-between text-xs font-bold text-indigo-400 group-hover:text-indigo-300 transition-colors pt-4 border-t border-white/5">
+                  <span>লেসনগুলো দেখুন (View lessons)</span>
+                  <span>▶</span>
+                </div>
               </div>
             </Link>
           ))
         ) : (
-          <div className="empty-state">No chapters available yet.</div>
+          <div className="empty-state col-span-full py-16 border border-dashed border-white/10 bg-slate-950/20">
+            <div className="text-4xl mb-3">📖</div>
+            <h3 className="font-extrabold text-white text-base">কোনো চ্যাপ্টার উপলব্ধ নেই</h3>
+            <p className="text-xs text-slate-500 mt-1">অনুগ্রহ করে পরবর্তীতে আবার ঘুরে আসুন।</p>
+          </div>
         )}
       </div>
     </div>

@@ -1,8 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register } from '../api/auth.js';
+import useAuth from '../hooks/useAuth.js';
 
 export default function Register() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect to curriculum if user is already authenticated
+  useEffect(() => {
+    if (user) {
+      navigate('/curriculum', { replace: true });
+    }
+  }, [user, navigate]);
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -23,7 +34,6 @@ export default function Register() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
 
   // Real-time validation rules
   const isNameValid = name.trim().length >= 3;

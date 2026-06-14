@@ -2,7 +2,7 @@ const DB_Connection = require('../database/db.js')
 
 class AuthModel {
     constructor() {
-        this.db_connection = new DB_Connection()
+        this.db_connection = DB_Connection.getInstance()
     }
 
 
@@ -19,6 +19,15 @@ class AuthModel {
             const params = [name, email, passwordHash, phone, gender ?? null, date_of_birth ?? null]
             const result = await this.db_connection.query_executor(query, params)
 
+            const userId = result.rows[0].id
+
+            // create user progress
+            const progressQuery = `
+                INSERT INTO user_progress (user_id)
+                VALUES ($1);
+            `
+            await this.db_connection.query_executor(progressQuery, [userId])
+
             return result.rows[0]
         } catch (error) {
             throw new Error(`User creation failed: ${error.message}`)
@@ -26,19 +35,21 @@ class AuthModel {
     }
 
 
-
     getUserByEmail = async (email) => {
-        const query = `
-        SELECT * FROM users
-        WHERE email = $1
-        LIMIT 1;
-    `;
+        try {
+            const query = `
+                SELECT * FROM users
+                WHERE email = $1
+                LIMIT 1;
+            `;
 
-        const result = await this.db_connection.query_executor(query, [email]);
-        return result.rows[0] || null;
+            const result = await this.db_connection.query_executor(query, [email]);
+
+            return result.rows[0] || null;
+        } catch (error) {
+            throw new Error(`Couldn't find user: ${error.message}`)
+        }
     };
-
-
 
 
     setLastLogin = async (userId) => {
@@ -52,8 +63,6 @@ class AuthModel {
     };
 
 
-
-
     findByRefreshToken = async (token) => {
         const query = `
         SELECT * FROM users
@@ -64,6 +73,7 @@ class AuthModel {
         const result = await this.db_connection.query_executor(query, [token]);
         return result.rows[0] || null;
     };
+
 
     ///////////////// checks //////////////////////
     isEmailTaken = async (email) => {
@@ -76,7 +86,7 @@ class AuthModel {
             const params = [email]
             const result = await this.db_connection.query_executor(query, params)
 
-            return result.rows[0].cnt > 0
+            return parseInt(result.rows[0].cnt) > 0
         } catch (error) {
             throw new Error(`is email taken checking failed: ${error.message}`)
         }
@@ -94,7 +104,7 @@ class AuthModel {
             const params = [phone]
             const result = await this.db_connection.query_executor(query, params)
 
-            return result.rows[0].cnt > 0
+            return parseInt(result.rows[0].cnt) > 0
         } catch (error) {
             throw new Error(`Phone check failed: ${error.message}`)
         }

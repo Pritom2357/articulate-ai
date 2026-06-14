@@ -1,11 +1,13 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const UserModel = require('../models/user.model.js');
+const AuthModel = require('../models/auth.model.js');
 const { uploadAvatarBuffer } = require('../utils/cloudinary.js');
 
 class UserController {
     constructor() {
         this.userModel = new UserModel();
+        this.authModel = new AuthModel();
         this.salt_round = parseInt(process.env.PASSWORD_SALT_ROUNDS) || 12;
         this.access_token_secret = process.env.JWT_ACCESS_SECRET;
         this.refresh_token_secret = process.env.JWT_REFRESH_SECRET;
@@ -86,7 +88,7 @@ class UserController {
             }
 
             // Using getUserByEmail which returns password_hash to verify old password
-            const user = await this.userModel.getUserByEmail(profile.email);
+            const user = await this.authModel.getUserByEmail(profile.email);
 
             const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password_hash);
             if (!isOldPasswordValid) {
@@ -235,6 +237,7 @@ class UserController {
             return res.status(500).json({ success: false, error: 'Internal server error' });
         }
     };
+
 
     deleteAccount = async (req, res) => {
         try {

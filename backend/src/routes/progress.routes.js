@@ -1,8 +1,6 @@
 const express = require('express');
 const ProgressController = require('../controllers/progress.controller.js');
 const AuthenticateToken = require('../middlewares/authenticateToken.js');
-const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
 
 const progressRouter = express.Router();
 const progressController = new ProgressController();
@@ -21,26 +19,6 @@ progressRouter.post(
     progressController.updateSrsCard
 );
 
-// Pronunciation and Conversation AI Assessment
-progressRouter.post(
-    '/pronunciation/assess',
-    authenticateToken.authenticateToken,
-    upload.single('audio'),
-    progressController.assessPronunciation
-);
-
-progressRouter.post(
-    '/conversation/assess',
-    authenticateToken.authenticateToken,
-    progressController.assessConversation
-);
-
-progressRouter.get(
-    '/rag-session',
-    authenticateToken.authenticateToken,
-    progressController.ragSession
-);
-
 // Progress endpoints
 progressRouter.post(
     '/lesson',
@@ -48,10 +26,35 @@ progressRouter.post(
     progressController.markLessonComplete
 );
 
+// GET /api/progress
 progressRouter.get(
     '/',
     authenticateToken.authenticateToken,
     progressController.getProgress
+);
+
+progressRouter.get(
+    '/leaderboard',
+    authenticateToken.authenticateToken,
+    progressController.getLeaderboard
+);
+
+progressRouter.get(
+    '/streak-calendar',
+    authenticateToken.authenticateToken,
+    progressController.getStreakCalendar
+);
+
+progressRouter.get(
+    '/badges',
+    authenticateToken.authenticateToken,
+    progressController.getBadges
+);
+
+progressRouter.get(
+    '/xp-log',
+    authenticateToken.authenticateToken,
+    progressController.getXPLog
 );
 
 module.exports = { progressRouter };

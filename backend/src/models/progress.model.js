@@ -15,30 +15,8 @@ const XP_PHONEME_MASTERED = 100
 class ProgressModel {
     constructor() {
         this.db_connection = DB_Connection.getInstance();
+        this._badgeCheckInProgress = new Set(); // re-entrancy guard for addXP <-> checkAndAwardBadges
     }
-
-    getUserBadges = async (userId) => {
-        try {
-            const query = `
-            SELECT
-                ub.badge_id,
-                b.title,
-                b.description,
-                b.xp_reward,
-                b.icon_url,
-                ub.earned_at
-            FROM user_badges ub
-            JOIN badges b ON b.badge_id = ub.badge_id
-            WHERE ub.user_id = $1;
-        `
-            const result = await this.db_connection.query_executor(query, [userId])
-
-            return result.rows || null
-        } catch (error) {
-            throw new Error(`Failed to fetch user badges: ${error.message}`)
-        }
-    }
-
 
     ///////////// due cards ////////
     getDueCards = async (userId) => {
@@ -111,7 +89,7 @@ class ProgressModel {
                     familiarity = $5,
                     correct_count = correct_count + $6,
                     wrong_count = wrong_count + $7,
-                    updated_at = NOW()
+                    last_reviewed = NOW()
                 WHERE user_id = $8 AND word_id = $9
                 RETURNING *;
             `
@@ -154,6 +132,16 @@ class ProgressModel {
                 throw new Error(`No user_progress row for user=${userId}`)
             }
 
+            // log XP gain
+            const logQuery = `
+                INSERT INTO user_xp_log (user_id, amount, reason)
+                VALUES ($1, $2, $3);
+            `
+
+            const logParams = [userId, amount, reason]
+            await this.db_connection.query_executor(logQuery, logParams)
+
+            // check for level-up
             const newXP = result.rows[0].xp
 
             let newLevel;
@@ -163,7 +151,6 @@ class ProgressModel {
             else if (newXP >= 500) newLevel = 2
             else newLevel = 1
 
-            // level update
             const levelQuery = `
                 UPDATE user_progress
                 SET level = $1
@@ -184,7 +171,35 @@ class ProgressModel {
     }
 
 
+    getUserBadges = async (userId) => {
+        try {
+            const query = `
+            SELECT
+                ub.user_id,
+                b.badge_id,
+                b.title,
+                b.description,
+                b.xp_reward,
+                b.icon_url,
+                ub.earned_at,
+                CASE WHEN ub.user_id IS NOT NULL THEN TRUE ELSE FALSE END AS earned
+            FROM badges b
+            LEFT JOIN user_badges ub ON b.badge_id = ub.badge_id AND ub.user_id = $1
+            ORDER BY earned DESC, ub.earned_at DESC, badge_id ASC;
+        `
+            const result = await this.db_connection.query_executor(query, [userId])
+
+            return result.rows || []
+        } catch (error) {
+            throw new Error(`Failed to fetch user badges: ${error.message}`)
+        }
+    }
+
+
     checkAndAwardBadges = async (userId) => {
+        if (this._badgeCheckInProgress.has(userId)) return null // re-entrancy guard
+        this._badgeCheckInProgress.add(userId)
+
         try {
             const statsQuery = `
                 SELECT * FROM vw_user_stats
@@ -215,7 +230,7 @@ class ProgressModel {
             `
             const chapterResult = await this.db_connection.query_executor(chapterQuery, [userId])
 
-            const completedChapters = new Set(chapterResult.rows.map(r => r.chapter_id))
+            const completedChapters = new Set(chapterResult.rows.map(r => parseInt(r.chapter_id)))
 
             // conditions: [badge_id, condition_met]
             const conditions = [
@@ -252,7 +267,8 @@ class ProgressModel {
             ]
 
             // Fetch badges the user already has
-            const owned = await this.getUserBadges(userId)
+            const badges = await this.getUserBadges(userId)
+            const owned = badges.filter(badge => badge.earned)
             const ownedIds = new Set(owned.map(b => b.badge_id))
 
             // Award new badges
@@ -277,13 +293,7 @@ class ProgressModel {
                 if (!badge) continue
 
                 // Award XP from badge
-                const xpQuery = `
-                    UPDATE user_progress
-                    SET xp = xp + $1
-                    WHERE user_id = $2;
-                `
-                const xpParams = [badge.xp_reward, userId]
-                await this.db_connection.query_executor(xpQuery, xpParams)
+                await this.addXP(userId, badge.xp_reward, 'badge_unlock')
 
 
                 // Shout the event to the Event Bus ->  to show a real-time notification to  user
@@ -299,8 +309,12 @@ class ProgressModel {
 
             }
 
-        } catch (error) {
-            throw new Error(`Failed to check/award badges: ${error.message}`);
+        }
+        catch (error) {
+            throw new Error(`Failed to check/award badges: ${error.message}`)
+        }
+        finally {
+            this._badgeCheckInProgress.delete(userId)  // reset the guard
         }
     }
 
@@ -326,6 +340,7 @@ class ProgressModel {
             }
 
             const { streak_days, last_active } = result.rows[0]
+            let newStreak
 
             const today = new Date()
             today.setHours(0, 0, 0, 0) // normalize to midnight
@@ -339,9 +354,9 @@ class ProgressModel {
                     (today.getTime() - lastDate.getTime()) / (1000 * 3600 * 24)
                 )
 
-                if (diffDays === 0) return streak_days // already active today -> no change
-                else if (diffDays === 1) streak_days++
-                else streak_days = 1 // missed a day or more -> streak resets
+                if (diffDays === 0) return result.rows[0] // already active today -> no change
+                else if (diffDays === 1) newStreak = streak_days + 1
+                else newStreak = 1 // missed a day or more -> streak resets
             }
 
             // Save the updated streak and set last_active to today
@@ -353,7 +368,7 @@ class ProgressModel {
                 RETURNING streak_days;
             `
 
-            const params = [streak_days, userId]
+            const params = [newStreak, userId]
             const updateResult = await this.db_connection.query_executor(updateQuery, params)
 
             return updateResult.rows[0]
@@ -411,7 +426,7 @@ class ProgressModel {
             const params2 = [userId, lessonId]
             const check = await this.db_connection.query_executor(query2, params2)
 
-            if (check.rows[0].status === 'COMPLETED') {
+            if (check.rows[0]?.status === 'COMPLETED') {
                 await this.addXP(userId, XP_CHAPTER_COMPLETE, 'chapter_complete')
             }
 
@@ -439,13 +454,21 @@ class ProgressModel {
                 SELECT * FROM user_lesson_progress
                 WHERE user_id = $1;
             `
+            const onboardingQuery = `
+                SELECT assessed_level, vocab_score, pronunciation_score, assessed_at, ai_notes
+                FROM onboarding_assessments
+                WHERE user_id = $1
+                ORDER BY assessed_at DESC
+                LIMIT 1;
+            `
 
             // run all queries parallely
-            const [progressResult, badges, lessonsResult, chaptersResult] = await Promise.all([
+            const [progressResult, badges, lessonsResult, chaptersResult, onboardingResult] = await Promise.all([
                 this.db_connection.query_executor(progressQuery, [userId]),
                 this.getUserBadges(userId),
                 this.db_connection.query_executor(lessonsQuery, [userId]),
-                this.db_connection.query_executor(chaptersQuery, [userId])
+                this.db_connection.query_executor(chaptersQuery, [userId]),
+                this.db_connection.query_executor(onboardingQuery, [userId])
             ])
 
             const progress = progressResult.rows[0] || {
@@ -487,7 +510,8 @@ class ProgressModel {
                 streak_days: progress.streak_days,
                 badges: badges || [],
                 lessons: lessonMap,
-                chapters: chapterMap
+                chapters: chapterMap,
+                onboarding: onboardingResult.rows[0] || null
             }
         }
 
@@ -496,6 +520,77 @@ class ProgressModel {
         }
     }
 
+
+    getStreakCalendar = async (userId, year, month) => {
+        try {
+            const query = `
+                SELECT DISTINCT active_date FROM vw_user_activity_dates
+                WHERE
+                    user_id = $1
+                    AND EXTRACT(YEAR  FROM active_date) = $2
+                    AND EXTRACT(MONTH FROM active_date) = $3
+                ORDER BY active_date ASC;
+            `
+
+            const params = [userId, year, month]
+            const result = await this.db_connection.query_executor(query, params)
+
+            return result.rows || []
+        }
+        catch (error) {
+            throw new Error(`Failed to fetch streak calendar: ${error.message}`)
+        }
+    }
+
+    getXPLog = async (userId, limit = 25) => {
+        try {
+            const query = `
+                SELECT log_id, amount, reason, created_at
+                FROM user_xp_log
+                WHERE user_id = $1
+                ORDER BY created_at DESC
+                LIMIT $2;
+            `
+
+            const params = [userId, limit]
+            const result = await this.db_connection.query_executor(query, params)
+
+            return result.rows || null
+        }
+        catch (error) {
+            throw new Error(`Failed to fetch XP log: ${error.message}`)
+        }
+    }
+
+
+    getLeaderboard = async (limit = 200) => {
+        try {
+            const query = `
+            SELECT
+                u.id,
+                u.name,
+                u.profile_photo,
+                up.xp,
+                up.level,
+                up.streak_days,
+                RANK() OVER (ORDER BY up.xp DESC) AS rank
+            FROM user_progress up
+            JOIN users u ON u.id = up.user_id
+            WHERE u.is_active = TRUE
+            ORDER BY up.xp DESC
+            LIMIT $1;
+        `
+
+            const result = await this.db_connection.query_executor(query, [limit])
+
+            return result.rows || null
+        } catch (error) {
+            throw new Error(`Failed to fetch leaderboard: ${error.message}`)
+        }
+    }
+
+
+    // later additions
     getChapterConversationPoints = async (chapterId) => {
         try {
             const query = `
@@ -531,6 +626,7 @@ class ProgressModel {
         }
     }
 
+
     getUserProfile = async (userId) => {
         try {
             const query = `
@@ -565,10 +661,11 @@ class ProgressModel {
         }
     }
 
+
     logPronunciationAttempt = async (userId, data) => {
         try {
             const { testId, questionId, attemptType, wordId, phraseId, score, feedback, isCorrect } = data;
-            
+
             // Check if test_progress row exists, otherwise create it
             const selectProgress = `
                 SELECT id FROM test_progress

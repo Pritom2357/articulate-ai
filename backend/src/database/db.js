@@ -16,16 +16,22 @@ class DB_Connection {
 
         // console.log('Database URL:', process.env.DATABASE_URL);
 
+        const useSSL = process.env.DB_SSL === 'true' ||
+            (process.env.DATABASE_URL || '').includes('sslmode=require');
+
         const connectionConfig = {
             connectionString: process.env.DATABASE_URL,
-            ssl: { rejectUnauthorized: false }
+            ...(useSSL ? { ssl: { rejectUnauthorized: false } } : {})
         };
 
         this.pool = new Pool(connectionConfig);
 
         this.pool.query('SELECT NOW()')
             .then(() => console.log('✅ Database connected successfully'))
-            .catch((err) => console.error('❌ Database connection failed:', err.message));
+            .catch((err) => {
+                console.error('❌ Database connection failed:');
+                // console.error(err);
+            });
 
         DB_Connection.#instance = this;
     }

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getDueFlashcards, reviewFlashcard } from '../api/progress.js';
 import useAuth from '../hooks/useAuth.js';
+import { Award, Volume2, Sparkles, ShieldAlert } from 'lucide-react';
+import { speakText } from '../utils/tts.js';
 
 // Import tutor assets for decoration/encouragement
 import maleAvatar from '../assets/articulate_male.jpeg';
@@ -13,6 +15,7 @@ export default function Flashcards() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const activeTutor = user?.guide_preference || 'MALE';
   const tutorAvatar = activeTutor === 'FEMALE' ? femaleAvatar : maleAvatar;
@@ -24,12 +27,26 @@ export default function Flashcards() {
         const dueCards = await getDueFlashcards();
         setCards(dueCards || []);
       } catch (err) {
-        setError(err.payload?.error || err.message || 'Unable to load flashcards');
+        setError(err.payload?.error || err.message || 'ফ্ল্যাশ-কার্ড লোড করা যায়নি।');
       }
     }
 
     loadCards();
   }, []);
+
+  const playTTS = (text, e) => {
+    if (e) e.stopPropagation(); // Prevent flipping card when clicking speaker
+    if ('speechSynthesis' in window) {
+      speakText(
+        text,
+        activeTutor,
+        () => setIsSpeaking(true),
+        () => setIsSpeaking(false)
+      );
+    } else {
+      alert('আপনার ব্রাউজার টেক্সট-টু-স্পিচ সাপোর্ট করে না।');
+    }
+  };
 
   async function handleReview(score) {
     const card = cards[selectedIndex];
@@ -40,10 +57,10 @@ export default function Flashcards() {
       setFeedback('');
       await reviewFlashcard({ wordId: card.word_id || card.id, score });
       
-      let message = 'সরাসরি রিভিউ সেভ হয়েছে!';
-      if (score >= 90) message = `${tutorName}: "অসাধারণ! এটি আপনার বেশ ভালো মনে আছে।"`;
-      else if (score >= 70) message = `${tutorName}: "খুব ভালো! নিয়মিত চর্চায় রাখুন।"`;
-      else message = `${tutorName}: "কোনো ব্যাপার না, শীঘ্রই আবার এটি রিভিশন করব।"`;
+      let message = 'রিভিউ সেভ হয়েছে!';
+      if (score >= 90) message = `${tutorName}: "অসাধারণ! এটি আপনার চমৎকার মনে আছে।"`;
+      else if (score >= 70) message = `${tutorName}: "খুব ভালো! নিয়মিত অনুশীলনে রাখুন।"`;
+      else message = `${tutorName}: "কোনো ব্যাপার না, আমরা শীঘ্রই আবার এটি রিভিশন করব।"`;
       
       setFeedback(message);
       setIsFlipped(false);
@@ -55,65 +72,108 @@ export default function Flashcards() {
       }, 1500);
 
     } catch (err) {
-      setError(err.payload?.error || err.message || 'Review failed');
+      setError(err.payload?.error || err.message || 'রিভিউ সংরক্ষণ ব্যর্থ হয়েছে।');
     }
   }
 
   const currentCard = cards[selectedIndex];
 
   return (
-    <div className="page-container">
-      <div className="page-header">
+    <div className="page-container animate-fade-in">
+      <div className="page-header border-b border-white/10 pb-4 mb-6">
         <div>
-          <h1 className="page-title">Flashcards (ফ্ল্যাশ-কার্ড)</h1>
-          <p className="page-subtitle">স্মৃতিশক্তি বাড়াতে স্পেসড রিপিটেশন পদ্ধতিতে শব্দের অর্থ রিভিশন করুন।</p>
+          <h1 className="page-title flex items-center gap-3 text-white">
+            <span className="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center">
+              <Sparkles className="text-indigo-400" size={24} />
+            </span>
+            ফ্ল্যাশ-কার্ড রিভিশন (Flashcards)
+          </h1>
+          <p className="page-subtitle text-slate-400">
+            স্পেসড রিপিটেশন (SRS) পদ্ধতিতে ইংরেজি শব্দের অর্থ ও উচ্চারণ রিভিশন করুন।
+          </p>
         </div>
       </div>
 
-      {error && <div className="glass-alert glass-alert-error mb-4">{error}</div>}
+      {error && (
+        <div className="glass-alert glass-alert-error mb-6 flex items-center gap-2">
+          <ShieldAlert size={16} />
+          <span>{error}</span>
+        </div>
+      )}
       
       {currentCard ? (
-        <div className="grid gap-6 md:grid-cols-[1fr_260px] max-w-4xl mx-auto">
+        <div className="grid gap-6 md:grid-cols-[1fr_280px] max-w-4xl mx-auto">
           {/* Flip Card Area */}
-          <div className="card-card flex flex-col justify-between items-center p-6 bg-white/3 backdrop-blur-md border border-white/10">
-            <div className="w-full text-center mb-2 text-xs text-indigo-400 uppercase tracking-widest font-bold">
-              Card {selectedIndex + 1} of {cards.length}
+          <div className="card-card flex flex-col justify-between items-center p-6 bg-slate-950/40 border border-white/10 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full filter blur-xl pointer-events-none"></div>
+
+            <div className="w-full flex justify-between items-center mb-4 text-xs font-bold text-slate-400">
+              <span className="bg-white/5 border border-white/5 rounded px-2.5 py-1">
+                কার্ড নম্বর: {selectedIndex + 1} / {cards.length}
+              </span>
+              {currentCard.difficulty_level && (
+                <span className="bg-indigo-500/15 border border-indigo-500/20 text-indigo-300 rounded px-2.5 py-1 uppercase tracking-wider text-[10px]">
+                  {currentCard.difficulty_level}
+                </span>
+              )}
             </div>
 
             {/* 3D Scene */}
-            <div className="card-scene" onClick={() => setIsFlipped(!isFlipped)}>
-              <div className={`flip-card ${isFlipped ? 'is-flipped' : ''}`}>
+            <div className="card-scene w-full" onClick={() => setIsFlipped(!isFlipped)}>
+              <div className={`flip-card ${isFlipped ? 'is-flipped' : ''}`} style={{ height: '260px' }}>
                 
                 {/* Front Side: English Word */}
-                <div className="card-face card-face-front">
-                  <div className="text-sm text-indigo-400 mb-2 uppercase font-extrabold tracking-widest">English Word</div>
-                  <div className="text-4xl font-extrabold text-white tracking-wide">
+                <div className="card-face card-face-front flex flex-col justify-center items-center relative">
+                  <div className="text-[10px] text-indigo-400 mb-2 uppercase font-black tracking-widest bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full">
+                    English Word
+                  </div>
+                  
+                  <div className="text-4xl font-extrabold text-white tracking-wide mb-2">
                     {currentCard.word}
                   </div>
+
                   {currentCard.ipa && (
-                    <div className="text-sm text-slate-400 mt-2 font-mono">[{currentCard.ipa}]</div>
+                    <div className="text-sm text-slate-400 font-mono bg-white/5 border border-white/5 px-2 py-0.5 rounded">
+                      [{currentCard.ipa}]
+                    </div>
                   )}
-                  {currentCard.syllables && (
-                    <div className="text-xs text-slate-500 mt-1 font-semibold">Syllables: {currentCard.syllables}</div>
-                  )}
-                  <div className="text-xs text-cyan-400 mt-6 font-semibold animate-pulse">
-                    ক্লিক করে অর্থ দেখুন 🔄
+
+                  {/* Tutor Pronunciation Speaker button */}
+                  <button
+                    onClick={(e) => playTTS(currentCard.word, e)}
+                    className={`mt-4 w-12 h-12 rounded-full border-none flex items-center justify-center cursor-pointer transition-all duration-300 shadow-md ${
+                      isSpeaking
+                        ? 'bg-red-500 text-white animate-pulse scale-105 shadow-red-500/40'
+                        : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                    }`}
+                    title="উচ্চারণ শুনুন"
+                  >
+                    <Volume2 size={20} />
+                  </button>
+
+                  <div className="text-[10px] text-cyan-400 mt-6 font-bold animate-pulse tracking-wide uppercase">
+                    কার্ডটি উল্টাতে ক্লিক করুন 🔄
                   </div>
                 </div>
 
                 {/* Back Side: Bangla Meaning */}
-                <div className="card-face card-face-back">
-                  <div className="text-sm text-cyan-400 mb-2 uppercase font-extrabold tracking-widest">Bangla Meaning</div>
-                  <div className="text-3xl font-extrabold text-white">
+                <div className="card-face card-face-back flex flex-col justify-center items-center">
+                  <div className="text-[10px] text-cyan-400 mb-2 uppercase font-black tracking-widest bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full">
+                    Bangla Meaning
+                  </div>
+
+                  <div className="text-3xl font-extrabold text-white mb-2 leading-relaxed">
                     {currentCard.bangla_meaning || currentCard.definition}
                   </div>
-                  {currentCard.difficulty_level && (
-                    <span className="mt-4 px-2 py-1 text-xs rounded bg-indigo-500/20 text-indigo-300 font-semibold uppercase">
-                      {currentCard.difficulty_level}
-                    </span>
+
+                  {currentCard.syllables && (
+                    <div className="text-xs text-slate-400 font-semibold mt-1">
+                      সিলেবল (Syllables): <span className="text-slate-300 font-bold">{currentCard.syllables}</span>
+                    </div>
                   )}
-                  <div className="text-xs text-slate-400 mt-6 font-semibold">
-                    কার্ড ফ্লিপ করতে পুনরায় ক্লিক করুন 🔄
+
+                  <div className="text-[10px] text-slate-400 mt-8 font-bold tracking-wide uppercase">
+                    সামনে ফিরে যেতে ক্লিক করুন 🔄
                   </div>
                 </div>
 
@@ -121,58 +181,64 @@ export default function Flashcards() {
             </div>
 
             {/* SRS Review Actions */}
-            <div className="w-full mt-4 space-y-4">
-              <div className="text-center text-xs text-slate-400 font-semibold">
-                আপনার শব্দটির অর্থ মনে আছে কি? নিচের বাটনে চাপুন:
+            <div className="w-full mt-6 space-y-4 border-t border-white/5 pt-4">
+              <div className="text-center text-xs text-slate-300 font-bold">
+                আপনার শব্দটির অর্থ কতটুকু মনে আছে?
               </div>
-              <div className="flex justify-center gap-4">
+              <div className="flex flex-wrap justify-center gap-3">
                 <button
-                  className="px-6 py-3 rounded-xl font-bold bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/30 transition cursor-pointer"
+                  className="px-5 py-3 rounded-xl font-bold bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/25 transition cursor-pointer text-xs flex-1 min-w-[100px] text-center"
                   onClick={() => handleReview(90)}
                   disabled={feedback}
                 >
-                  🟢 Easy (খুব সহজ)
+                  সহজ (Easy)
                 </button>
                 <button
-                  className="px-6 py-3 rounded-xl font-bold bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 border border-indigo-500/30 transition cursor-pointer"
+                  className="px-5 py-3 rounded-xl font-bold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/25 transition cursor-pointer text-xs flex-1 min-w-[100px] text-center"
                   onClick={() => handleReview(70)}
                   disabled={feedback}
                 >
-                  🔵 Good (ঠিক আছে)
+                  ঠিক আছে (Good)
                 </button>
                 <button
-                  className="px-6 py-3 rounded-xl font-bold bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30 transition cursor-pointer"
+                  className="px-5 py-3 rounded-xl font-bold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 transition cursor-pointer text-xs flex-1 min-w-[100px] text-center"
                   onClick={() => handleReview(50)}
                   disabled={feedback}
                 >
-                  🔴 Hard (কঠিন লেগেছে)
+                  কঠিন (Hard)
                 </button>
               </div>
             </div>
 
             {feedback && (
-              <div className="glass-alert glass-alert-success mt-4 w-full animate-bounce-in">
+              <div className="glass-alert glass-alert-success mt-4 w-full animate-bounce-in flex items-center justify-center gap-2 font-bold text-xs">
                 <span>{feedback}</span>
               </div>
             )}
           </div>
 
           {/* Active Tutor Encouragement Sidebar */}
-          <div className="card-card flex flex-col items-center justify-center p-6 text-center border border-white/5 bg-white/3 backdrop-blur-md">
-            <div className="w-20 h-20 rounded-full overflow-hidden mb-3 border-2 border-indigo-500/30">
+          <div className="card-card flex flex-col items-center justify-center p-6 text-center border border-white/5 bg-slate-950/40 backdrop-blur-md shadow-xl relative overflow-hidden h-fit">
+            <div className="absolute top-0 left-0 w-20 h-20 bg-indigo-500/5 rounded-full filter blur-lg pointer-events-none"></div>
+
+            <div className="w-20 h-20 rounded-full overflow-hidden mb-3 border-2 border-indigo-500/30 shadow-md">
               <img src={tutorAvatar} alt="Tutor" className="w-full h-full object-cover" />
             </div>
-            <div className="font-bold text-white text-sm mb-1">{tutorName}</div>
-            <div className="text-xs text-indigo-400 font-semibold mb-4">Your Active Guide</div>
-            <p className="text-xs text-slate-300 leading-relaxed font-medium">
-              "আমি আপনাকে এই শব্দগুলো সহজে মনে রাখতে সাহায্য করব। প্রতিদিন চর্চা করুন, আপনার ইংরেজি জড়তা কেটে যাবেই!"
+            <div className="font-extrabold text-white text-base mb-0.5">{tutorName}</div>
+            <div className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mb-4">Your Tutor Guide</div>
+            
+            <p className="text-xs text-slate-300 leading-relaxed font-semibold italic bg-white/5 border border-white/5 p-3.5 rounded-2xl">
+              "আমি আপনাকে এই শব্দগুলো সহজে মনে রাখতে সাহায্য করব। প্রতিদিন এভাবে কার্ডগুলো রিভিশন করুন, আপনার ইংরেজি ভোকাবুলারি চমৎকার উন্নত হবে!"
             </p>
           </div>
         </div>
       ) : (
-        <div className="empty-state max-w-md mx-auto">
-          <div className="text-4xl mb-2">🎉</div>
-          <div>কোনো শব্দ রিভিশন করার নেই। সব কমপ্লিট! পরবর্তীতে আবার ঘুরে আসুন।</div>
+        <div className="empty-state max-w-md mx-auto py-16 border border-dashed border-white/10 bg-slate-950/20">
+          <div className="text-5xl mb-4 animate-bounce">🎉</div>
+          <h3 className="font-extrabold text-white text-base">রিভিশন করার মতো শব্দ নেই</h3>
+          <p className="text-xs text-slate-400 mt-2 max-w-xs mx-auto leading-relaxed">
+            চমৎকার! সব ফ্ল্যাশ-কার্ড পড়া শেষ। নতুন চ্যাপ্টার ও লেসন সম্পন্ন করে আরও শব্দ যোগ করুন।
+          </p>
         </div>
       )}
     </div>

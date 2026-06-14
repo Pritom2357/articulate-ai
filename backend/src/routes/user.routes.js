@@ -187,4 +187,14 @@ userRouter.post('/onboarding',
     userController.saveOnboarding
 );
 
-module.exports = { userRouter };
+userRouter.delete('/deactivate/:userId',
+    authenticateToken.authenticateToken,
+    userController.deactivateAccount
+);
+
+userRouter.delete('/delete/:userId',
+    authenticateToken.authenticateToken,
+    userController.deleteAccount
+);
+
+module.exports = { userRouter };

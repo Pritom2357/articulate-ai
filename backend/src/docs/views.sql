@@ -14,6 +14,7 @@ FROM chapters;
 
 create or replace view vw_due_cards as
 select
+    uwp.user_id,
     uwp.id AS progress_id,
     uwp.word_id,
     w.word,
@@ -76,7 +77,6 @@ CROSS JOIN vw_chapters c
 LEFT JOIN user_progress up ON up.user_id = u.id AND up.chapter_id = c.id;
 
 
-
 create or replace view vw_user_stats as
 SELECT
     up.user_id,
@@ -90,10 +90,56 @@ SELECT
     ) AS completed_lessons,
     (
         SELECT COUNT(*) FROM test_progress tp
-        WHERE tp.user_id = up.user_id AND tp.status = 'SUBMITTED'
+        WHERE tp.user_id = up.user_id AND tp.status IN ('SUBMITTED', 'EVALUATED')
     ) AS completed_tests,
     (
         SELECT COUNT(*) FROM test_progress tp
         WHERE tp.user_id = up.user_id AND tp.score = 100
     ) AS perfect_tests
 FROM user_progress up;
+
+
+-- user X user_word_progress X words
+create or replace view vw_user_words AS
+  SELECT
+    uwp.id,
+    uwp.user_id,
+    uwp.word_id,
+    w.word,
+    w.bangla_meaning,
+    w.ipa,
+    w.syllables,
+    w.audio_url,
+    w.difficulty_level,
+    w.frequency_rank,
+    uwp.familiarity,
+    uwp.correct_count,
+    uwp.wrong_count,
+    uwp.streak,
+    uwp.next_review,
+    uwp.last_reviewed,
+    EXISTS (
+        SELECT 1 FROM word_bookmarks wb
+        WHERE wb.user_id = uwp.user_id AND wb.word_id = uwp.word_id
+    ) AS is_bookmarked
+FROM user_word_progress uwp
+JOIN words w ON w.id = uwp.word_id
+ORDER BY w.word ASC;
+
+
+-- for montly streak calaender
+CREATE OR REPLACE VIEW vw_user_activity_dates AS
+(
+  SELECT 
+    user_id,
+    DATE(completed_at) AS active_date
+  FROM user_lesson_progress
+  WHERE status = 'COMPLETED'
+    AND completed_at IS NOT NULL
+) UNION (
+  SELECT 
+      user_id,
+      DATE(completed_at) AS active_date
+  FROM test_progress
+  WHERE completed_at IS NOT NULL
+);

@@ -43,3 +43,19 @@ export async function getWordsBulk(ids) {
   });
   return response.words || [];  // was returning raw response
 }
+
+export async function getTests() {
+  const response = await request('/curriculum/tests');
+  return response.tests || [];
+}
+
+export async function getTestDetails(testId) {
+  const response = await request(`/curriculum/tests/${testId}`);
+  return response;
+}
+
+export async function searchCurriculum(keyWord, type = 'all') {
+  const response = await request(`/curriculum/search?keyWord=${encodeURIComponent(keyWord)}&type=${encodeURIComponent(type)}`);
+  return response.results;
+}
+

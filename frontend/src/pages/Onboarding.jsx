@@ -277,6 +277,38 @@ export default function Onboarding() {
           <span className="form-watermark-text">ARTICULATE AI</span>
         </div>
 
+        {/* Onboarding Stage Stepper */}
+        <div className="flex justify-between items-center mb-6 p-2 rounded-2xl bg-slate-900/40 border border-white/5 backdrop-blur-md overflow-x-auto gap-2 scrollbar-none">
+          {[
+            { step: 1, label: 'টিউটর গাইড' },
+            { step: 2, label: 'মাইক পরীক্ষা' },
+            { step: 3, label: 'প্লেসমেন্ট টেস্ট' },
+            { step: 4, label: 'ফলাফল সম্পন্ন' }
+          ].map((s) => (
+            <div
+              key={s.step}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                step === s.step
+                  ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-md'
+                  : step > s.step
+                  ? 'text-indigo-400 bg-indigo-950/10'
+                  : 'text-slate-500'
+              }`}
+            >
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+                step === s.step
+                  ? 'bg-white text-indigo-600'
+                  : step > s.step
+                  ? 'bg-indigo-500/20 text-indigo-400'
+                  : 'bg-white/5 text-slate-500'
+              }`}>
+                {s.step}
+              </span>
+              <span>{s.label}</span>
+            </div>
+          ))}
+        </div>
+
         {/* STEP 1: SELECT TUTOR GUIDE */}
         {step === 1 && (
           <div>

@@ -20,7 +20,7 @@ async function request(path, options = {}) {
 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    const error = new Error(data?.message || 'API request failed');
+    const error = new Error(data?.error || data?.message || 'API request failed');
     error.status = response.status;
     error.payload = data;
     throw error;
