@@ -21,7 +21,7 @@ export default function LessonDetails() {
   const [phrases, setPhrases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // Wizard steps: 1: Learn, 2: Practice (Flashcards), 3: Speak Words, 4: Speak Sentences, 5: Completed
   const [wizardStep, setWizardStep] = useState(1);
 
@@ -143,14 +143,14 @@ export default function LessonDetails() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
+
       let options = {};
       if (MediaRecorder.isTypeSupported('audio/webm')) {
         options = { mimeType: 'audio/webm' };
       } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
         options = { mimeType: 'audio/mp4' };
       }
-      
+
       const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
 
@@ -203,11 +203,11 @@ export default function LessonDetails() {
     try {
       const isWordTest = wizardStep === 3;
       const refText = isWordTest ? words[testWordIndex].word : phrases[testPhraseIndex].phrase_en;
-      
+
       const formData = new FormData();
       formData.append('audio', audioBlob, `attempt.${extension}`);
       formData.append('referenceText', refText);
-      
+
       if (isWordTest) {
         formData.append('wordId', words[testWordIndex].id);
         formData.append('attemptType', 'WORD');
@@ -321,7 +321,7 @@ export default function LessonDetails() {
             <span className="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center">
               <BookOpen className="text-indigo-400" size={24} />
             </span>
-            {lesson?.title || `Lesson ${id}`}
+            {lesson?.title || `Lesson ${lesson?.order_num || id}`}
           </h1>
           <p className="page-subtitle text-slate-400">{lesson?.title_bn}</p>
         </div>
@@ -350,21 +350,19 @@ export default function LessonDetails() {
           <button
             key={s.step}
             onClick={() => goToStep(s.step)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer border-none ${
-              wizardStep === s.step
-                ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-md'
-                : wizardStep > s.step
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer border-none ${wizardStep === s.step
+              ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-md'
+              : wizardStep > s.step
                 ? 'text-indigo-400 bg-indigo-950/10 hover:bg-indigo-950/20'
                 : 'text-slate-500 bg-transparent hover:bg-white/5 hover:text-slate-300'
-            }`}
+              }`}
           >
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-              wizardStep === s.step
-                ? 'bg-white text-indigo-600'
-                : wizardStep > s.step
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${wizardStep === s.step
+              ? 'bg-white text-indigo-600'
+              : wizardStep > s.step
                 ? 'bg-indigo-500/20 text-indigo-400'
                 : 'bg-white/5 text-slate-500'
-            }`}>
+              }`}>
               {s.step}
             </span>
             <span>{s.label}</span>
@@ -425,22 +423,20 @@ export default function LessonDetails() {
                     <div className="flex items-center gap-2 pt-1 border-t border-white/5 mt-auto">
                       <button
                         onClick={() => handlePlayAudio(word, word.id)}
-                        className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition cursor-pointer ${
-                          speakingWordId === word.id
-                            ? 'bg-red-500 text-white animate-pulse'
-                            : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20'
-                        }`}
+                        className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition cursor-pointer ${speakingWordId === word.id
+                          ? 'bg-red-500 text-white animate-pulse'
+                          : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20'
+                          }`}
                       >
                         <Volume2 size={13} />
                         {speakingWordId === word.id ? 'বাজছে...' : 'উচ্চারণ শুনুন'}
                       </button>
                       <button
                         onClick={() => handleToggleBookmark(word.id)}
-                        className={`w-9 h-9 rounded-xl border flex items-center justify-center cursor-pointer transition ${
-                          bookmarkedWordIds.has(word.id)
-                            ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400'
-                            : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:border-white/20'
-                        }`}
+                        className={`w-9 h-9 rounded-xl border flex items-center justify-center cursor-pointer transition ${bookmarkedWordIds.has(word.id)
+                          ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400'
+                          : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:border-white/20'
+                          }`}
                       >
                         <Bookmark size={13} className={bookmarkedWordIds.has(word.id) ? 'fill-cyan-400' : ''} />
                       </button>
@@ -450,12 +446,22 @@ export default function LessonDetails() {
               })}
             </div>
 
-            <button
-              onClick={() => isLastPage ? setWizardStep(2) : setLearnIndex(prev => prev + 3)}
-              className="glass-button w-full bg-gradient-to-r from-indigo-600 to-cyan-600"
-            >
-              {isLastPage ? 'পরবর্তী ধাপ: ফ্ল্যাশ-কার্ড প্র্যাকটিস ▶' : 'পরবর্তী ৩টি শব্দ ▶'}
-            </button>
+            <div className="flex gap-4 mt-4">
+              {learnIndex > 0 && (
+                <button
+                  onClick={() => setLearnIndex(prev => Math.max(0, prev - 3))}
+                  className="glass-button w-full bg-slate-800 text-slate-300 border-none hover:bg-slate-700"
+                >
+                  ◀ পূর্ববর্তী ৩টি শব্দ
+                </button>
+              )}
+              <button
+                onClick={() => isLastPage ? setWizardStep(2) : setLearnIndex(prev => prev + 3)}
+                className="glass-button w-full bg-gradient-to-r from-indigo-600 to-cyan-600 border-none"
+              >
+                {isLastPage ? 'পরবর্তী ধাপ: ফ্ল্যাশ-কার্ড প্র্যাকটিস ▶' : 'পরবর্তী ৩টি শব্দ ▶'}
+              </button>
+            </div>
           </div>
         );
       })()}
@@ -536,30 +542,33 @@ export default function LessonDetails() {
             <div className="text-xs text-slate-400 font-bold mb-2 uppercase">
               শব্দ {testWordIndex + 1} / {words.length}
             </div>
-            <h2 className="text-3xl font-extrabold text-white tracking-wide mb-1">
-              "{words[testWordIndex]?.word}"
-            </h2>
-            <div className="text-xs text-slate-400 font-semibold mb-6">
-              [{words[testWordIndex]?.ipa || 'no ipa'}] | অর্থ: {words[testWordIndex]?.bangla_meaning}
-            </div>
+            <div className="flex flex-col md:flex-row items-center justify-center gap-6 mb-6 mt-4">
+              <div className="text-center md:text-left flex-1">
+                <h2 className="text-3xl font-extrabold text-white tracking-wide mb-1">
+                  "{words[testWordIndex]?.word}"
+                </h2>
+                <div className="text-xs text-slate-400 font-semibold">
+                  [{words[testWordIndex]?.ipa || 'no ipa'}] | অর্থ: {words[testWordIndex]?.bangla_meaning}
+                </div>
+              </div>
 
-            <div className="flex flex-col items-center justify-center py-6">
-              <button
-                onMouseDown={startRecording}
-                onMouseUp={stopRecording}
-                onTouchStart={startRecording}
-                onTouchEnd={stopRecording}
-                disabled={isEvaluating}
-                className={`w-20 h-20 rounded-full border-none flex items-center justify-center cursor-pointer transition-all duration-300 shadow-md ${
-                  recording
+              <div className="flex flex-col items-center justify-center min-w-[140px]">
+                <button
+                  onMouseDown={startRecording}
+                  onMouseUp={stopRecording}
+                  onTouchStart={startRecording}
+                  onTouchEnd={stopRecording}
+                  disabled={isEvaluating}
+                  className={`w-20 h-20 rounded-full border-none flex items-center justify-center cursor-pointer transition-all duration-300 shadow-md ${recording
                     ? 'bg-red-500 scale-110 animate-pulse shadow-lg shadow-red-500/40'
                     : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                }`}
-              >
-                <Mic size={32} />
-              </button>
-              <div className="text-xs text-slate-400 mt-4 font-semibold">
-                {recording ? 'শব্দটি বলুন (ছেড়ে দিলে মূল্যায়িত হবে)' : 'রেকর্ড করতে বাটনে চেপে ধরে রাখুন'}
+                    }`}
+                >
+                  <Mic size={32} />
+                </button>
+                <div className="text-[10px] text-slate-400 mt-2 font-semibold text-center leading-tight">
+                  {recording ? 'ছেড়ে দিলে মূল্যায়িত হবে' : 'রেকর্ড করতে বাটনে চেপে ধরে রাখুন'}
+                </div>
               </div>
             </div>
 
@@ -598,13 +607,12 @@ export default function LessonDetails() {
                         <span
                           key={i}
                           title={`${p.word}: ${p.score}%`}
-                          className={`text-xs font-bold px-2 py-1 rounded-lg border ${
-                            p.score >= 80
-                              ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                              : p.score >= 60
+                          className={`text-xs font-bold px-2 py-1 rounded-lg border ${p.score >= 80
+                            ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                            : p.score >= 60
                               ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
                               : 'bg-red-500/10 text-red-400 border-red-500/20'
-                          }`}
+                            }`}
                         >
                           /{p.phoneme}/ {p.score}%
                         </span>
@@ -617,22 +625,20 @@ export default function LessonDetails() {
                   <div className="flex items-center gap-2 mt-3">
                     <button
                       onClick={playRecordedAudio}
-                      className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition cursor-pointer ${
-                        isPlayingRecording
-                          ? 'bg-red-500 text-white animate-pulse'
-                          : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
-                      }`}
+                      className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition cursor-pointer ${isPlayingRecording
+                        ? 'bg-red-500 text-white animate-pulse'
+                        : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
+                        }`}
                     >
                       <Mic size={13} />
                       {isPlayingRecording ? 'বাজছে...' : 'আপনার রেকর্ডিং'}
                     </button>
                     <button
                       onClick={() => handlePlayAudio(words[testWordIndex], words[testWordIndex]?.id)}
-                      className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition cursor-pointer ${
-                        speakingWordId === words[testWordIndex]?.id
-                          ? 'bg-red-500 text-white animate-pulse'
-                          : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20'
-                      }`}
+                      className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition cursor-pointer ${speakingWordId === words[testWordIndex]?.id
+                        ? 'bg-red-500 text-white animate-pulse'
+                        : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20'
+                        }`}
                     >
                       <Volume2 size={13} />
                       সঠিক উচ্চারণ
@@ -662,30 +668,33 @@ export default function LessonDetails() {
             <div className="text-xs text-slate-400 font-bold mb-2 uppercase">
               বাক্য চ্যালেঞ্জ {testPhraseIndex + 1} / {phrases.length}
             </div>
-            <h2 className="text-2xl font-extrabold text-white tracking-wide mb-2">
-              "{phrases[testPhraseIndex]?.phrase_en}"
-            </h2>
-            <div className="text-sm text-slate-400 font-semibold mb-6">
-              অর্থ: {phrases[testPhraseIndex]?.phrase_bn}
-            </div>
+            <div className="flex flex-col md:flex-row items-center justify-center gap-6 mb-6 mt-4">
+              <div className="text-center md:text-left flex-1">
+                <h2 className="text-2xl font-extrabold text-white tracking-wide mb-2">
+                  "{phrases[testPhraseIndex]?.phrase_en}"
+                </h2>
+                <div className="text-sm text-slate-400 font-semibold">
+                  অর্থ: {phrases[testPhraseIndex]?.phrase_bn}
+                </div>
+              </div>
 
-            <div className="flex flex-col items-center justify-center py-6">
-              <button
-                onMouseDown={startRecording}
-                onMouseUp={stopRecording}
-                onTouchStart={startRecording}
-                onTouchEnd={stopRecording}
-                disabled={isEvaluating}
-                className={`w-20 h-20 rounded-full border-none flex items-center justify-center cursor-pointer transition-all duration-300 shadow-md ${
-                  recording
+              <div className="flex flex-col items-center justify-center min-w-[140px]">
+                <button
+                  onMouseDown={startRecording}
+                  onMouseUp={stopRecording}
+                  onTouchStart={startRecording}
+                  onTouchEnd={stopRecording}
+                  disabled={isEvaluating}
+                  className={`w-20 h-20 rounded-full border-none flex items-center justify-center cursor-pointer transition-all duration-300 shadow-md ${recording
                     ? 'bg-red-500 scale-110 animate-pulse shadow-lg shadow-red-500/40'
                     : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                }`}
-              >
-                <Mic size={32} />
-              </button>
-              <div className="text-xs text-slate-400 mt-4 font-semibold">
-                {recording ? 'বাক্যটি বলুন (ছেড়ে দিলে মূল্যায়িত হবে)' : 'রেকর্ড করতে বাটনে চেপে ধরে রাখুন'}
+                    }`}
+                >
+                  <Mic size={32} />
+                </button>
+                <div className="text-[10px] text-slate-400 mt-2 font-semibold text-center leading-tight">
+                  {recording ? 'ছেড়ে দিলে মূল্যায়িত হবে' : 'রেকর্ড করতে বাটনে চেপে ধরে রাখুন'}
+                </div>
               </div>
             </div>
 
@@ -718,13 +727,12 @@ export default function LessonDetails() {
                         <span
                           key={i}
                           title={`${p.word}: ${p.score}%`}
-                          className={`text-xs font-bold px-2 py-1 rounded-lg border ${
-                            p.score >= 80
-                              ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                              : p.score >= 60
+                          className={`text-xs font-bold px-2 py-1 rounded-lg border ${p.score >= 80
+                            ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                            : p.score >= 60
                               ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
                               : 'bg-red-500/10 text-red-400 border-red-500/20'
-                          }`}
+                            }`}
                         >
                           /{p.phoneme}/ {p.score}%
                         </span>
@@ -737,22 +745,20 @@ export default function LessonDetails() {
                   <div className="flex items-center gap-2 mt-3">
                     <button
                       onClick={playRecordedAudio}
-                      className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition cursor-pointer ${
-                        isPlayingRecording
-                          ? 'bg-red-500 text-white animate-pulse'
-                          : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
-                      }`}
+                      className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition cursor-pointer ${isPlayingRecording
+                        ? 'bg-red-500 text-white animate-pulse'
+                        : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
+                        }`}
                     >
                       <Mic size={13} />
                       {isPlayingRecording ? 'বাজছে...' : 'আপনার রেকর্ডিং'}
                     </button>
                     <button
                       onClick={() => handlePlayAudio(phrases[testPhraseIndex], phrases[testPhraseIndex]?.id)}
-                      className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition cursor-pointer ${
-                        speakingWordId === phrases[testPhraseIndex]?.id
-                          ? 'bg-red-500 text-white animate-pulse'
-                          : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20'
-                      }`}
+                      className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition cursor-pointer ${speakingWordId === phrases[testPhraseIndex]?.id
+                        ? 'bg-red-500 text-white animate-pulse'
+                        : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20'
+                        }`}
                     >
                       <Volume2 size={13} />
                       সঠিক উচ্চারণ

@@ -65,18 +65,18 @@ export default function Curriculum() {
             >
               <div className="card-card h-full flex flex-col justify-between p-6 bg-slate-950/40 border border-white/10 hover:border-indigo-500/40 hover:scale-[1.02] hover:shadow-[0_15px_30px_rgba(99,102,241,0.05)] transition-all duration-300 relative group overflow-hidden">
                 <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/5 rounded-full filter blur-lg pointer-events-none group-hover:bg-indigo-500/10 transition-colors"></div>
-                
+
                 <div>
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-full">
-                      Chapter {chapter.chapter_order || chapter.id}
+                      Chapter {chapter.order_num || chapter.id}
                     </span>
                     <span className="text-xs text-slate-500 font-bold">
                       {chapter.total_lessons || 5} Lessons
                     </span>
                   </div>
                   <h2 className="text-xl font-extrabold text-white tracking-wide mb-2 group-hover:text-indigo-400 transition-colors">
-                    {chapter.title || `Chapter ${chapter.id}`}
+                    {chapter.title || `Chapter ${chapter.order_num || chapter.id}`}
                   </h2>
                   <p className="text-sm text-slate-400 leading-relaxed font-medium">
                     {chapter.description || 'চ্যাপ্টারের লেসনগুলো সম্পন্ন করুন এবং আপনার ইংরেজি উচ্চারণ উন্নত করুন।'}

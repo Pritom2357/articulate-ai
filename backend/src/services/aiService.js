@@ -51,7 +51,16 @@ class AIService {
       denoisedAudioDataUrl = `data:audio/wav;base64,${denoisedBuffer.toString('base64')}`;
       console.log('[assessPronunciation] <<< denoised audio received', { bytes: denoisedBuffer.length });
     } catch (denoiseErr) {
-      console.warn('[assessPronunciation] denoiser worker unavailable, using raw audio:', denoiseErr.message);
+      console.warn('[assessPronunciation] denoiser worker unavailable:', denoiseErr.message);
+      try {
+        console.log('[assessPronunciation] >>> falling back to internal ffmpeg-static converter');
+        const audioConverter = require('./audioConverter');
+        denoisedBuffer = await audioConverter.convertToWav(audioBuffer);
+        denoisedMimeType = 'audio/wav';
+        console.log('[assessPronunciation] <<< fallback converter success', { bytes: denoisedBuffer.length });
+      } catch (convErr) {
+        console.warn('[assessPronunciation] fallback converter also failed, using raw audio:', convErr.message);
+      }
     }
 
     try {
