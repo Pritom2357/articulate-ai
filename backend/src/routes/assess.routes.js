@@ -17,6 +17,12 @@ assessRouter.post(
 );
 
 assessRouter.post(
+    '/pronunciation/feedback',
+    authenticateToken.authenticateToken,
+    assessController.pronunciationFeedback
+);
+
+assessRouter.post(
     '/conversation/assess',
     authenticateToken.authenticateToken,
     assessController.assessConversation

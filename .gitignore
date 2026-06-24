@@ -2,3 +2,8 @@
 node_modules/
 package-lock.json
 data-source
+denoiser-worker/.venv
+denoiser-worker/venv
+__pycache__/
+*.pyc
+.claude

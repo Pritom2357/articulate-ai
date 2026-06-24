@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getLesson } from '../api/curriculum.js';
-import { markLessonComplete, assessPronunciation } from '../api/progress.js';
+import { markLessonComplete, assessPronunciation, getPronunciationFeedback } from '../api/progress.js';
 import { getBookmarks, addBookmark, removeBookmark } from '../api/vocabulary.js';
 import useAuth from '../hooks/useAuth.js';
 import { Award, BookOpen, Volume2, ShieldAlert, Sparkles, Mic, Bookmark } from 'lucide-react';
-import { speakText } from '../utils/tts.js';
+import { playWordAudio } from '../utils/playWordAudio.js';
 
 // Import tutor assets
 import maleAvatar from '../assets/articulate_male.jpeg';
@@ -34,9 +34,12 @@ export default function LessonDetails() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speakingWordId, setSpeakingWordId] = useState(null);
 
+  // Step 1: Learn mode pagination
+  const [learnIndex, setLearnIndex] = useState(0);
+
   // Step 2: Mini Flashcard practice states
   const [practiceIndex, setPracticeIndex] = useState(0);
-  const [isCardFlipped, setIsCardFlipped] = useState(false);
+  const [flippedCards, setFlippedCards] = useState(new Set());
 
   // Step 3 & 4: Recording and Pronunciation Assessment States
   const [testWordIndex, setTestWordIndex] = useState(0);
@@ -47,6 +50,10 @@ export default function LessonDetails() {
   const [pronFeedback, setPronFeedback] = useState('');
   const [recognizedText, setRecognizedText] = useState('');
   const [passCount, setPassCount] = useState(0);
+  const [pronunciationTip, setPronunciationTip] = useState('');
+  const [phonemeScores, setPhonemeScores] = useState([]);
+  const [recordedAudioUrl, setRecordedAudioUrl] = useState(null);
+  const [isPlayingRecording, setIsPlayingRecording] = useState(false);
   const [bookmarkedWordIds, setBookmarkedWordIds] = useState(new Set());
 
   const mediaRecorderRef = useRef(null);
@@ -76,24 +83,30 @@ export default function LessonDetails() {
     loadLessonAndBookmarks();
   }, [id]);
 
-  // TTS pronunciation player
-  const playTTS = (text, wordId = null) => {
-    if ('speechSynthesis' in window) {
-      speakText(
-        text,
-        activeTutor,
-        () => {
-          setIsSpeaking(true);
-          if (wordId) setSpeakingWordId(wordId);
-        },
-        () => {
-          setIsSpeaking(false);
-          setSpeakingWordId(null);
-        }
-      );
-    } else {
-      alert('আপনার ব্রাউজার টেক্সট-টু-স্পিচ সাপোর্ট করে না।');
-    }
+  const clearRecordedAudio = () => {
+    setRecordedAudioUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  };
+
+  const goToStep = (step) => {
+    setPronScore(null);
+    setPronFeedback('');
+    setRecognizedText('');
+    setPronunciationTip('');
+    setPhonemeScores([]);
+    clearRecordedAudio();
+    setWizardStep(step);
+  };
+
+  const handlePlayAudio = async (item, wordId = null) => {
+    await playWordAudio(
+      item,
+      activeTutor,
+      () => { setIsSpeaking(true); if (wordId) setSpeakingWordId(wordId); },
+      () => { setIsSpeaking(false); setSpeakingWordId(null); }
+    );
   };
 
   const handleToggleBookmark = async (wordId) => {
@@ -124,6 +137,8 @@ export default function LessonDetails() {
     setRecognizedText('');
     setPronScore(null);
     setPronFeedback('');
+    setPronunciationTip('');
+    setPhonemeScores([]);
     audioChunksRef.current = [];
 
     try {
@@ -169,8 +184,22 @@ export default function LessonDetails() {
     }
   };
 
+  const playRecordedAudio = () => {
+    if (!recordedAudioUrl) return;
+    const audio = new Audio(recordedAudioUrl);
+    setIsPlayingRecording(true);
+    audio.onended = () => setIsPlayingRecording(false);
+    audio.onerror = () => setIsPlayingRecording(false);
+    audio.play();
+  };
+
   const uploadSpeechAttempt = async (audioBlob, extension) => {
     setIsEvaluating(true);
+    const rawUrl = URL.createObjectURL(audioBlob);
+    setRecordedAudioUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev);
+      return rawUrl;
+    });
     try {
       const isWordTest = wizardStep === 3;
       const refText = isWordTest ? words[testWordIndex].word : phrases[testPhraseIndex].phrase_en;
@@ -187,18 +216,38 @@ export default function LessonDetails() {
         formData.append('attemptType', 'PHRASE');
       }
 
-      // We can mock testId and questionId for general lessons or just omit them
-      formData.append('testId', '1');
-      formData.append('questionId', (isWordTest ? testWordIndex : testPhraseIndex) + 1);
-
+      setPronunciationTip('');
+      setPhonemeScores([]);
       const response = await assessPronunciation(formData);
+
+      if (response.rejected) {
+        setPronScore(0);
+        setPronFeedback('রেকর্ডিংয়ের শব্দ স্পষ্ট নয়। অনুগ্রহ করে শান্ত জায়গায় আবার রেকর্ড করুন।');
+        return;
+      }
 
       setRecognizedText(response.recognized_text || '');
       setPronScore(response.overall_score);
       setPronFeedback(response.feedback);
+      setPhonemeScores(response.phonemes || []);
+
+      // The backend runs the recording through a denoiser before scoring it — once that comes
+      // back, swap the playback source to it so "your recording" is the cleaned-up version
+      // actually used for scoring, not the raw mic capture.
+      if (response.denoised_audio_url) {
+        URL.revokeObjectURL(rawUrl);
+        setRecordedAudioUrl(response.denoised_audio_url);
+      }
 
       if (response.overall_score >= 60) {
         setPassCount(prev => prev + 1);
+      }
+
+      // Fire-and-forget: fetch the Bangla phoneme tip in the background so the score above never waits on the LLM.
+      if (response.phonemes && response.phonemes.length > 0) {
+        getPronunciationFeedback(response.phonemes.map(p => ({ phoneme: p.phoneme, score: p.score })))
+          .then(fb => setPronunciationTip(fb.tipBn || ''))
+          .catch(err => console.error('Pronunciation feedback fetch failed', err));
       }
     } catch (err) {
       console.error('Speech assessment error:', err);
@@ -213,6 +262,9 @@ export default function LessonDetails() {
     setPronScore(null);
     setPronFeedback('');
     setRecognizedText('');
+    setPronunciationTip('');
+    setPhonemeScores([]);
+    clearRecordedAudio();
     if (testWordIndex < words.length - 1) {
       setTestWordIndex(prev => prev + 1);
     } else {
@@ -228,6 +280,9 @@ export default function LessonDetails() {
     setPronScore(null);
     setPronFeedback('');
     setRecognizedText('');
+    setPronunciationTip('');
+    setPhonemeScores([]);
+    clearRecordedAudio();
     if (testPhraseIndex < phrases.length - 1) {
       setTestPhraseIndex(prev => prev + 1);
     } else {
@@ -292,14 +347,15 @@ export default function LessonDetails() {
           { step: 4, label: 'বাক্য উচ্চারণ পরীক্ষা' },
           { step: 5, label: 'লেসন সম্পন্ন! 🎉' }
         ].map((s) => (
-          <div
+          <button
             key={s.step}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+            onClick={() => goToStep(s.step)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer border-none ${
               wizardStep === s.step
                 ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-md'
                 : wizardStep > s.step
-                ? 'text-indigo-400 bg-indigo-950/10'
-                : 'text-slate-500'
+                ? 'text-indigo-400 bg-indigo-950/10 hover:bg-indigo-950/20'
+                : 'text-slate-500 bg-transparent hover:bg-white/5 hover:text-slate-300'
             }`}
           >
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
@@ -312,7 +368,7 @@ export default function LessonDetails() {
               {s.step}
             </span>
             <span>{s.label}</span>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -334,108 +390,144 @@ export default function LessonDetails() {
         </div>
       </div>
 
-      {/* STEP 1: LEARN MODE */}
-      {wizardStep === 1 && (
-        <div className="space-y-6">
-          <div className="card-card p-6 bg-slate-950/40 border border-white/10">
-            <h2 className="card-title text-white mb-4 flex items-center gap-2">
-              <span>📚</span> Vocabulary List (শব্দভান্ডার)
-            </h2>
-            <div className="space-y-3">
-              {words.map((word) => (
-                <div key={word.id} className="word-item flex items-center justify-between p-4 border border-white/5 rounded-xl bg-white/2 hover:bg-white/5 hover:border-white/10 transition">
-                  <div>
-                    <div className="font-extrabold text-white text-lg flex items-center gap-2">
-                      {word.word}
-                      {word.ipa && <span className="font-mono text-xs text-slate-400">[{word.ipa}]</span>}
+      {/* STEP 1: LEARN MODE — 3 cards at a time */}
+      {wizardStep === 1 && (() => {
+        const isLastPage = learnIndex + 3 >= words.length;
+        const totalPages = Math.ceil(words.length / 3);
+        const currentPage = Math.floor(learnIndex / 3) + 1;
+
+        return (
+          <div className="space-y-5">
+            <div className="text-center text-xs text-slate-500 font-bold uppercase tracking-widest">
+              {currentPage} / {totalPages}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[0, 1, 2].map(offset => {
+                const word = words[learnIndex + offset];
+                if (!word) return null;
+                return (
+                  <div key={word.id} className="flex flex-col gap-3 p-5 rounded-2xl bg-slate-950/50 border border-white/10">
+                    {/* Row 1: word (left) — IPA (right) */}
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="text-xl font-black text-white">{word.word}</div>
+                      {word.ipa && (
+                        <div className="text-xs text-slate-400 font-mono shrink-0">[{word.ipa}]</div>
+                      )}
                     </div>
-                    <div className="text-sm text-slate-400 mt-1 font-semibold">অর্থ: {word.bangla_meaning}</div>
+
+                    {/* Row 2: bangla meaning centered */}
+                    <div className="text-center text-sm text-slate-200 font-semibold border-t border-white/5 pt-3">
+                      {word.bangla_meaning}
+                    </div>
+
+                    {/* Row 3: audio + bookmark */}
+                    <div className="flex items-center gap-2 pt-1 border-t border-white/5 mt-auto">
+                      <button
+                        onClick={() => handlePlayAudio(word, word.id)}
+                        className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition cursor-pointer ${
+                          speakingWordId === word.id
+                            ? 'bg-red-500 text-white animate-pulse'
+                            : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20'
+                        }`}
+                      >
+                        <Volume2 size={13} />
+                        {speakingWordId === word.id ? 'বাজছে...' : 'উচ্চারণ শুনুন'}
+                      </button>
+                      <button
+                        onClick={() => handleToggleBookmark(word.id)}
+                        className={`w-9 h-9 rounded-xl border flex items-center justify-center cursor-pointer transition ${
+                          bookmarkedWordIds.has(word.id)
+                            ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400'
+                            : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:border-white/20'
+                        }`}
+                      >
+                        <Bookmark size={13} className={bookmarkedWordIds.has(word.id) ? 'fill-cyan-400' : ''} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => handleToggleBookmark(word.id)}
-                      className={`w-10 h-10 rounded-full border flex items-center justify-center cursor-pointer transition ${
-                        bookmarkedWordIds.has(word.id)
-                          ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400'
-                          : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:border-white/20'
-                      }`}
-                      title={bookmarkedWordIds.has(word.id) ? "সংরক্ষণ তালিকা থেকে বাদ দিন" : "সংরক্ষণ করুন"}
-                    >
-                      <Bookmark size={16} className={bookmarkedWordIds.has(word.id) ? 'fill-cyan-400' : ''} />
-                    </button>
-                    <button
-                      onClick={() => playTTS(word.word, word.id)}
-                      className={`w-10 h-10 rounded-full border-none flex items-center justify-center cursor-pointer transition ${
-                        speakingWordId === word.id
-                          ? 'bg-red-500 text-white animate-pulse'
-                          : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20'
-                      }`}
-                      title="উচ্চারণ শুনুন"
-                    >
-                      <Volume2 size={18} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
+
+            <button
+              onClick={() => isLastPage ? setWizardStep(2) : setLearnIndex(prev => prev + 3)}
+              className="glass-button w-full bg-gradient-to-r from-indigo-600 to-cyan-600"
+            >
+              {isLastPage ? 'পরবর্তী ধাপ: ফ্ল্যাশ-কার্ড প্র্যাকটিস ▶' : 'পরবর্তী ৩টি শব্দ ▶'}
+            </button>
           </div>
-          <button onClick={() => setWizardStep(2)} className="glass-button w-full bg-gradient-to-r from-indigo-600 to-cyan-600">
-            পরবর্তী ধাপ: ফ্ল্যাশ-কার্ড প্র্যাকটিস ▶
-          </button>
-        </div>
-      )}
+        );
+      })()}
 
-      {/* STEP 2: PRACTICE (FLASHCARDS) */}
-      {wizardStep === 2 && (
-        <div className="space-y-6 text-center">
-          <div className="card-card p-6 bg-slate-950/40 border border-white/10 max-w-xl mx-auto">
-            <div className="text-xs text-slate-400 font-bold mb-4 uppercase">
-              শব্দ {practiceIndex + 1} / {words.length}
+      {/* STEP 2: PRACTICE (FLASHCARDS — 2 at a time) */}
+      {wizardStep === 2 && (() => {
+        const pairDone = [0, 1].every(offset => {
+          const idx = practiceIndex + offset;
+          return idx >= words.length || flippedCards.has(idx);
+        });
+        const isLastPair = practiceIndex + 2 >= words.length;
+        const totalPairs = Math.ceil(words.length / 2);
+        const currentPair = Math.floor(practiceIndex / 2) + 1;
+
+        return (
+          <div className="space-y-6">
+            <div className="text-center text-xs text-slate-400 font-bold uppercase tracking-wider">
+              পেইজ {currentPair} / {totalPairs}
             </div>
 
-            <div className="card-scene mx-auto" onClick={() => setIsCardFlipped(!isCardFlipped)}>
-              <div className={`flip-card ${isCardFlipped ? 'is-flipped' : ''}`} style={{ height: '220px' }}>
-                <div className="card-face card-face-front flex flex-col justify-center items-center">
-                  <div className="text-3xl font-extrabold text-white">{words[practiceIndex]?.word}</div>
-                  <div className="text-xs text-cyan-300 mt-6 font-semibold animate-pulse">ক্লিক করুন (অর্থ দেখতে) 🔄</div>
-                </div>
-                <div className="card-face card-face-back flex flex-col justify-center items-center">
-                  <div className="text-2xl font-bold text-white mb-2">{words[practiceIndex]?.bangla_meaning}</div>
-                  <div className="text-xs text-indigo-200 font-semibold font-mono">[{words[practiceIndex]?.ipa}]</div>
-                  <div className="text-xs text-slate-400 mt-6 font-semibold">ফিরে যেতে ক্লিক করুন 🔄</div>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+              {[0, 1].map(offset => {
+                const idx = practiceIndex + offset;
+                const word = words[idx];
+                if (!word) return null;
+                const isFlipped = flippedCards.has(idx);
+                return (
+                  <div key={word.id} className="card-card p-4 bg-slate-950/40 border border-white/10">
+                    <div
+                      className="card-scene mx-auto cursor-pointer"
+                      onClick={() => setFlippedCards(prev => new Set([...prev, idx]))}
+                    >
+                      <div className={`flip-card ${isFlipped ? 'is-flipped' : ''}`} style={{ height: '190px' }}>
+                        <div className="card-face card-face-front flex flex-col justify-center items-center px-4">
+                          <div className="text-2xl font-extrabold text-white text-center">{word.word}</div>
+                          {word.ipa && (
+                            <div className="text-xs text-slate-400 font-mono mt-1">[{word.ipa}]</div>
+                          )}
+                          <div className="text-xs text-cyan-300 mt-5 font-semibold animate-pulse">ক্লিক করুন 🔄</div>
+                        </div>
+                        <div className="card-face card-face-back flex flex-col justify-center items-center px-4">
+                          <div className="text-xl font-bold text-white text-center mb-1">{word.bangla_meaning}</div>
+                          {word.ipa && (
+                            <div className="text-xs text-indigo-200 font-mono">[{word.ipa}]</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {pairDone && (
+              <div className="flex justify-center">
+                <button
+                  onClick={() => {
+                    if (isLastPair) {
+                      setWizardStep(3);
+                    } else {
+                      setPracticeIndex(prev => prev + 2);
+                    }
+                  }}
+                  className="form-button"
+                >
+                  {isLastPair ? 'পরবর্তী ধাপ: শব্দ টেস্ট ▶' : 'পরবর্তী ২টি শব্দ ▶'}
+                </button>
               </div>
-            </div>
-
-            <div className="flex justify-center gap-4 mt-6">
-              <button
-                onClick={() => {
-                  setIsCardFlipped(false);
-                  setPracticeIndex(prev => Math.max(0, prev - 1));
-                }}
-                disabled={practiceIndex === 0}
-                className="secondary-button"
-                style={{ opacity: practiceIndex === 0 ? 0.5 : 1 }}
-              >
-                ◀ পূর্ববর্তী
-              </button>
-              <button
-                onClick={() => {
-                  setIsCardFlipped(false);
-                  if (practiceIndex < words.length - 1) {
-                    setPracticeIndex(prev => prev + 1);
-                  } else {
-                    setWizardStep(3);
-                  }
-                }}
-                className="form-button"
-              >
-                {practiceIndex < words.length - 1 ? 'পরবর্তী শব্দ ▶' : 'পরবর্তী ধাপ: শব্দ টেস্ট ▶'}
-              </button>
-            </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* STEP 3: WORD SPEAKING TEST */}
       {wizardStep === 3 && (
@@ -489,6 +581,62 @@ export default function LessonDetails() {
                 {recognizedText && (
                   <div className="text-xs text-slate-400 mt-2">
                     শনাক্ত শব্দ: <span className="italic font-bold text-slate-300">"{recognizedText}"</span>
+                  </div>
+                )}
+                {pronunciationTip && (
+                  <div className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 mt-3 flex items-start gap-1.5">
+                    <Sparkles size={13} className="mt-0.5 shrink-0" />
+                    <span>{pronunciationTip}</span>
+                  </div>
+                )}
+
+                {phonemeScores.length > 0 && (
+                  <div className="mt-3 text-left">
+                    <div className="text-xs text-slate-400 font-semibold mb-1.5">ধ্বনি বিশ্লেষণ (কোথায় ভুল হয়েছে):</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {phonemeScores.map((p, i) => (
+                        <span
+                          key={i}
+                          title={`${p.word}: ${p.score}%`}
+                          className={`text-xs font-bold px-2 py-1 rounded-lg border ${
+                            p.score >= 80
+                              ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                              : p.score >= 60
+                              ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                              : 'bg-red-500/10 text-red-400 border-red-500/20'
+                          }`}
+                        >
+                          /{p.phoneme}/ {p.score}%
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {recordedAudioUrl && (
+                  <div className="flex items-center gap-2 mt-3">
+                    <button
+                      onClick={playRecordedAudio}
+                      className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition cursor-pointer ${
+                        isPlayingRecording
+                          ? 'bg-red-500 text-white animate-pulse'
+                          : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
+                      }`}
+                    >
+                      <Mic size={13} />
+                      {isPlayingRecording ? 'বাজছে...' : 'আপনার রেকর্ডিং'}
+                    </button>
+                    <button
+                      onClick={() => handlePlayAudio(words[testWordIndex], words[testWordIndex]?.id)}
+                      className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition cursor-pointer ${
+                        speakingWordId === words[testWordIndex]?.id
+                          ? 'bg-red-500 text-white animate-pulse'
+                          : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20'
+                      }`}
+                    >
+                      <Volume2 size={13} />
+                      সঠিক উচ্চারণ
+                    </button>
                   </div>
                 )}
 
@@ -559,6 +707,56 @@ export default function LessonDetails() {
                 {recognizedText && (
                   <div className="text-xs text-slate-400 mt-2">
                     শনাক্ত বাক্য: <span className="italic font-bold text-slate-300">"{recognizedText}"</span>
+                  </div>
+                )}
+
+                {phonemeScores.length > 0 && (
+                  <div className="mt-3 text-left">
+                    <div className="text-xs text-slate-400 font-semibold mb-1.5">ধ্বনি বিশ্লেষণ (কোথায় ভুল হয়েছে):</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {phonemeScores.map((p, i) => (
+                        <span
+                          key={i}
+                          title={`${p.word}: ${p.score}%`}
+                          className={`text-xs font-bold px-2 py-1 rounded-lg border ${
+                            p.score >= 80
+                              ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                              : p.score >= 60
+                              ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                              : 'bg-red-500/10 text-red-400 border-red-500/20'
+                          }`}
+                        >
+                          /{p.phoneme}/ {p.score}%
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {recordedAudioUrl && (
+                  <div className="flex items-center gap-2 mt-3">
+                    <button
+                      onClick={playRecordedAudio}
+                      className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition cursor-pointer ${
+                        isPlayingRecording
+                          ? 'bg-red-500 text-white animate-pulse'
+                          : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
+                      }`}
+                    >
+                      <Mic size={13} />
+                      {isPlayingRecording ? 'বাজছে...' : 'আপনার রেকর্ডিং'}
+                    </button>
+                    <button
+                      onClick={() => handlePlayAudio(phrases[testPhraseIndex], phrases[testPhraseIndex]?.id)}
+                      className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition cursor-pointer ${
+                        speakingWordId === phrases[testPhraseIndex]?.id
+                          ? 'bg-red-500 text-white animate-pulse'
+                          : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20'
+                      }`}
+                    >
+                      <Volume2 size={13} />
+                      সঠিক উচ্চারণ
+                    </button>
                   </div>
                 )}
 
