@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-multipart
+deepfilternet
+soundfile
+torch
+torchaudio
+# deepfilternet pins numpy<2.0, but the only numpy<2 wheel available for Windows + Python 3.13
+# is an experimental MINGW-built one that segfaults on import. Force numpy>=2 (works fine at
+# runtime despite deepfilternet's pin — numpy maintains C-API ABI compatibility across the 1.x/2.x line).
+numpy>=2,<3
