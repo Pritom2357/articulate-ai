@@ -44,7 +44,7 @@ export default function ChapterDetails() {
             Chapter Details
           </span>
           <h1 className="page-title text-white mt-1">
-            {chapter?.title || `Chapter ${id}`}
+            {chapter?.title || `Chapter ${chapter?.order_num || id}`}
           </h1>
           <p className="page-subtitle text-slate-400">
             {chapter?.description || 'চ্যাপ্টারের অধীনে থাকা লেসনগুলো শেষ করে আপনার স্পিকিং দক্ষতা বৃদ্ধি করুন।'}
@@ -73,7 +73,7 @@ export default function ChapterDetails() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/5 px-2 py-0.5 rounded">
-                        Lesson {idx + 1}
+                        Lesson {lesson.order_num || (idx + 1)}
                       </span>
                       {lesson.type && (
                         <span className="text-[9px] font-extrabold text-indigo-400 uppercase tracking-wider bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.25 rounded">
@@ -82,14 +82,14 @@ export default function ChapterDetails() {
                       )}
                     </div>
                     <h2 className="text-lg font-extrabold text-white mt-1.5 group-hover:text-indigo-400 transition-colors">
-                      {lesson.title || `Lesson ${lesson.id}`}
+                      {lesson.title || `Lesson ${lesson.order_num || lesson.id}`}
                     </h2>
                     <p className="text-xs text-slate-400 leading-relaxed mt-1 font-medium">
                       {lesson.summary || lesson.objective_bn || 'লেসনটি শুরু করে উচ্চারণ ও স্পিকিং অনুশীলন করুন।'}
                     </p>
                   </div>
                 </div>
-                
+
                 <span className="text-indigo-400 text-xs font-bold whitespace-nowrap bg-indigo-500/10 hover:bg-indigo-500/20 px-3 py-1.5 rounded-xl border border-indigo-500/20 transition-colors">
                   লেসন শুরু করুন ▶
                 </span>
@@ -104,11 +104,11 @@ export default function ChapterDetails() {
               <Award size={18} className="text-cyan-400" />
               চ্যাপ্টার মূল্যায়ন পরীক্ষা (Chapter Evaluation)
             </h3>
-            
+
             <Link to={`/chapters/${id}/conversation`} className="card-link">
               <div className="card-card bg-gradient-to-r from-slate-950 via-indigo-950/20 to-slate-950 text-white hover:border-indigo-500/40 hover:scale-[1.01] hover:shadow-[0_20px_40px_rgba(6,182,212,0.05)] transition-all duration-300 border border-white/10 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full filter blur-2xl pointer-events-none group-hover:bg-cyan-500/10 transition-colors"></div>
-                
+
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                   <div className="flex items-start gap-4">
                     <div className="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-400 group-hover:animate-pulse">
@@ -123,7 +123,7 @@ export default function ChapterDetails() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <button className="px-5 py-3 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-extrabold rounded-xl border-none cursor-pointer text-xs shadow-lg transition duration-300 flex items-center gap-2 self-stretch sm:self-auto justify-center">
                     <Sparkles size={14} /> পরীক্ষা শুরু করুন ▶
                   </button>

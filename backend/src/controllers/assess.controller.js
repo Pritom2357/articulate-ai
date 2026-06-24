@@ -44,9 +44,6 @@ class AssessController {
                 return res.status(200).json({ success: true, rejected: true, reason: 'poor_audio', ...result });
             }
 
-            // --- Post-scoring side-effects: wrapped individually so a DB failure here
-            //     never prevents the already-computed score from reaching the client. ---
-
             // If wordId is provided, update user SRS progress
             if (wordId) {
                 try {
