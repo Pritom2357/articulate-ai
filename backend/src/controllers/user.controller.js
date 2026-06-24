@@ -169,15 +169,19 @@ class UserController {
             }
 
             const { mic_verified, mic_quality_score } = req.body || {}
+            console.log('[updateMicStatus] received', { userId, mic_verified, mic_quality_score });
+
             if (mic_verified === undefined || mic_quality_score === undefined) {
                 return res.status(400).json({ success: false, error: 'mic_verified and mic_quality_score are required' })
             }
 
             const updated = await this.userModel.updateMicStatus(userId, mic_verified, mic_quality_score)
             if (!updated) {
+                console.error('[updateMicStatus] DB update returned no row for userId', userId);
                 return res.status(500).json({ success: false, error: 'Failed to update mic status' })
             }
 
+            console.log('[updateMicStatus] saved', updated);
             return res.status(200).json({ success: true, ...updated })
         } catch (error) {
             console.error('Update mic status error:', error.message)

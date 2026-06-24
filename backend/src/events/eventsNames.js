@@ -5,5 +5,6 @@ module.exports = {
     USER_PROFILE_UPDATED: 'user.profile.updated',
     PASSWORD_RESET_REQUESTED: 'user.password.reset.requested',
     PASSWORD_CHANGED: 'user.password.changed',
-    BADGE_UNLOCKED: 'user.badge.unlocked'
+    BADGE_UNLOCKED: 'user.badge.unlocked',
+    RAG_TRIGGER: 'pronunciation.rag.trigger'
 };

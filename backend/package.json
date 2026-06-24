@@ -48,6 +48,7 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.5",
     "nodemon": "^3.1.14",
+    "openai": "^6.44.0",
     "pdf-parse": "^1.1.1",
     "pg": "^8.16.3",
     "prom-client": "^15.1.3",

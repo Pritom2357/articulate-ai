@@ -23,6 +23,7 @@ export async function getLesson(id) {
   return {
     lesson: response.lesson || response,
     words: response.words || response.lesson?.words || [],
+    phrases: response.phrases || response.lesson?.phrases || [],
   };
 }
 

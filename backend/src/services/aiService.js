@@ -1,4 +1,5 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const denoiserClient = require('./denoiserClient.js');
 
 class AIService {
   constructor() {
@@ -27,10 +28,30 @@ class AIService {
    * @param {string} referenceText - The text the user was supposed to pronounce
    * @returns {Promise<object>} - Score, feedback, and phoneme details
    */
-  async assessPronunciation(audioBuffer, referenceText) {
+  async assessPronunciation(audioBuffer, referenceText, audioMimeType = null) {
     if (!this.azureKey) {
       console.warn('⚠️ AZURE_SPEECH_KEY is missing. Simulating pronunciation assessment.');
       return this._mockPronunciationAssessment(referenceText);
+    }
+
+    // Run the recording through the Python DeepFilterNet worker before handing it to Azure —
+    // background noise (room hum, fan, etc.) otherwise gets scored as part of the user's speech.
+    // Falls back to the raw recording if the worker is unreachable, so a stopped/missing worker
+    // degrades quality rather than breaking the whole assessment flow.
+    let denoisedBuffer = audioBuffer;
+    let denoisedMimeType = audioMimeType;
+    let denoisedAudioDataUrl = null;
+    try {
+      console.log('[assessPronunciation] >>> sending to denoiser worker', {
+        bytes: audioBuffer?.length,
+        mimeType: audioMimeType
+      });
+      denoisedBuffer = await denoiserClient.denoise(audioBuffer, audioMimeType);
+      denoisedMimeType = 'audio/wav';
+      denoisedAudioDataUrl = `data:audio/wav;base64,${denoisedBuffer.toString('base64')}`;
+      console.log('[assessPronunciation] <<< denoised audio received', { bytes: denoisedBuffer.length });
+    } catch (denoiseErr) {
+      console.warn('[assessPronunciation] denoiser worker unavailable, using raw audio:', denoiseErr.message);
     }
 
     try {
@@ -40,31 +61,50 @@ class AIService {
         ReferenceText: referenceText,
         GradingSystem: 'HundredMark',
         Granularity: 'Phoneme',
-        Dimension: 'Comprehensive'
+        Dimension: 'Comprehensive',
+        EnableMiscue: true,
+        PhonemeAlphabet: 'IPA'
       };
 
       const paramsJson = JSON.stringify(pronunciationParams);
       const paramsBase64 = Buffer.from(paramsJson).toString('base64');
+
+      // The Content-Type sent to Azure MUST match the actual container/codec of the audio buffer,
+      // or Azure will fail to decode it correctly (silently producing garbage/empty recognition
+      // rather than an obvious error). The frontend records via MediaRecorder, so this must reflect
+      // whatever mimetype it actually used (audio/webm;codecs=opus, audio/ogg;codecs=opus, audio/mp4, ...).
+      const contentType = this._mapToAzureContentType(denoisedMimeType);
+
+      console.log('[assessPronunciation] >>> REQUEST', {
+        referenceText,
+        receivedMimeType: audioMimeType,
+        sentMimeType: denoisedMimeType,
+        azureContentType: contentType,
+        audioBufferBytes: denoisedBuffer?.length,
+        region: this.azureRegion
+      });
 
       // Fetch call to Azure Speech REST API
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Ocp-Apim-Subscription-Key': this.azureKey,
-          'Content-type': 'audio/ogg; codecs=opus',
+          'Content-type': contentType,
           'Pronunciation-Assessment': paramsBase64,
           'Accept': 'application/json'
         },
-        body: audioBuffer
+        body: denoisedBuffer
       });
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('[assessPronunciation] <<< Azure HTTP error', response.status, response.statusText, errorText);
         throw new Error(`Azure Speech API failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
-      
+      console.log('[assessPronunciation] <<< RAW AZURE RESPONSE', JSON.stringify(data));
+
       if (data.RecognitionStatus !== 'Success') {
         throw new Error(`Azure STT Recognition failed: ${data.RecognitionStatus}`);
       }
@@ -74,16 +114,32 @@ class AIService {
         throw new Error('No recognition results returned from Azure Speech.');
       }
 
-      const assessment = bestResult.PronunciationAssessment;
-      if (!assessment) {
-        throw new Error('Pronunciation assessment parameters missing in Azure response.');
+      // Azure's REST response puts assessment scores directly on NBest/Word/Phoneme objects,
+      // not nested under a "PronunciationAssessment" sub-object (that nesting only applies to
+      // the Speech SDK's result shape, not this REST API's JSON).
+      if (bestResult.PronScore == null) {
+        throw new Error('Pronunciation assessment scores missing in Azure response.');
       }
 
       // Format feedback
-      const accuracyScore = Math.round(assessment.AccuracyScore || 0);
-      const fluencyScore = Math.round(assessment.FluencyScore || 0);
-      const completenessScore = Math.round(assessment.CompletenessScore || 0);
-      const overallScore = Math.round(assessment.PronScore || 0);
+      const accuracyScore = Math.round(bestResult.AccuracyScore || 0);
+      const fluencyScore = Math.round(bestResult.FluencyScore || 0);
+      const completenessScore = Math.round(bestResult.CompletenessScore || 0);
+      const overallScore = Math.round(bestResult.PronScore || 0);
+      // Not always present depending on audio format/region — treat as "unknown" (skip quality gate) rather than failing closed.
+      const audioQualityScore = bestResult.AudioQualityScore != null ? Math.round(bestResult.AudioQualityScore) : null;
+
+      // Flatten per-word phoneme scores into a single list
+      const phonemes = [];
+      for (const w of bestResult.Words || []) {
+        for (const p of w.Phonemes || []) {
+          phonemes.push({
+            phoneme: p.Phoneme,
+            score: Math.round(p.AccuracyScore || 0),
+            word: w.Word
+          });
+        }
+      }
 
       // Generate a friendly message in Bangla
       let feedback = '';
@@ -97,20 +153,26 @@ class AIService {
         feedback = 'দুঃখিত, আপনার উচ্চারণটি পুরোপুরি বোঝা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।';
       }
 
-      return {
+      const finalResult = {
         success: true,
         accuracy_score: accuracyScore,
         fluency_score: fluencyScore,
         completeness_score: completenessScore,
         overall_score: overallScore,
+        audio_quality_score: audioQualityScore,
         recognized_text: bestResult.Display,
         feedback: feedback,
+        phonemes,
+        denoised_audio_url: denoisedAudioDataUrl,
         words: bestResult.Words?.map(w => ({
           word: w.Word,
-          accuracy_score: Math.round(w.PronunciationAssessment?.AccuracyScore || 0),
-          error_type: w.PronunciationAssessment?.ErrorType || 'None'
+          accuracy_score: Math.round(w.AccuracyScore || 0),
+          error_type: w.ErrorType || 'None'
         })) || []
       };
+
+      console.log('[assessPronunciation] === PROCESSED RESULT', JSON.stringify(finalResult));
+      return finalResult;
 
     } catch (error) {
       console.error('Azure Pronunciation Assessment error:', error.message);
@@ -247,6 +309,65 @@ class AIService {
     }
   }
 
+  /**
+   * Generate one short, actionable Bangla tip covering a user's weak phonemes.
+   * @param {Array<{phoneme: string, score: number, tipBn: string|null}>} weakPhonemes
+   * @returns {Promise<string>} - Bangla tip text only, no preamble
+   */
+  async getPronunciationFeedback(weakPhonemes) {
+    if (!weakPhonemes || weakPhonemes.length === 0) {
+      return 'আপনার উচ্চারণ ভালো ছিল, কোনো নির্দিষ্ট দুর্বল ধ্বনি পাওয়া যায়নি।';
+    }
+
+    if (!this.ai) {
+      return weakPhonemes.map(p => p.tipBn).filter(Boolean)[0]
+        || 'এই ধ্বনিগুলো নিয়ে আরেকটু অনুশীলন করুন।';
+    }
+
+    try {
+      const model = this.ai.getGenerativeModel({
+        model: 'gemini-1.5-flash',
+        generationConfig: { maxOutputTokens: 150 }
+      });
+
+      const phonemeList = weakPhonemes
+        .map(p => `/${p.phoneme}/ (score: ${p.score}${p.tipBn ? `, known tip: "${p.tipBn}"` : ''})`)
+        .join(', ');
+
+      const prompt = `
+        A Bengali student learning English pronunciation scored low on these IPA phonemes: ${phonemeList}.
+        Write ONE short, actionable tip in BANGLA (max 2 sentences) to help them improve these specific sounds.
+        Use the known tips as a base if given, but make it feel like one cohesive piece of advice rather than a list.
+        Return ONLY the tip text in Bangla — no preamble, no English, no markdown.
+      `;
+
+      const result = await model.generateContent(prompt);
+      return result.response.text().trim();
+    } catch (error) {
+      console.error('Gemini pronunciation feedback failed, returning fallback tip:', error.message);
+      return weakPhonemes.map(p => p.tipBn).filter(Boolean)[0]
+        || 'এই ধ্বনিগুলো নিয়ে আরেকটু অনুশীলন করুন।';
+    }
+  }
+
+  /**
+   * Azure's short-audio REST endpoint needs the Content-Type to truthfully describe the
+   * audio container/codec it's receiving, or it silently mis-decodes the buffer instead of
+   * erroring (producing garbage/near-zero scores rather than an obvious failure).
+   * Maps the multer-reported mimetype (from the browser's MediaRecorder) to what Azure expects.
+   */
+  _mapToAzureContentType(mimeType) {
+    if (!mimeType) return 'audio/wav; codecs=audio/pcm; samplerate=16000';
+    const mt = mimeType.toLowerCase();
+
+    if (mt.includes('webm')) return 'audio/webm; codecs=opus';
+    if (mt.includes('ogg')) return 'audio/ogg; codecs=opus';
+    if (mt.includes('wav')) return 'audio/wav; codecs=audio/pcm; samplerate=16000';
+    // audio/mp4 (Safari fallback) isn't in Azure's documented supported container list for this
+    // endpoint — pass it through as-is and let the raw response/log reveal what actually happens.
+    return mimeType;
+  }
+
   // --- PRIVATE MOCK FALLBACKS ---
 
   _mockPronunciationAssessment(referenceText) {
@@ -262,14 +383,23 @@ class AIService {
       feedback = 'ভালো হয়েছে! কিছু শব্দ আরেকটু অনুশীলন করুন। (সিমুলেটেড)';
     }
 
+    const mockPhonemeSet = ['æ', 'v', 'θ', 'ð', 'z', 'ɪ', 'w', 'k', 't', 's', 'n', 'm'];
+    const phonemes = referenceText.toLowerCase().replace(/[^a-z ]/g, '').split('').slice(0, 6).map((ch, i) => ({
+      phoneme: mockPhonemeSet[(ch.charCodeAt(0) + i) % mockPhonemeSet.length],
+      score: Math.floor(Math.random() * 35) + 65,
+      word: referenceText.split(' ')[0]
+    }));
+
     return {
       success: true,
       accuracy_score: accuracyScore,
       fluency_score: fluencyScore,
       completeness_score: completenessScore,
       overall_score: overallScore,
+      audio_quality_score: 85,
       recognized_text: referenceText,
       feedback: feedback,
+      phonemes,
       words: referenceText.split(' ').map(word => ({
         word: word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,""),
         accuracy_score: Math.floor(Math.random() * 25) + 75,

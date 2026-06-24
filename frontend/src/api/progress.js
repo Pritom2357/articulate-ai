@@ -1,4 +1,4 @@
-import { request } from '../utils/apiClient.js';
+import { request, authorizedFetch } from '../utils/apiClient.js';
 
 export async function getDueFlashcards() {
   const response = await request('/progress/flashcards/due');
@@ -28,12 +28,8 @@ export async function getProgress() {
 }
 
 export async function assessPronunciation(formData) {
-  const token = localStorage.getItem('articulate_access_token');
-  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/assess/pronunciation/assess`, {
+  const response = await authorizedFetch('/assess/pronunciation/assess', {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
     body: formData,
   });
 
@@ -43,6 +39,13 @@ export async function assessPronunciation(formData) {
   }
 
   return response.json();
+}
+
+export async function getPronunciationFeedback(phonemeScores) {
+  return request('/assess/pronunciation/feedback', {
+    method: 'POST',
+    body: JSON.stringify({ phonemeScores }),
+  });
 }
 
 export async function assessConversation(payload) {
