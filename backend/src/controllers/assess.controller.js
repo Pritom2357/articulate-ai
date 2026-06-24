@@ -44,21 +44,32 @@ class AssessController {
                 return res.status(200).json({ success: true, rejected: true, reason: 'poor_audio', ...result });
             }
 
+            // --- Post-scoring side-effects: wrapped individually so a DB failure here
+            //     never prevents the already-computed score from reaching the client. ---
+
             // If wordId is provided, update user SRS progress
             if (wordId) {
-                await this.progressModel.updateSrsCard(userId, parseInt(wordId), result.overall_score);
+                try {
+                    await this.progressModel.updateSrsCard(userId, parseInt(wordId), result.overall_score);
+                } catch (srsErr) {
+                    console.error('[assessPronunciation] SRS card update failed (non-fatal):', srsErr.message);
+                }
             }
 
             // Phoneme-level scoring: history log + rolling summary + mastery XP + fail-streak RAG trigger
             if (result.phonemes && result.phonemes.length > 0) {
-                const { ragTriggerPhonemes } = await this.progressModel.logPhonemeScores(
-                    userId,
-                    wordId ? parseInt(wordId) : null,
-                    result.phonemes
-                );
+                try {
+                    const { ragTriggerPhonemes } = await this.progressModel.logPhonemeScores(
+                        userId,
+                        wordId ? parseInt(wordId) : null,
+                        result.phonemes
+                    );
 
-                for (const phoneme of ragTriggerPhonemes) {
-                    bus.asyncEmit(Events.RAG_TRIGGER, { userId, phoneme });
+                    for (const phoneme of ragTriggerPhonemes) {
+                        bus.asyncEmit(Events.RAG_TRIGGER, { userId, phoneme });
+                    }
+                } catch (phonemeErr) {
+                    console.error('[assessPronunciation] Phoneme scoring failed (non-fatal):', phonemeErr.message);
                 }
             }
 
