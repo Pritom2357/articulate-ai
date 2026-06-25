@@ -1443,3 +1443,63 @@ body {
 .light .recharts-legend-item-text {
   color: #475569 !important;
 }
+
+/* Light mode overrides for Auth Pages (Login & Register) */
+.light .colorful-mesh-container {
+  background-color: #f1f5f9;
+}
+.light .colorful-mesh-container::before,
+.light .colorful-mesh-container::after {
+  opacity: 0.15;
+}
+.light .mesh-blob-3 {
+  opacity: 0.12;
+}
+.light .glass-form-card {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #0f172a;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.08);
+}
+.light .glass-form-card:hover {
+  border-color: rgba(0, 0, 0, 0.15);
+}
+.light .glass-title {
+  background: linear-gradient(135deg, #0f172a 60%, rgba(15, 23, 42, 0.7));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.light .glass-subtitle {
+  color: #475569;
+}
+.light .glass-label {
+  color: #334155;
+}
+.light .glass-input,
+.light .glass-select {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #0f172a;
+}
+.light .glass-input:focus,
+.light .glass-select:focus {
+  background: #ffffff;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+.light .glass-input::placeholder {
+  color: rgba(15, 23, 42, 0.35);
+}
+.light .glass-select option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+.light .glass-note {
+  color: #475569;
+}
+.light .glass-link {
+  color: #4f46e5;
+}
+.light .glass-link:hover {
+  color: #3730a3;
+}
