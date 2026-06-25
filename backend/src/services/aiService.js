@@ -1,7 +1,5 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-// denoiserClient.js (HTTP client for the Python DeepFilterNet worker) is temporarily unused —
-// the worker is detached for now and will come back as a standalone HTTPS service later.
-const { convertToWav } = require('../utils/audioConverter.js');
+const denoiserClient = require('./denoiserClient.js');
 
 class AIService {
   constructor() {
@@ -36,21 +34,33 @@ class AIService {
       return this._mockPronunciationAssessment(referenceText);
     }
 
-    // No denoiser is run here at all (intentionally detached — it'll come back later as a
-    // separate standalone HTTPS service via denoiserClient.js, not called from here). This is
-    // purely a format fix: Azure's REST endpoint can silently fail to decode raw browser-recorded
-    // webm/opus (a live MediaRecorder blob lacks the finalized headers a complete file has) even
-    // with a technically-correct Content-Type — confirmed live: this produced SNR:0 / all-zero
-    // scores. ffmpeg sniffs the actual codec from the bytes and re-muxes into a proper, complete
-    // WAV. The audio itself is never altered/cleaned — it's the user's original voice, unchanged.
-    let azureBuffer = audioBuffer;
-    let azureMimeType = audioMimeType;
+    // Run the recording through the Python DeepFilterNet worker before handing it to Azure —
+    // background noise (room hum, fan, etc.) otherwise gets scored as part of the user's speech.
+    // Falls back to the raw recording if the worker is unreachable, so a stopped/missing worker
+    // degrades quality rather than breaking the whole assessment flow.
+    let denoisedBuffer = audioBuffer;
+    let denoisedMimeType = audioMimeType;
+    let denoisedAudioDataUrl = null;
     try {
-      azureBuffer = await convertToWav(audioBuffer);
-      azureMimeType = 'audio/wav';
-      console.log('[assessPronunciation] ffmpeg WAV conversion succeeded', { bytes: azureBuffer.length });
-    } catch (convertErr) {
-      console.warn('[assessPronunciation] ffmpeg conversion failed, sending raw audio as last resort:', convertErr.message);
+      console.log('[assessPronunciation] >>> sending to denoiser worker', {
+        bytes: audioBuffer?.length,
+        mimeType: audioMimeType
+      });
+      denoisedBuffer = await denoiserClient.denoise(audioBuffer, audioMimeType);
+      denoisedMimeType = 'audio/wav';
+      denoisedAudioDataUrl = `data:audio/wav;base64,${denoisedBuffer.toString('base64')}`;
+      console.log('[assessPronunciation] <<< denoised audio received', { bytes: denoisedBuffer.length });
+    } catch (denoiseErr) {
+      console.warn('[assessPronunciation] denoiser worker unavailable:', denoiseErr.message);
+      try {
+        console.log('[assessPronunciation] >>> falling back to internal ffmpeg-static converter');
+        const audioConverter = require('./audioConverter');
+        denoisedBuffer = await audioConverter.convertToWav(audioBuffer);
+        denoisedMimeType = 'audio/wav';
+        console.log('[assessPronunciation] <<< fallback converter success', { bytes: denoisedBuffer.length });
+      } catch (convErr) {
+        console.warn('[assessPronunciation] fallback converter also failed, using raw audio:', convErr.message);
+      }
     }
 
     try {
@@ -72,14 +82,14 @@ class AIService {
       // or Azure will fail to decode it correctly (silently producing garbage/empty recognition
       // rather than an obvious error). The frontend records via MediaRecorder, so this must reflect
       // whatever mimetype it actually used (audio/webm;codecs=opus, audio/ogg;codecs=opus, audio/mp4, ...).
-      const contentType = this._mapToAzureContentType(azureMimeType);
+      const contentType = this._mapToAzureContentType(denoisedMimeType);
 
       console.log('[assessPronunciation] >>> REQUEST', {
         referenceText,
         receivedMimeType: audioMimeType,
-        sentMimeType: azureMimeType,
+        sentMimeType: denoisedMimeType,
         azureContentType: contentType,
-        audioBufferBytes: azureBuffer?.length,
+        audioBufferBytes: denoisedBuffer?.length,
         region: this.azureRegion
       });
 
@@ -92,7 +102,7 @@ class AIService {
           'Pronunciation-Assessment': paramsBase64,
           'Accept': 'application/json'
         },
-        body: azureBuffer
+        body: denoisedBuffer
       });
 
       if (!response.ok) {
@@ -162,6 +172,7 @@ class AIService {
         recognized_text: bestResult.Display,
         feedback: feedback,
         phonemes,
+        denoised_audio_url: denoisedAudioDataUrl,
         words: bestResult.Words?.map(w => ({
           word: w.Word,
           accuracy_score: Math.round(w.AccuracyScore || 0),
