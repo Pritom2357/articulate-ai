@@ -138,3 +138,10 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+
+# Data base seeds
+id-word.json
+badges.txt
+scratch_sql.txt
+top1300.txt
