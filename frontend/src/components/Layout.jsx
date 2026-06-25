@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
 import { updateProfile } from '../api/user.js';
-import { getNotifications } from '../api/progress.js';
+import { getUnreadNotificationCount } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articucate_female.jpeg';
 import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key, Bookmark, Trophy, Search, X, Loader } from 'lucide-react';
@@ -13,9 +13,9 @@ function AnimatedBrandText({ text, baseDelay = 0, className = "" }) {
   return (
     <span className={className}>
       {text.split('').map((char, index) => (
-        <span 
-          key={index} 
-          className="brand-letter" 
+        <span
+          key={index}
+          className="brand-letter"
           style={{ animationDelay: `${baseDelay + index * 0.04}s` }}
         >
           {char}
@@ -46,7 +46,7 @@ function SidebarBrand() {
 function GuideIndicator({ user, onUpdate }) {
   const isFemale = user.guide_preference === 'FEMALE';
   const avatarImg = isFemale ? femaleAvatar : maleAvatar;
-  
+
   return (
     <div className="bg-white/3 rounded-xl p-3 mb-4 mt-2 border border-white/5 text-xs">
       <div className="flex items-center gap-2 mb-1.5 font-bold text-slate-300">
@@ -107,7 +107,7 @@ function GlobalSearch() {
   };
 
   return (
-    <div className="relative mb-4 px-2">
+    <div className="relative w-full min-w-[200px] sm:min-w-[350px] md:min-w-[500px] lg:min-w-[650px] max-w-3xl">
       <div className={`flex items-center bg-slate-900/50 border ${isOpen ? 'border-indigo-500/50' : 'border-white/10'} rounded-xl px-3 py-2 transition-all`}>
         <Search size={16} className="text-slate-400 mr-2" />
         <input
@@ -166,7 +166,7 @@ function GlobalSearch() {
           )}
         </div>
       )}
-      
+
       {/* Click outside overlay */}
       {isOpen && <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>}
     </div>
@@ -187,23 +187,10 @@ export default function Layout() {
 
     async function fetchUnread() {
       try {
-        const notifications = await getNotifications();
-        const readIds = JSON.parse(localStorage.getItem('read_notification_ids') || '[]');
-        const clearedIds = JSON.parse(localStorage.getItem('cleared_notification_ids') || '[]');
-        
-        // Filter out cleared ones
-        const activeNotifs = notifications.filter(n => !clearedIds.includes(n.id));
-
-        if (location.pathname === '/notifications') {
-          const newReadIds = Array.from(new Set([...readIds, ...activeNotifs.map(n => n.id)]));
-          localStorage.setItem('read_notification_ids', JSON.stringify(newReadIds));
-          setUnreadCount(0);
-        } else {
-          const unread = activeNotifs.filter(n => !readIds.includes(n.id));
-          setUnreadCount(unread.length);
-        }
+        const count = await getUnreadNotificationCount();
+        setUnreadCount(count);
       } catch (err) {
-        console.error('Failed to fetch notifications for badge:', err);
+        console.error('Failed to fetch unread count:', err);
       }
     }
 
@@ -314,7 +301,7 @@ export default function Layout() {
         <SidebarBrand />
 
         {user && <GuideIndicator user={user} onUpdate={handleToggleGuide} />}
-        {user && <GlobalSearch />}
+
 
         <nav className="sidebar-nav">
           <div className="nav-section-label">Learn</div>
@@ -346,28 +333,6 @@ export default function Layout() {
               <NavLink to="/tests" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
                 <span className="nav-icon"><ClipboardList size={16} /></span> Tests
               </NavLink>
-              <NavLink to="/notifications" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="nav-icon" style={{ position: 'relative' }}>
-                  <Bell size={16} />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                    </span>
-                  )}
-                </span>
-                <span>Notifications</span>
-                {unreadCount > 0 && (
-                  <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center">
-                    {unreadCount}
-                  </span>
-                )}
-              </NavLink>
-
-              <div className="nav-section-label" style={{ marginTop: '0.5rem' }}>Account</div>
-              <NavLink to="/profile" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="nav-icon"><User size={16} /></span> Profile
-              </NavLink>
             </>
           )}
         </nav>
@@ -386,6 +351,46 @@ export default function Layout() {
       </aside>
 
       <main className="main-content">
+        {/* Persistent Top Bar with Notifications & Profile */}
+        <div className="top-bar">
+          <div className="top-bar-left"></div>
+
+          <div className="top-bar-center">
+            {/* Global Search Bar */}
+            {user && <GlobalSearch />}
+          </div>
+
+          <div className="top-bar-actions">
+            {/* Notification Bell */}
+            <Link to="/notifications" className="top-bar-icon-btn" title="Notifications">
+              <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="top-bar-badge">
+                  <span className="top-bar-badge-ping"></span>
+                  <span className="top-bar-badge-count">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                </span>
+              )}
+            </Link>
+
+            {/* Profile Avatar */}
+            {user ? (
+              <Link to="/profile" className="top-bar-profile" title="Profile">
+                {user.profile_photo ? (
+                  <img src={user.profile_photo} alt={user.name} className="top-bar-avatar" />
+                ) : (
+                  <div className="top-bar-avatar-placeholder">
+                    {user.name?.charAt(0)?.toUpperCase() || <User size={18} />}
+                  </div>
+                )}
+              </Link>
+            ) : (
+              <Link to="/login" className="top-bar-icon-btn" title="Sign in">
+                <User size={20} />
+              </Link>
+            )}
+          </div>
+        </div>
+
         <Outlet />
       </main>
     </div>
