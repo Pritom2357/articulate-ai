@@ -1,37 +1,47 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getChapter } from '../api/curriculum.js';
+import { getProgress } from '../api/progress.js';
 import { Award, BookOpen, ShieldAlert, Sparkles, MessageCircle } from 'lucide-react';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 export default function ChapterDetails() {
   const { id } = useParams();
+  const { t } = useThemeLanguage();
   const [chapter, setChapter] = useState(null);
   const [lessons, setLessons] = useState([]);
+  const [progress, setProgress] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadChapter() {
+    async function loadChapterAndProgress() {
       try {
         setLoading(true);
-        const result = await getChapter(id);
+        const [result, progressData] = await Promise.all([
+          getChapter(id),
+          getProgress().catch(() => null)
+        ]);
         setChapter(result.chapter);
         setLessons(result.lessons || []);
+        if (progressData) {
+          setProgress(progressData);
+        }
       } catch (err) {
-        setError(err.payload?.error || err.message || 'চ্যাপ্টার লোড করা যায়নি।');
+        setError(err.payload?.error || err.message || t('chap_loading_error') || 'চ্যাপ্টার লোড করা যায়নি।');
       } finally {
         setLoading(false);
       }
     }
 
-    loadChapter();
-  }, [id]);
+    loadChapterAndProgress();
+  }, [id, t]);
 
   if (loading) {
     return (
       <div className="page-container text-center py-20">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-        <div className="text-slate-400 font-semibold">চ্যাপ্টার কন্টেন্ট লোড হচ্ছে...</div>
+        <div className="text-slate-400 font-semibold">{t('chap_loading')}</div>
       </div>
     );
   }
@@ -41,13 +51,13 @@ export default function ChapterDetails() {
       <div className="page-header border-b border-white/10 pb-4 mb-6">
         <div>
           <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-full mb-2 inline-block">
-            Chapter Details
+            {t('chap_details')}
           </span>
           <h1 className="page-title text-white mt-1">
-            {chapter?.title || `Chapter ${chapter?.order_num || id}`}
+            {chapter?.title || `${t('curr_chapter')} ${chapter?.order_num || id}`}
           </h1>
           <p className="page-subtitle text-slate-400">
-            {chapter?.description || 'চ্যাপ্টারের অধীনে থাকা লেসনগুলো শেষ করে আপনার স্পিকিং দক্ষতা বৃদ্ধি করুন।'}
+            {chapter?.description || t('chap_subtitle')}
           </p>
         </div>
       </div>
@@ -60,49 +70,59 @@ export default function ChapterDetails() {
       )}
 
       <div className="space-y-4">
-        {lessons.map((lesson, idx) => (
-          <Link key={lesson.id} to={`/lessons/${lesson.id}`} className="card-link">
-            <div className="card-card hover:border-indigo-500/50 hover:scale-[1.01] hover:shadow-[0_12px_24px_rgba(99,102,241,0.04)] transition-all duration-300 bg-slate-950/40 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/3 rounded-full filter blur-xl pointer-events-none"></div>
+        {lessons.map((lesson, idx) => {
+          const lessonProgress = progress?.lessons?.[lesson.id];
+          const isCompleted = lessonProgress?.status === 'COMPLETED';
 
-              <div className="flex justify-between items-center gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex-shrink-0 text-slate-400 group-hover:text-indigo-400 transition-colors">
-                    <BookOpen size={18} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/5 px-2 py-0.5 rounded">
-                        Lesson {lesson.order_num || (idx + 1)}
-                      </span>
-                      {lesson.type && (
-                        <span className="text-[9px] font-extrabold text-indigo-400 uppercase tracking-wider bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.25 rounded">
-                          {lesson.type}
-                        </span>
-                      )}
+          return (
+            <Link key={lesson.id} to={`/lessons/${lesson.id}`} className="card-link">
+              <div className="card-card hover:border-indigo-500/50 hover:scale-[1.01] hover:shadow-[0_12px_24px_rgba(99,102,241,0.04)] transition-all duration-300 bg-slate-950/40 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/3 rounded-full filter blur-xl pointer-events-none"></div>
+
+                <div className="flex justify-between items-center gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex-shrink-0 text-slate-400 group-hover:text-indigo-400 transition-colors">
+                      <BookOpen size={18} />
                     </div>
-                    <h2 className="text-lg font-extrabold text-white mt-1.5 group-hover:text-indigo-400 transition-colors">
-                      {lesson.title || `Lesson ${lesson.order_num || lesson.id}`}
-                    </h2>
-                    <p className="text-xs text-slate-400 leading-relaxed mt-1 font-medium">
-                      {lesson.summary || lesson.objective_bn || 'লেসনটি শুরু করে উচ্চারণ ও স্পিকিং অনুশীলন করুন।'}
-                    </p>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/5 px-2 py-0.5 rounded">
+                          {t('curr_lessons')} {lesson.order_num || (idx + 1)}
+                        </span>
+                        {lesson.type && (
+                          <span className="text-[9px] font-extrabold text-indigo-400 uppercase tracking-wider bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.25 rounded">
+                            {lesson.type}
+                          </span>
+                        )}
+                        {isCompleted && (
+                          <span className="text-[9px] font-black text-green-400 uppercase tracking-wider bg-green-500/10 border border-green-500/20 px-1.5 py-0.25 rounded flex items-center gap-0.5">
+                            ✓ {t('curr_completed')}
+                          </span>
+                        )}
+                      </div>
+                      <h2 className="text-lg font-extrabold text-white mt-1.5 group-hover:text-indigo-400 transition-colors">
+                        {lesson.title || `Lesson ${lesson.order_num || lesson.id}`}
+                      </h2>
+                      <p className="text-xs text-slate-400 leading-relaxed mt-1 font-medium">
+                        {lesson.summary || lesson.objective_bn || 'লেসনটি শুরু করে উচ্চারণ ও স্পিকিং অনুশীলন করুন।'}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <span className="text-indigo-400 text-xs font-bold whitespace-nowrap bg-indigo-500/10 hover:bg-indigo-500/20 px-3 py-1.5 rounded-xl border border-indigo-500/20 transition-colors">
-                  লেসন শুরু করুন ▶
-                </span>
+                  <span className={`text-xs font-bold whitespace-nowrap px-3 py-1.5 rounded-xl border transition-colors ${isCompleted ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20'}`}>
+                    {isCompleted ? t('chap_play_again') : t('chap_start_lesson')}
+                  </span>
+                </div>
               </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
 
         {lessons.length > 0 && (
           <div className="border-t border-dashed border-white/10 pt-6 mt-4">
             <h3 className="font-extrabold text-slate-300 text-sm mb-4 flex items-center gap-2">
               <Award size={18} className="text-cyan-400" />
-              চ্যাপ্টার মূল্যায়ন পরীক্ষা (Chapter Evaluation)
+              {t('chap_evaluation')}
             </h3>
 
             <Link to={`/chapters/${id}/conversation`} className="card-link">
@@ -116,16 +136,16 @@ export default function ChapterDetails() {
                     </div>
                     <div>
                       <h2 className="text-xl font-extrabold text-cyan-300 group-hover:text-cyan-200 transition-colors">
-                        IELTS ওপেন কনভারসেশন পরীক্ষা (Start Test)
+                        {t('chap_test_title')}
                       </h2>
                       <p className="text-xs text-indigo-200 mt-1 leading-relaxed font-semibold max-w-xl">
-                        চ্যাপ্টারের পড়া শেষে আপনার এআই গাইড টিউটরের সাথে একটি IELTS স্টাইলের কথপোকথন পরীক্ষা দিন। এআই টিউটর আপনার উত্তরগুলো থেকে গুরুত্বপূর্ণ কিওয়ার্ড পরিমাপ করবে এবং আপনার পরবর্তী আরএজি (RAG) স্টাডি প্ল্যান তৈরি করে দেবে।
+                        {t('chap_test_subtitle')}
                       </p>
                     </div>
                   </div>
 
                   <button className="px-5 py-3 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-extrabold rounded-xl border-none cursor-pointer text-xs shadow-lg transition duration-300 flex items-center gap-2 self-stretch sm:self-auto justify-center">
-                    <Sparkles size={14} /> পরীক্ষা শুরু করুন ▶
+                    <Sparkles size={14} /> {t('chap_start_test')}
                   </button>
                 </div>
               </div>
@@ -136,8 +156,8 @@ export default function ChapterDetails() {
         {lessons.length === 0 && (
           <div className="empty-state py-16 border border-dashed border-white/10 bg-slate-950/20">
             <div className="text-4xl mb-3">📖</div>
-            <h3 className="font-extrabold text-white text-base">এই চ্যাপ্টারে কোনো লেসন পাওয়া যায়নি</h3>
-            <p className="text-xs text-slate-500 mt-1">অনুগ্রহ করে পরবর্তীতে আবার ঘুরে আসুন।</p>
+            <h3 className="font-extrabold text-white text-base">{t('chap_empty')}</h3>
+            <p className="text-xs text-slate-500 mt-1">{t('chap_empty_sub')}</p>
           </div>
         )}
       </div>

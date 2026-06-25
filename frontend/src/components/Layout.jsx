@@ -5,8 +5,9 @@ import { updateProfile } from '../api/user.js';
 import { getUnreadNotificationCount } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articucate_female.jpeg';
-import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key, Bookmark, Trophy, Search, X, Loader } from 'lucide-react';
+import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key, Bookmark, Trophy, Search, X, Loader, Sun, Moon, Globe } from 'lucide-react';
 import { searchCurriculum } from '../api/curriculum.js';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 
 function AnimatedBrandText({ text, baseDelay = 0, className = "" }) {
@@ -44,13 +45,14 @@ function SidebarBrand() {
 }
 
 function GuideIndicator({ user, onUpdate }) {
+  const { t } = useThemeLanguage();
   const isFemale = user.guide_preference === 'FEMALE';
   const avatarImg = isFemale ? femaleAvatar : maleAvatar;
 
   return (
     <div className="bg-white/3 rounded-xl p-3 mb-4 mt-2 border border-white/5 text-xs">
       <div className="flex items-center gap-2 mb-1.5 font-bold text-slate-300">
-        <span>🤖</span> Active Tutor:
+        <span>🤖</span> {t('nav_active_tutor')}
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -59,14 +61,14 @@ function GuideIndicator({ user, onUpdate }) {
           </div>
           <div>
             <div className="font-semibold text-white">{isFemale ? 'Riya (রিয়া)' : 'Rohit (রোহিত)'}</div>
-            <div className="text-slate-400 font-medium">{isFemale ? 'Female Guide' : 'Male Guide'}</div>
+            <div className="text-slate-400 font-medium">{isFemale ? t('nav_tutor_female') : t('nav_tutor_male')}</div>
           </div>
         </div>
         <button
           onClick={() => onUpdate(isFemale ? 'MALE' : 'FEMALE')}
           className="text-indigo-400 hover:text-indigo-300 font-bold border-none bg-transparent cursor-pointer transition-colors"
         >
-          Change
+          {t('nav_change')}
         </button>
       </div>
     </div>
@@ -106,13 +108,15 @@ function GlobalSearch() {
     setQuery('');
   };
 
+  const { t } = useThemeLanguage();
+
   return (
     <div className="relative w-full min-w-[200px] sm:min-w-[350px] md:min-w-[500px] lg:min-w-[650px] max-w-3xl">
       <div className={`flex items-center bg-slate-900/50 border ${isOpen ? 'border-indigo-500/50' : 'border-white/10'} rounded-xl px-3 py-2 transition-all`}>
         <Search size={16} className="text-slate-400 mr-2" />
         <input
           type="text"
-          placeholder="Search lessons, words..."
+          placeholder={t('nav_search')}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -175,6 +179,7 @@ function GlobalSearch() {
 
 export default function Layout() {
   const { user, logout, refreshUser } = useAuth();
+  const { theme, language, toggleTheme, toggleLanguage, t } = useThemeLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -304,34 +309,34 @@ export default function Layout() {
 
 
         <nav className="sidebar-nav">
-          <div className="nav-section-label">Learn</div>
+          <div className="nav-section-label">{language === 'bn' ? 'শিখুন' : 'Learn'}</div>
           <NavLink to="/curriculum" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon"><BookOpen size={16} /></span> Curriculum
+            <span className="nav-icon"><BookOpen size={16} /></span> {t('nav_curriculum')}
           </NavLink>
           <NavLink to="/flashcards" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon"><Layers size={16} /></span> Flashcards
+            <span className="nav-icon"><Layers size={16} /></span> {t('nav_flashcards')}
           </NavLink>
           <NavLink to="/progress" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon"><BarChart2 size={16} /></span> My Progress
+            <span className="nav-icon"><BarChart2 size={16} /></span> {t('nav_progress')}
           </NavLink>
           <NavLink to="/leaderboard" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon"><Trophy size={16} /></span> Leaderboard
+            <span className="nav-icon"><Trophy size={16} /></span> {t('nav_leaderboard')}
           </NavLink>
           <NavLink to="/vocabulary" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon"><Bookmark size={16} /></span> My Vocabulary
+            <span className="nav-icon"><Bookmark size={16} /></span> {t('nav_vocabulary')}
           </NavLink>
           <NavLink to="/onboarding" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon"><ClipboardList size={16} /></span> Placement Test
+            <span className="nav-icon"><ClipboardList size={16} /></span> {t('nav_placement')}
           </NavLink>
 
           {user && (
             <>
-              <div className="nav-section-label" style={{ marginTop: '0.5rem' }}>AI Assistant</div>
+              <div className="nav-section-label" style={{ marginTop: '0.5rem' }}>{language === 'bn' ? 'এআই অ্যাসিস্ট্যান্ট' : 'AI Assistant'}</div>
               <NavLink to="/ai-chat" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="nav-icon"><Sparkles size={16} /></span> AI Chat
+                <span className="nav-icon"><Sparkles size={16} /></span> {t('nav_ai_chat')}
               </NavLink>
               <NavLink to="/tests" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="nav-icon"><ClipboardList size={16} /></span> Tests
+                <span className="nav-icon"><ClipboardList size={16} /></span> {t('nav_tests')}
               </NavLink>
             </>
           )}
@@ -340,11 +345,11 @@ export default function Layout() {
         <div className="sidebar-footer">
           {user ? (
             <button className="nav-button" onClick={handleLogout}>
-              <span className="nav-icon"><LogOut size={16} /></span> Sign out
+              <span className="nav-icon"><LogOut size={16} /></span> {t('nav_sign_out')}
             </button>
           ) : (
             <Link to="/login" className="nav-link" style={{ display: 'flex', gap: '0.75rem', padding: '0.65rem 0.75rem' }}>
-              <span className="nav-icon"><Key size={16} /></span> Sign in
+              <span className="nav-icon"><Key size={16} /></span> {t('nav_sign_in')}
             </Link>
           )}
         </div>
@@ -361,6 +366,26 @@ export default function Layout() {
           </div>
 
           <div className="top-bar-actions">
+            {/* Language Switcher */}
+            <button 
+              onClick={toggleLanguage} 
+              className="top-bar-icon-btn font-extrabold text-xs" 
+              title={language === 'bn' ? 'Switch to English' : 'বাংলায় পরিবর্তন করুন'}
+              style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}
+            >
+              <span className="text-[8px] uppercase tracking-wider text-indigo-400 flex items-center gap-0.5"><Globe size={8} /> {language === 'bn' ? 'EN' : 'BN'}</span>
+              <span>{language === 'bn' ? 'EN' : 'বাং'}</span>
+            </button>
+
+            {/* Theme Switcher */}
+            <button 
+              onClick={toggleTheme} 
+              className="top-bar-icon-btn" 
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {theme === 'dark' ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-indigo-600" />}
+            </button>
+
             {/* Notification Bell */}
             <Link to="/notifications" className="top-bar-icon-btn" title="Notifications">
               <Bell size={20} />

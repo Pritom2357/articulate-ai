@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext.jsx';
+import { ThemeLanguageProvider } from './contexts/ThemeLanguageContext.jsx';
 import Layout from './components/Layout.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Landing from './pages/Landing.jsx';
@@ -24,7 +25,8 @@ import './App.css';
 
 function App() {
   return (
-    <AuthProvider>
+    <ThemeLanguageProvider>
+      <AuthProvider>
       <BrowserRouter>
         <Routes>
           {/* Public Routes (Full screen, no sidebar) */}
@@ -61,7 +63,8 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </ThemeLanguageProvider>
   );
 }
 
