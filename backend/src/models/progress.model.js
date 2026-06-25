@@ -10,7 +10,7 @@ const XP_WORD_PASS_CLEAN = 20
 const XP_WORD_PASS_FLAG = 10
 const XP_CHAPTER_COMPLETE = 200
 const XP_STREAK_BONUS = 30
-const XP_PHONEME_MASTERED = 100
+const XP_PHONEME_MASTERED = 20
 
 class ProgressModel {
     constructor() {
@@ -394,7 +394,7 @@ class ProgressModel {
         try {
             const query = `
                 INSERT INTO user_lesson_progress
-                    (user_id, lesson_id, score, status, completed_at, started_at, attempts)
+                    (user_id, lesson_id, score, status, completed_at, started_at, attempts, completion_pct)
                 VALUES(
                     $1,
                     $2,
@@ -402,7 +402,8 @@ class ProgressModel {
                     'COMPLETED',
                     NOW(),
                     NOW(),
-                    1
+                    1,
+                    100
                 )
                 ON CONFLICT (user_id, lesson_id) DO UPDATE
                 SET
@@ -680,15 +681,15 @@ class ProgressModel {
      * @param {Array<{phoneme: string, score: number}>} phonemes
      * @returns {Promise<{masteredPhonemes: string[], ragTriggerPhonemes: string[]}>}
      */
-    logPhonemeScores = async (userId, wordId, phonemes) => {
+    logPhonemeScores = async (userId, wordId, phraseId, phonemes) => {
         const masteredPhonemes = [];
         const ragTriggerPhonemes = [];
 
         try {
             for (const { phoneme, score } of phonemes) {
                 await this.db_connection.query_executor(
-                    `INSERT INTO user_phoneme_scores (user_id, phoneme, score, word_id) VALUES ($1, $2, $3, $4);`,
-                    [userId, phoneme, score, wordId]
+                    `INSERT INTO user_phoneme_scores (user_id, phoneme, score, word_id, phrase_id) VALUES ($1, $2, $3, $4, $5);`,
+                    [userId, phoneme, score, wordId, phraseId]
                 );
 
                 const upsertQuery = `
@@ -706,7 +707,7 @@ class ProgressModel {
                     [userId, phoneme, score, failStreakOnInsert]
                 );
 
-                if (!summary.mastered && summary.avg_score >= 80 && summary.total_attempts >= 10) {
+                if (!summary.mastered && summary.avg_score >= 90 && summary.total_attempts >= 10) {
                     await this.db_connection.query_executor(
                         `UPDATE user_phoneme_summary SET mastered = true WHERE user_id = $1 AND phoneme = $2;`,
                         [userId, phoneme]
