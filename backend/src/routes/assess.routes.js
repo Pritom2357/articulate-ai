@@ -34,11 +34,6 @@ assessRouter.get(
     assessController.ragSession
 );
 
-assessRouter.post(
-    '/ai-chat',
-    authenticateToken.authenticateToken,
-    assessController.generalChat
-);
 
 assessRouter.post(
     '/tests/submit',
