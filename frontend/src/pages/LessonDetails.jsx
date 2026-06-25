@@ -231,14 +231,6 @@ export default function LessonDetails() {
       setPronFeedback(response.feedback);
       setPhonemeScores(response.phonemes || []);
 
-      // The backend runs the recording through a denoiser before scoring it — once that comes
-      // back, swap the playback source to it so "your recording" is the cleaned-up version
-      // actually used for scoring, not the raw mic capture.
-      if (response.denoised_audio_url) {
-        URL.revokeObjectURL(rawUrl);
-        setRecordedAudioUrl(response.denoised_audio_url);
-      }
-
       if (response.overall_score >= 60) {
         setPassCount(prev => prev + 1);
       }

@@ -330,15 +330,6 @@ export default function Onboarding() {
       setPronScore(data.overall_score);
       setPronFeedback(data.feedback);
 
-      // The backend denoises the recording before scoring it — swap playback to that cleaned
-      // version once it comes back, so "your recording" matches what was actually scored.
-      if (data.denoised_audio_url) {
-        setRecordedAudioUrl(prev => {
-          if (prev) URL.revokeObjectURL(prev);
-          return data.denoised_audio_url;
-        });
-      }
-
       const isCorrect = data.overall_score >= 60; // 60% accuracy threshold to pass
       setScores(prev => [...prev, isCorrect]);
     } catch (err) {
