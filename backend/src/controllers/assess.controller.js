@@ -15,7 +15,7 @@ class AssessController {
     assessPronunciation = async (req, res) => {
         try {
             const userId = req.user.id;
-            const { referenceText, wordId } = req.body || {};
+            const { referenceText, wordId, phraseId } = req.body || {};
 
             if (!req.file) {
                 return res.status(400).json({ success: false, error: 'Audio file is required' });
@@ -59,6 +59,7 @@ class AssessController {
                     const { ragTriggerPhonemes } = await this.progressModel.logPhonemeScores(
                         userId,
                         wordId ? parseInt(wordId) : null,
+                        phraseId ? parseInt(phraseId) : null,
                         result.phonemes
                     );
 

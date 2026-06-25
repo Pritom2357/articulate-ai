@@ -57,6 +57,8 @@ export default function LessonDetails() {
   const [recordedAudioUrl, setRecordedAudioUrl] = useState(null);
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
   const [bookmarkedWordIds, setBookmarkedWordIds] = useState(new Set());
+  const [wordScores, setWordScores] = useState({});
+  const [phraseScores, setPhraseScores] = useState({});
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -241,6 +243,14 @@ export default function LessonDetails() {
         setRecordedAudioUrl(response.denoised_audio_url);
       }
 
+      if (response.overall_score !== undefined && response.overall_score !== null) {
+        if (isWordTest) {
+          setWordScores(prev => ({...prev, [testWordIndex]: Math.max(prev[testWordIndex] || 0, response.overall_score)}));
+        } else {
+          setPhraseScores(prev => ({...prev, [testPhraseIndex]: Math.max(prev[testPhraseIndex] || 0, response.overall_score)}));
+        }
+      }
+
       if (response.overall_score >= 60) {
         setPassCount(prev => prev + 1);
       }
@@ -295,7 +305,17 @@ export default function LessonDetails() {
   const completeLesson = async () => {
     try {
       setLoading(true);
-      await markLessonComplete({ lessonId: id, score: 100 });
+      const wordWeight = 1;
+      const phraseWeight = 2;
+
+      let totalWeightedScore = 0;
+      Object.values(wordScores).forEach(s => totalWeightedScore += s * wordWeight);
+      Object.values(phraseScores).forEach(s => totalWeightedScore += s * phraseWeight);
+
+      const totalWeight = (words.length * wordWeight) + (phrases.length * phraseWeight);
+      const avgScore = totalWeight > 0 ? Math.round(totalWeightedScore / totalWeight) : 100;
+
+      await markLessonComplete({ lessonId: id, score: avgScore });
       await refreshUser();
       setWizardStep(5);
     } catch (err) {
