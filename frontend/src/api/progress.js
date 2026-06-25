@@ -59,9 +59,31 @@ export async function getRagSession() {
   return request('/assess/rag-session');
 }
 
-export async function getNotifications() {
-  const response = await request('/notifications');
-  return response.notifications || [];
+export async function getNotifications({ limit = 30, offset = 0, filter = 'ALL' } = {}) {
+  const params = new URLSearchParams({ limit, offset, filter });
+  const response = await request(`/notifications?${params}`);
+  return response; // { notifications, unreadCount, pagination }
+}
+
+export async function getUnreadNotificationCount() {
+  const response = await request('/notifications/unread-count');
+  return response.count || 0;
+}
+
+export async function markNotificationRead(id) {
+  return request(`/notifications/${id}/read`, { method: 'PATCH' });
+}
+
+export async function markAllNotificationsRead() {
+  return request('/notifications/read-all', { method: 'PATCH' });
+}
+
+export async function deleteNotification(id) {
+  return request(`/notifications/${id}`, { method: 'DELETE' });
+}
+
+export async function deleteAllNotifications() {
+  return request('/notifications', { method: 'DELETE' });
 }
 
 export async function getXpLog(limit = 100) {
