@@ -1,0 +1,94 @@
+import { request, authorizedFetch } from '../utils/apiClient.js';
+
+export async function getDueFlashcards() {
+  const response = await request('/progress/flashcards/due');
+  return response.cards || [];
+}
+
+export async function reviewFlashcard(payload) {
+  const response = await request('/progress/flashcards/review', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return response.card;  // was returning raw response
+}
+
+export async function markLessonComplete(payload) {
+  const response = await request('/progress/lesson', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  // returns { lesson, xp, level } — keep full shape for caller to use
+  return response;
+}
+
+export async function getProgress() {
+  const response = await request('/progress');
+  return response.progress;  // was returning raw response
+}
+
+export async function assessPronunciation(formData) {
+  const response = await authorizedFetch('/assess/pronunciation/assess', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error || 'Pronunciation assessment failed');
+  }
+
+  return response.json();
+}
+
+export async function getPronunciationFeedback(phonemeScores) {
+  return request('/assess/pronunciation/feedback', {
+    method: 'POST',
+    body: JSON.stringify({ phonemeScores }),
+  });
+}
+
+export async function assessConversation(payload) {
+  return request('/assess/conversation/assess', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getRagSession() {
+  return request('/assess/rag-session');
+}
+
+export async function getNotifications() {
+  const response = await request('/notifications');
+  return response.notifications || [];
+}
+
+export async function getXpLog(limit = 100) {
+  const response = await request(`/progress/xp-log?limit=${limit}`);
+  return response.logs || [];
+}
+
+export async function getLeaderboard(limit = 100) {
+  const response = await request(`/progress/leaderboard?limit=${limit}`);
+  return response.leaderboard || [];
+}
+
+export async function getStreakCalendar(year, month) {
+  const response = await request(`/progress/streak-calendar?year=${year}&month=${month}`);
+  return response.activeDates || [];
+}
+
+export async function generalChat(payload) {
+  return request('/assess/ai-chat', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function submitTestAttempt(payload) {
+  return request('/assess/tests/submit', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}

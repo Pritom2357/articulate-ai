@@ -8,7 +8,7 @@ const { createLogger, transports } = require("winston");
 const LokiTransport = require("winston-loki");
 const responseTime = require('response-time');
 const path = require('path');
-const {rateLimit} = require('express-rate-limit');
+const { rateLimit } = require('express-rate-limit');
 const http = require('http');
 const createSocketServer = require('./realtime/socketServer.js');
 const NotificationService = require('./notifications/notificationService.js');
@@ -16,11 +16,20 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { swaggerJsdocOptions } = require('./docs/swaggerConfig.js');
 
-dotenv.config({path: path.resolve(__dirname, '.env')});
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
+// app setup --> add our necessary routes here...
 const app = express();
-const {authRouter} = require('./routes/authRoutes.js');
-const {userRouter} = require('./routes/userRoutes.js');
+const { authRouter } = require('./routes/auth.routes.js');
+const { userRouter } = require('./routes/user.routes.js');
+const { curriculumRouter } = require('./routes/curriculum.routes.js');
+const { progressRouter } = require('./routes/progress.routes.js');
+const { assessRouter } = require('./routes/assess.routes.js');
+const { notificationsRouter } = require('./routes/notifications.routes.js');
+const { vocabularyRouter } = require('./routes/vocabulary.routes.js');
+
+
+
 const PORT = process.env.PORT || 8000;
 const server = http.createServer(app);
 const socketLayer = createSocketServer(server);
@@ -33,43 +42,43 @@ const corsOptions = {
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'HEAD'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     exposedHeaders: ['Content-Length', 'X-Knowledge-Base'],
-    credentials: false,  
-    maxAge: 600, 
+    credentials: false,
+    maxAge: 600,
 }
 
 const apiLimiter = rateLimit({
-	windowMs: 15 * 60 * 1000, 
-	limit: 500, 
-	standardHeaders: 'draft-8', 
-	legacyHeaders: false, 
-	ipv6Subnet: 56
+    windowMs: 15 * 60 * 1000,
+    limit: 500,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    ipv6Subnet: 56
 });
 
 const loginLimiter = rateLimit({
-	windowMs: 5 * 60 * 1000, 
-	limit: 50, 
-	standardHeaders: 'draft-8', 
-	legacyHeaders: false, 
-	ipv6Subnet: 64
+    windowMs: 5 * 60 * 1000,
+    limit: 50,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    ipv6Subnet: 64
 });
 
 const SENSITIVE_FIELDS = ['password', 'oldPassword', 'newPassword', 'token', 'refreshToken', 'accessToken'];
 
-const sanitize = (obj)=>{
-    if(!obj || typeof obj !== 'object') return obj;
+const sanitize = (obj) => {
+    if (!obj || typeof obj !== 'object') return obj;
     const out = {};
-    for(const [key, value] of Object.entries(obj)){
-        if(SENSITIVE_FIELDS.includes(key)) out[key] = '[REDACTED]';
-        else if(typeof value === 'string' && value.length > 256) out[key] = value.slice(0, 256) + '...';
+    for (const [key, value] of Object.entries(obj)) {
+        if (SENSITIVE_FIELDS.includes(key)) out[key] = '[REDACTED]';
+        else if (typeof value === 'string' && value.length > 256) out[key] = value.slice(0, 256) + '...';
         else out[key] = value;
     }
 
     return out;
 }
 
-morgan.token('req-body', req=>{
-    if(process.env.LOG_REQUEST_BODY === 'false') return '-';
-    if(!req.body || Object.keys(req.body).length === 0) return '-';
+morgan.token('req-body', req => {
+    if (process.env.LOG_REQUEST_BODY === 'false') return '-';
+    if (!req.body || Object.keys(req.body).length === 0) return '-';
     try {
         return JSON.stringify(sanitize(req.body));
     } catch (error) {
@@ -77,18 +86,18 @@ morgan.token('req-body', req=>{
     }
 });
 
-morgan.token('query', req=>{
+morgan.token('query', req => {
     const q = req.query || {};
     return Object.keys(q).length ? JSON.stringify(q) : '-';
 });
 
-morgan.token('user-id', req=> req.user?.id || '-');
+morgan.token('user-id', req => req.user?.id || '-');
 const morganFormat = 'method=:method url=:url status=:status response time=:response-time ms len=:res[content-length] user=:user-id query=:query body=:req-body';
 
 const format = process.env.NODE_ENV === 'production' ? 'combined' : morganFormat;
 
 const collectDefaultMetrics = client.collectDefaultMetrics;
-collectDefaultMetrics({register: client.register});
+collectDefaultMetrics({ register: client.register });
 
 
 const totalRequestCounter = new client.Counter({
@@ -110,7 +119,7 @@ app.use(helmet());
 app.use(morgan(format));
 
 app.use(
-    responseTime((req, res, time)=>{
+    responseTime((req, res, time) => {
         totalRequestCounter.labels({
             method: req.method,
             route: req.route ? req.route.path : req.path,
@@ -121,20 +130,34 @@ app.use(
             route: req.route ? req.route.path : req.path,
             status_code: res.statusCode
         }).observe(time)
-}))
+    })
+)
 
+
+//////////// ad our apis here /////////////////
 app.use('/api/auth', loginLimiter, authRouter);
 app.use('/api/user', apiLimiter, userRouter);
+app.use('/api/curriculum', apiLimiter, curriculumRouter);
+app.use('/api/progress', apiLimiter, progressRouter);
+app.use('/api/assess', apiLimiter, assessRouter);
+app.use('/api/notifications', apiLimiter, notificationsRouter);
+app.use('/api/vocabulary', apiLimiter, vocabularyRouter);
 
-const options = {
-  transports: [
-    new LokiTransport({
-      host: "http://loki:3100",
-      handleExceptions: true,
-      labels: { app: 'node-backend' }
-    })
-  ]
-};
+
+
+const loggerTransports = [];
+
+if (process.env.ENABLE_LOKI === 'true') {
+    loggerTransports.push(
+        new LokiTransport({
+            host: "http://loki:3100",
+            handleExceptions: true,
+            labels: { app: 'node-backend' }
+        })
+    );
+}
+
+const options = { transports: loggerTransports };
 const logger = createLogger(options);
 
 if (process.env.ENABLE_SWAGGER !== 'false') {
@@ -144,24 +167,24 @@ if (process.env.ENABLE_SWAGGER !== 'false') {
             persistAuthorization: true
         }
     }));
-    app.get('/api/docs.json', (req,res)=> res.json(swaggerSpec));
+    app.get('/api/docs.json', (req, res) => res.json(swaggerSpec));
 }
 
-app.get('/metrics', async (req, res)=>{
+app.get('/metrics', async (req, res) => {
     res.setHeader('Content-Type', client.register.contentType);
     const metrics = await client.register.metrics();
     res.send(metrics);
 });
 
-app.get('/', (req, res)=>{
+app.get('/', (req, res) => {
     logger.info("Request came on / router");
     res.send("Welcome to the backend made for authentication template")
 })
- 
 
-server.listen(PORT, ()=>{    
+
+server.listen(PORT, () => {
     console.log(`Listening on: http://0.0.0.0:${PORT}`);
-    if(process.env.ENABLE_WEBSOCKETS === 'true'){
+    if (process.env.ENABLE_WEBSOCKETS === 'true') {
         console.log("Websockets enabled");
     }
 })

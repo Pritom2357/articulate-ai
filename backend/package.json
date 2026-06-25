@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "dev": "concurrently -n BACKEND,DENOISER -c blue,magenta \"npm:dev:backend\" \"npm:dev:denoiser\"",
+    "dev:backend": "nodemon src/index.js",
+    "dev:denoiser": "cd ../denoiser-worker && .venv\\Scripts\\python.exe -m uvicorn main:app --port 8001",
     "test": "jest --detectOpenHandles",
     "test:routes": "jest tests/routes --detectOpenHandles --verbose",
     "test:auth": "jest tests/routes/authRoutes.test.js --detectOpenHandles --verbose",
@@ -29,6 +31,7 @@
   "license": "ISC",
   "description": "A ready to use node backend template with authentication and user management pipeline",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "autocannon": "^8.0.0",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.7.0",
@@ -37,6 +40,7 @@
     "dotenv": "^16.4.5",
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
+    "ffmpeg-static": "^5.3.0",
     "formdata": "^0.10.4",
     "google-auth-library": "^10.3.0",
     "helmet": "^8.1.0",
@@ -46,7 +50,8 @@
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.5",
-    "nodemon": "^3.1.10",
+    "nodemon": "^3.1.14",
+    "openai": "^6.44.0",
     "pdf-parse": "^1.1.1",
     "pg": "^8.16.3",
     "prom-client": "^15.1.3",
@@ -58,6 +63,7 @@
     "winston-loki": "^6.1.3"
   },
   "devDependencies": {
+    "concurrently": "^10.0.3",
     "jest": "^30.2.0",
     "supertest": "^7.2.2"
   }
