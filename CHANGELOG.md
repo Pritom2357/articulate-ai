@@ -2,6 +2,16 @@
 
 All notable changes made during AI-assisted development sessions are recorded here, grouped by date/session. Each entry lists the files touched and a short summary of what changed and why.
 
+## 2026-06-26
+
+### AI Chatbot & RAG Session Refactoring (OpenAI & Azure TTS)
+- `backend/src/services/aiService.js` — Refactored to replace Gemini with OpenAI (`gpt-4o-mini`). Implemented `assessConversation`, `generalChat`, and `generateNextSessionRAG` with optimized temperature settings (0.3 for strict scoring, 0.7 for creative chat and recommendations). Added `textToSpeech()` using Azure's REST TTS API and SSML.
+- `backend/src/prompts/` (new) — Extracted large system prompts (`chatPrompt.txt`, `assessPrompt.txt`, `nextSessionPrompt.txt`) from code logic. `aiService.js` now reads these via `fs.readFileSync` during initialization.
+- `backend/src/controllers/chatbot.controller.js` (new) & `backend/src/routes/chatbot.routes.js` (new) — Extracted chatbot and TTS logic from `assess.controller.js` and `assess.routes.js` to adhere to single-responsibility principles. The endpoints `/chat` and `/tts` are now isolated here.
+- `backend/src/index.js` — Mounted the new `chatbotRouter` at `/api/chatbot`.
+- `frontend/src/api/progress.js` — Updated `generalChat` and added `textToSpeech` fetch wrappers to point to the new `/chatbot` endpoints.
+- `frontend/src/pages/AIChat.jsx` — Implemented frontend audio playback (`handleReadAloud`). Added clickable speaker icons under AI responses. The voice selection automatically adapts to the user's preferred tutor gender (`en-US-JennyNeural` for Riya, `en-US-GuyNeural` for Rohit).
+
 ## 2026-06-16
 
 ### Word pronunciation audio: use real audio_url instead of browser TTS

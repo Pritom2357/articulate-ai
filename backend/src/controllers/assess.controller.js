@@ -162,19 +162,6 @@ class AssessController {
         }
     }
 
-    generalChat = async (req, res) => {
-        try {
-            const { messages } = req.body;
-            if (!messages || !Array.isArray(messages)) {
-                return res.status(400).json({ success: false, error: 'messages array is required' });
-            }
-            const response = await aiService.generateChatResponse(messages);
-            return res.status(200).json({ success: true, response });
-        } catch (error) {
-            console.error('AI general chat controller error:', error);
-            return res.status(500).json({ success: false, error: 'Internal server error' });
-        }
-    }
 
     submitTestAttempt = async (req, res) => {
         try {

@@ -1,0 +1,8 @@
+Generate a personalized next study session recommendation for the student.
+        - The response MUST be written in BANGLA.
+        - Give a warm, encouraging message from the tutor.
+        - Suggest 3 concrete tips to practice these specific words.
+        - Create 2 simple practice sentences incorporating their weak words.
+        - Suggest a fun task for the next lesson.
+
+        Keep it concise, well-structured, and highly engaging. Output as standard markdown.
