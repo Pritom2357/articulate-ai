@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 import { 
   Sparkles, 
   Mic, 
+  Sun,
+  Moon, 
   Play, 
   BookOpen, 
   Layers, 
@@ -50,6 +53,7 @@ const SCENARIOS = [
 
 export default function Landing() {
   const { user } = useAuth();
+  const { theme, toggleTheme } = useThemeLanguage();
   const [activeScenarioIdx, setActiveScenarioIdx] = useState(0);
   const scenario = SCENARIOS[activeScenarioIdx];
 
@@ -182,6 +186,217 @@ export default function Landing() {
         .brand-glow {
           text-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
         }
+
+        /* Light mode overrides for landing page */
+        .light .landing-layout {
+          background-color: #f8fafc;
+          color: #1e293b;
+        }
+        .light .landing-layout header {
+          background-color: rgba(255, 255, 255, 0.7);
+          border-color: rgba(0, 0, 0, 0.06);
+        }
+        .light .landing-layout header nav a {
+          color: #475569;
+        }
+        .light .landing-layout header nav a:hover {
+          color: #0f172a;
+        }
+        .light .landing-layout header a.text-slate-300 {
+          color: #475569;
+        }
+        .light .landing-layout header a.text-slate-300:hover {
+          color: #0f172a;
+        }
+        .light .landing-layout header .top-bar-icon-btn {
+          background: rgba(0, 0, 0, 0.04);
+          border-color: rgba(0, 0, 0, 0.08);
+          color: #475569;
+        }
+        .light .landing-layout header .top-bar-icon-btn:hover {
+          background: rgba(0, 0, 0, 0.08);
+          color: #0f172a;
+        }
+        .light .landing-layout .absolute.top-0.left-0 div {
+          opacity: 0.15;
+        }
+        .light .landing-layout .text-slate-400 {
+          color: #475569;
+        }
+        .light .landing-layout .bg-indigo-500\/10 {
+          background-color: rgba(99, 102, 241, 0.08);
+          border-color: rgba(99, 102, 241, 0.20);
+          color: #4f46e5;
+        }
+        .light .landing-layout h1 {
+          color: #0f172a;
+        }
+        .light .landing-layout h1 span.bg-gradient-to-r {
+          background: linear-gradient(to right, #4f46e5, #0891b2, #d946ef);
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+        }
+        .light .landing-layout .bg-white\/5.border-white\/10 {
+          background-color: #f1f5f9;
+          border-color: rgba(0, 0, 0, 0.08);
+          color: #1e293b;
+        }
+        .light .landing-layout .bg-white\/5.border-white\/10:hover {
+          background-color: #e2e8f0;
+          border-color: rgba(0, 0, 0, 0.12);
+        }
+        .light .landing-layout .text-white {
+          color: #0f172a;
+        }
+        .light .landing-layout .text-slate-500 {
+          color: #64748b;
+        }
+        .light .landing-layout .border-t.border-white\/5 {
+          border-color: rgba(0, 0, 0, 0.06);
+        }
+        
+        /* Simulator Card light mode */
+        .light .landing-layout #simulator + div, 
+        .light .landing-layout #simulator {
+          color: #1e293b;
+        }
+        .light .landing-layout #simulator > div {
+          background-color: rgba(255, 255, 255, 0.9);
+          border-color: rgba(0, 0, 0, 0.08);
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+        }
+        .light .landing-layout #simulator .border-b.border-white\/5 {
+          border-color: rgba(0, 0, 0, 0.06);
+        }
+        .light .landing-layout #simulator button {
+          color: #475569;
+        }
+        .light .landing-layout #simulator button.bg-indigo-600 {
+          background-color: #4f46e5;
+          color: #ffffff;
+        }
+        .light .landing-layout #simulator .bg-white\/5.border-white\/5.text-slate-200 {
+          background-color: #f1f5f9;
+          border-color: rgba(0, 0, 0, 0.05);
+          color: #0f172a;
+        }
+        .light .landing-layout #simulator .bg-gradient-to-r.from-indigo-900\/50.to-cyan-900\/50 {
+          background: linear-gradient(to right, #eff6ff, #f0fdfa);
+          border-color: rgba(99, 102, 241, 0.2);
+          color: #0f172a;
+        }
+        .light .landing-layout #simulator .text-cyan-400 {
+          color: #0284c7;
+        }
+        .light .landing-layout #simulator .bg-slate-950\/40.border-white\/5 {
+          background-color: #f8fafc;
+          border-color: rgba(0, 0, 0, 0.06);
+          color: #475569;
+        }
+        .light .landing-layout #simulator .bg-white\/3.border-white\/5 {
+          background-color: #f1f5f9;
+          border-color: rgba(0, 0, 0, 0.06);
+        }
+        .light .landing-layout #simulator .bg-white\/3.border-white\/5 .text-slate-100 {
+          color: #0f172a;
+        }
+        .light .landing-layout #simulator .bg-gradient-to-br.from-indigo-900\/40.to-cyan-900\/40 {
+          background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.08), rgba(6, 182, 212, 0.08));
+          border-color: rgba(99, 102, 241, 0.25);
+        }
+        .light .landing-layout #simulator .bg-indigo-900\/10.border-indigo-500\/20 {
+          background-color: #eff6ff;
+          border-color: rgba(99, 102, 241, 0.15);
+          color: #1e3a8a;
+        }
+        .light .landing-layout #simulator .bg-indigo-900\/10.border-indigo-500\/20 .text-indigo-300 {
+          color: #1d4ed8;
+        }
+        .light .landing-layout #simulator button.bg-white\/5.hover\:bg-white\/10 {
+          background-color: #f1f5f9;
+          border-color: rgba(0, 0, 0, 0.08);
+          color: #1e293b;
+        }
+        .light .landing-layout #simulator button.bg-white\/5.hover\:bg-white\/10:hover {
+          background-color: #e2e8f0;
+        }
+        
+        /* Feature cards light mode */
+        .light .landing-layout .gradient-border-card {
+          background: #ffffff;
+          border-color: rgba(0, 0, 0, 0.06);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+        }
+        .light .landing-layout .gradient-border-card::before {
+          background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(6, 182, 212, 0.08), transparent);
+        }
+        .light .landing-layout .gradient-border-card:hover {
+          border-color: rgba(79, 70, 229, 0.15);
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.07);
+        }
+        .light .landing-layout .gradient-border-card h3 {
+          color: #0f172a;
+        }
+        .light .landing-layout .gradient-border-card .text-slate-400 {
+          color: #475569;
+        }
+        
+        /* How it works light mode */
+        .light .landing-layout #how-it-works {
+          background-color: #f1f5f9;
+          border-color: rgba(0, 0, 0, 0.06);
+        }
+        .light .landing-layout #how-it-works h4 {
+          color: #0f172a;
+        }
+        
+        /* Testimonials light mode */
+        .light .landing-layout .bg-slate-900\/40.border-white\/5 {
+          background-color: #ffffff;
+          border-color: rgba(0, 0, 0, 0.06);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.02);
+        }
+        .light .landing-layout .bg-slate-900\/40.border-white\/5 p.text-slate-300 {
+          color: #334155;
+        }
+        .light .landing-layout .bg-slate-900\/40.border-white\/5 .text-white {
+          color: #0f172a;
+        }
+        
+        /* Call to Action light mode */
+        .light .landing-layout .bg-gradient-to-tr.from-indigo-950\/40 {
+          background: linear-gradient(to top right, #eff6ff, #f0fdfa);
+          border-color: rgba(99, 102, 241, 0.15);
+          box-shadow: 0 20px 50px rgba(99, 102, 241, 0.05);
+        }
+        .light .landing-layout .bg-gradient-to-tr.from-indigo-950\/40 h2 {
+          color: #0f172a;
+        }
+        
+        /* Footer light mode */
+        .light .landing-layout footer {
+          background-color: #f8fafc;
+          border-color: rgba(0, 0, 0, 0.06);
+        }
+        .light .landing-layout footer .text-slate-500 {
+          color: #475569;
+        }
+        .light .landing-layout footer h5 {
+          color: #0f172a;
+        }
+        .light .landing-layout footer ul li a {
+          color: #475569;
+        }
+        .light .landing-layout footer ul li a:hover {
+          color: #0f172a;
+        }
+        .light .landing-layout footer .border-t.border-white\/5 {
+          border-color: rgba(0, 0, 0, 0.06);
+        }
+        .light .landing-layout footer .text-slate-600 {
+          color: #64748b;
+        }
       `}</style>
 
       {/* Background Glowing Blobs */}
@@ -192,14 +407,14 @@ export default function Landing() {
 
       {/* Top Navbar */}
       <header className="sticky top-0 z-50 bg-[#0b0f19]/70 backdrop-blur-xl border-b border-white/5 py-4 px-6 md:px-12 flex justify-between items-center">
-        <div className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
           <span className="text-2xl">🎙️</span>
           <span className="text-xl font-black tracking-tight flex items-center">
             <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">Articulate</span>
             <span className="mx-1 text-cyan-400 font-bold">•</span>
             <span className="bg-gradient-to-r from-cyan-400 to-pink-400 bg-clip-text text-transparent">AI</span>
           </span>
-        </div>
+        </Link>
 
         <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-300">
           <a href="#features" className="hover:text-white transition-colors">Features</a>
@@ -209,6 +424,16 @@ export default function Landing() {
         </nav>
 
         <div className="flex items-center gap-4">
+          {/* Theme Switcher */}
+          <button 
+            onClick={toggleTheme} 
+            className="top-bar-icon-btn" 
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            style={{ width: '36px', height: '36px' }}
+          >
+            {theme === 'dark' ? <Sun size={18} className="text-yellow-400" /> : <Moon size={18} className="text-indigo-600" />}
+          </button>
+
           {user ? (
             <Link 
               to="/curriculum" 
