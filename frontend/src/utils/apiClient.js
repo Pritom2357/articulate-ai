@@ -1,6 +1,6 @@
 import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './tokenStorage.js';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
 let refreshPromise = null;
 
