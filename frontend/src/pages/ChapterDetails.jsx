@@ -7,7 +7,7 @@ import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 export default function ChapterDetails() {
   const { id } = useParams();
-  const { t } = useThemeLanguage();
+  const { t, language } = useThemeLanguage();
   const [chapter, setChapter] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [progress, setProgress] = useState(null);
@@ -28,7 +28,7 @@ export default function ChapterDetails() {
           setProgress(progressData);
         }
       } catch (err) {
-        setError(err.payload?.error || err.message || t('chap_loading_error') || 'চ্যাপ্টার লোড করা যায়নি।');
+        setError(err.payload?.error || err.message || t('chap_loading_error') || (language === 'bn' ? 'চ্যাপ্টার লোড করা যায়নি।' : 'Chapter could not be loaded.'));
       } finally {
         setLoading(false);
       }
@@ -54,7 +54,7 @@ export default function ChapterDetails() {
             {t('chap_details')}
           </span>
           <h1 className="page-title text-white mt-1">
-            {chapter?.title || `${t('curr_chapter')} ${chapter?.order_num || id}`}
+            {language === 'bn' ? (chapter?.title_bn || chapter?.title) : chapter?.title || `${t('curr_chapter')} ${chapter?.order_num || id}`}
           </h1>
           <p className="page-subtitle text-slate-400">
             {chapter?.description || t('chap_subtitle')}
@@ -101,10 +101,12 @@ export default function ChapterDetails() {
                         )}
                       </div>
                       <h2 className="text-lg font-extrabold text-white mt-1.5 group-hover:text-indigo-400 transition-colors">
-                        {lesson.title || `Lesson ${lesson.order_num || lesson.id}`}
+                        {(language === 'bn' ? lesson.title_bn : lesson.title) || lesson.title || `Lesson ${lesson.order_num || lesson.id}`}
                       </h2>
                       <p className="text-xs text-slate-400 leading-relaxed mt-1 font-medium">
-                        {lesson.summary || lesson.objective_bn || 'লেসনটি শুরু করে উচ্চারণ ও স্পিকিং অনুশীলন করুন।'}
+                        {language === 'bn'
+                          ? (lesson.objective_bn || 'লেসনটি শুরু করে উচ্চারণ ও স্পিকিং অনুশীলন করুন।')
+                          : 'Start this lesson to practice pronunciation and speaking.'}
                       </p>
                     </div>
                   </div>
