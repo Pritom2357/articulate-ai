@@ -28,36 +28,6 @@ class NotificationService {
 
         const client = await this.listenerPool.connect(); // dedicated client connection from the new pool
 
-        client.on('error', (err) => {
-            console.error('PG listener client error:', err.message);
-        });
-
-        bus.on(Events.USER_PROFILE_UPDATED, ({ userId, changed }) => {
-            if (this.enablePush) this.push?.pushToUser(userId, 'profile_updated', { changed });
-        });
-
-        bus.on(Events.PASSWORD_RESET_REQUESTED, ({ userId, email }) => {
-            if (this.enablePush) this.push?.pushToUser(userId, 'password_reset_requested', { email });
-        });
-
-        bus.on(Events.PASSWORD_CHANGED, ({ userId }) => {
-            if (this.enablePush) this.push?.pushToUser(userId, 'password_changed', { message: 'Password updated' });
-        });
-
-        // Badge unlocked event
-        bus.on(Events.BADGE_UNLOCKED, ({ userId, badge_id, title, description, xp_reward, icon_url, earned_at }) => {
-            if (this.enablePush) {
-                this.push?.pushToUser(userId, 'badge_earned', {
-                    badge_id,
-                    title,
-                    description,
-                    xp_reward,
-                    icon_url,
-                    earned_at
-                });
-            }
-        });
-
         //  built-in event listener provided by the 'pg' library
         // fires every time the PG sends any 'NOTIFY' event to this client
         client.on('notification', async (msg) => {
