@@ -5,7 +5,7 @@ import { updateProfile, uploadAvatar, deactivateAccount, deleteAccount } from '.
 import { AlertTriangle, Trash2, PowerOff } from 'lucide-react';
 import AvatarUploader from '../components/AvatarUploader.jsx';
 import maleAvatar from '../assets/articulate_male.jpeg';
-import femaleAvatar from '../assets/articucate_female.jpeg';
+import femaleAvatar from '../assets/articulate_female.jpeg';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 export default function Profile() {

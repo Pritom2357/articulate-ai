@@ -35,6 +35,8 @@ const dictionary = {
     curr_empty: "No chapters available",
     curr_empty_sub: "Please visit again later.",
     curr_loading: "Loading curriculum...",
+    curr_loading_error: "Failed to load curriculum.",
+    curr_default_desc: "Complete the lessons in this chapter to improve your English pronunciation.",
 
     // Chapter Details
     chap_details: "Chapter Details",
@@ -148,6 +150,8 @@ const dictionary = {
     curr_empty: "কোনো চ্যাপ্টার উপলব্ধ নেই",
     curr_empty_sub: "অনুগ্রহ করে পরবর্তীতে আবার ঘুরে আসুন।",
     curr_loading: "কারিকুলাম লোড হচ্ছে...",
+    curr_loading_error: "চ্যাপ্টার লোড করা যায়নি।",
+    curr_default_desc: "চ্যাপ্টারের লেসনগুলো সম্পন্ন করুন এবং আপনার ইংরেজি উচ্চারণ উন্নত করুন।",
 
     // Chapter Details
     chap_details: "চ্যাপ্টার বিবরণ",
@@ -258,7 +262,7 @@ export function ThemeLanguageProvider({ children }) {
   };
 
   const t = (key) => {
-    const trans = dictionary[language][key] || dictionary['en'][key] || key;
+    const trans = dictionary[language]?.[key] || dictionary['en']?.[key] || key;
     return trans;
   };
 

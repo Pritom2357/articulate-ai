@@ -880,7 +880,7 @@ export default function Landing() {
       </section>
 
       {/* Pricing / Call To Action Section */}
-      <section className="relative z-10 max-w-5xl mx-auto px-6 md:px-12 py-16 mb-24">
+      <section id="pricing" className="relative z-10 max-w-5xl mx-auto px-6 md:px-12 py-16 mb-24">
         <div className="bg-gradient-to-tr from-indigo-950/40 via-cyan-950/20 to-slate-900/50 border border-indigo-500/20 rounded-3xl p-8 md:p-16 text-center relative overflow-hidden shadow-2xl">
           <div className="absolute top-[-20%] right-[-10%] w-80 h-80 bg-cyan-500/10 blur-[80px] rounded-full"></div>
           
@@ -931,27 +931,27 @@ export default function Landing() {
               <li><a href="#features" className="hover:text-white transition-colors">AI Tutors</a></li>
               <li><a href="#features" className="hover:text-white transition-colors">IELTS Speaking</a></li>
               <li><a href="#features" className="hover:text-white transition-colors">Flashcards</a></li>
-              <li><a href="#features" className="hover:text-white transition-colors">Pricing</a></li>
+              <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
             </ul>
           </div>
 
           <div>
             <h5 className="text-xs font-black uppercase text-slate-300 tracking-wider mb-4">Resources</h5>
             <ul className="space-y-2.5 text-xs text-slate-500">
-              <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">English Vocabulary</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">IELTS Tips</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Help Center</a></li>
+              <li><a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a></li>
+              <li><Link to={user ? "/vocabulary" : "/login"} className="hover:text-white transition-colors">English Vocabulary</Link></li>
+              <li><a href="#simulator" className="hover:text-white transition-colors">Live Demo</a></li>
+              <li><a href="mailto:support@articulate-ai.app" className="hover:text-white transition-colors">Contact Support</a></li>
             </ul>
           </div>
 
           <div>
             <h5 className="text-xs font-black uppercase text-slate-300 tracking-wider mb-4">Safety & Privacy</h5>
             <ul className="space-y-2.5 text-xs text-slate-500">
-              <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Data Safety</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Cookie Preferences</a></li>
+              <li><Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link></li>
+              <li><Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/data-safety" className="hover:text-white transition-colors">Data Safety</Link></li>
+              <li><Link to="/cookie-preferences" className="hover:text-white transition-colors">Cookie Preferences</Link></li>
             </ul>
           </div>
 
