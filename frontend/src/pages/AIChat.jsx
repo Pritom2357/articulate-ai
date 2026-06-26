@@ -1,13 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import useAuth from '../hooks/useAuth.js';
-import { Sparkles, Send, Mic, MicOff, AlertCircle } from 'lucide-react';
-import { generalChat } from '../api/progress.js';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 import { Sparkles, Send, Mic, MicOff, AlertCircle, Volume2 } from 'lucide-react';
 import { generalChat, textToSpeech } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articulate_female.jpeg';
-
+import { speakText } from '../utils/tts.js';
 export default function AIChat() {
   const { user } = useAuth();
   const { language } = useThemeLanguage();
