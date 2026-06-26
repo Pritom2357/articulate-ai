@@ -364,6 +364,7 @@ export default function Layout() {
       </aside>
 
       <main className="main-content">
+
         {/* Persistent Top Bar with Notifications & Profile */}
         <div className="top-bar">
           <div className="top-bar-left"></div>
@@ -427,6 +428,7 @@ export default function Layout() {
             )}
           </div>
         </div>
+
 
         <Outlet />
       </main>

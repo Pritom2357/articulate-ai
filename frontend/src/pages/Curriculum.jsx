@@ -127,6 +127,8 @@ export default function Curriculum() {
               </Link>
             );
           })
+
+
         ) : (
           <div className="empty-state col-span-full py-16 border border-dashed border-white/10 bg-slate-950/20">
             <div className="text-4xl mb-3">📖</div>

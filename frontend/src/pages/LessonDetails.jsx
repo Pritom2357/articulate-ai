@@ -4,7 +4,7 @@ import { getLesson } from '../api/curriculum.js';
 import { markLessonComplete, assessPronunciation, getPronunciationFeedback } from '../api/progress.js';
 import { getBookmarks, addBookmark, removeBookmark } from '../api/vocabulary.js';
 import useAuth from '../hooks/useAuth.js';
-import { Award, BookOpen, Volume2, ShieldAlert, Sparkles, Mic, Bookmark } from 'lucide-react';
+import { Award, BookOpen, Volume2, ShieldAlert, Sparkles, Mic, Bookmark, TrendingUp } from 'lucide-react';
 import { playWordAudio } from '../utils/playWordAudio.js';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
@@ -248,6 +248,7 @@ export default function LessonDetails() {
       if (response.overall_score !== undefined && response.overall_score !== null) {
         if (isWordTest) {
           setWordScores(prev => ({...prev, [testWordIndex]: Math.max(prev[testWordIndex] || 0, response.overall_score)}));
+          saveScoreToHistory(`word_${words[testWordIndex].id}`, response.overall_score);
         } else {
           setPhraseScores(prev => ({...prev, [testPhraseIndex]: Math.max(prev[testPhraseIndex] || 0, response.overall_score)}));
         }
@@ -689,6 +690,13 @@ export default function LessonDetails() {
                     {t('mic_retry')}
                   </div>
                 )}
+
+                {/* Pronunciation Score Sparkline */}
+                <PronSparkline
+                  wordId={`word_${words[testWordIndex]?.id}`}
+                  latestScore={pronScore}
+                  language={language}
+                />
               </div>
             )}
           </div>
