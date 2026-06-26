@@ -30,7 +30,9 @@ export default function LessonDetails() {
   // Active guide selection
   const activeTutor = user?.guide_preference || 'MALE';
   const tutorAvatar = activeTutor === 'FEMALE' ? femaleAvatar : maleAvatar;
-  const tutorName = activeTutor === 'FEMALE' ? 'Riya (রিয়া)' : 'Rohit (রোহিত)';
+  const tutorName = activeTutor === 'FEMALE'
+    ? (language === 'bn' ? 'Riya (রিয়া)' : 'Riya')
+    : (language === 'bn' ? 'Rohit (রোহিত)' : 'Rohit');
 
   // TTS speaking states
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -79,7 +81,7 @@ export default function LessonDetails() {
           console.error('Failed to load bookmarks', bErr);
         }
       } catch (err) {
-        setError(err.payload?.error || err.message || 'লেসন লোড করতে সমস্যা হয়েছে।');
+        setError(err.payload?.error || err.message || (language === 'bn' ? 'লেসন লোড করতে সমস্যা হয়েছে।' : 'Failed to load lesson.'));
       } finally {
         setLoading(false);
       }
@@ -175,7 +177,7 @@ export default function LessonDetails() {
       setRecording(true);
     } catch (err) {
       console.error('Mic error:', err);
-      alert('মাইক্রোফোন চালু করা যায়নি। অনুগ্রহ করে পারমিশন চেক করুন।');
+      alert(language === 'bn' ? 'মাইক্রোফোন চালু করা যায়নি। অনুগ্রহ করে পারমিশন চেক করুন।' : 'Could not activate microphone. Please check permissions.');
     }
   };
 
@@ -226,7 +228,7 @@ export default function LessonDetails() {
 
       if (response.rejected) {
         setPronScore(0);
-        setPronFeedback('রেকর্ডিংয়ের শব্দ স্পষ্ট নয়। অনুগ্রহ করে শান্ত জায়গায় আবার রেকর্ড করুন।');
+        setPronFeedback(language === 'bn' ? 'রেকর্ডিংয়ের শব্দ স্পষ্ট নয়। অনুগ্রহ করে শান্ত জায়গায় আবার রেকর্ড করুন।' : 'The recorded audio is not clear. Please record again in a quiet place.');
         return;
       }
 
@@ -264,7 +266,7 @@ export default function LessonDetails() {
     } catch (err) {
       console.error('Speech assessment error:', err);
       setPronScore(0);
-      setPronFeedback('মূল্যায়ন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।');
+      setPronFeedback(language === 'bn' ? 'মূল্যায়ন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' : 'Evaluation failed. Please try again.');
     } finally {
       setIsEvaluating(false);
     }
@@ -319,7 +321,7 @@ export default function LessonDetails() {
       await refreshUser();
       setWizardStep(5);
     } catch (err) {
-      setError('প্রোগ্রেস সংরক্ষণ ব্যর্থ হয়েছে।');
+      setError(language === 'bn' ? 'প্রোগ্রেস সংরক্ষণ ব্যর্থ হয়েছে।' : 'Failed to save progress.');
     } finally {
       setLoading(false);
     }

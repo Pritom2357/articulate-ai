@@ -7,7 +7,7 @@ import { Sun, Moon } from 'lucide-react';
 
 export default function Register() {
   const { user } = useAuth();
-  const { theme, toggleTheme } = useThemeLanguage();
+  const { theme, toggleTheme, language } = useThemeLanguage();
   const navigate = useNavigate();
 
   // Redirect to curriculum if user is already authenticated
@@ -60,9 +60,9 @@ export default function Register() {
     if (/[0-9]/.test(password)) score += 1;
     if (/[^A-Za-z0-9]/.test(password)) score += 1;
 
-    if (score <= 1) return { label: 'Weak (দুর্বল)', color: '#ef4444', width: '25%' };
-    if (score <= 3) return { label: 'Medium (মাঝারি)', color: '#f59e0b', width: '60%' };
-    return { label: 'Strong (শক্তিশালী)', color: '#22c55e', width: '100%' };
+    if (score <= 1) return { label: language === 'bn' ? 'Weak (দুর্বল)' : 'Weak', color: '#ef4444', width: '25%' };
+    if (score <= 3) return { label: language === 'bn' ? 'Medium (মাঝারি)' : 'Medium', color: '#f59e0b', width: '60%' };
+    return { label: language === 'bn' ? 'Strong (শক্তিশালী)' : 'Strong', color: '#22c55e', width: '100%' };
   };
 
   const strength = getPasswordStrength();
@@ -83,7 +83,7 @@ export default function Register() {
     });
 
     if (!isNameValid || !isEmailValid || !isPhoneValid || !isPasswordValid || !isGenderValid) {
-      setError('অনুগ্রহ করে সবগুলো ঘর সঠিকভাবে পূরণ করুন।');
+      setError(language === 'bn' ? 'অনুগ্রহ করে সবগুলো ঘর সঠিকভাবে পূরণ করুন।' : 'Please fill all fields correctly.');
       return;
     }
 
@@ -91,12 +91,12 @@ export default function Register() {
 
     try {
       await register({ name, email, password, phone, gender, date_of_birth: dateOfBirth });
-      setMessage('নিবন্ধন সফল হয়েছে! লগইন পেজে রিডাইরেক্ট করা হচ্ছে...');
+      setMessage(language === 'bn' ? 'নিবন্ধন সফল হয়েছে! লগইন পেজে রিডাইরেক্ট করা হচ্ছে...' : 'Registration successful! Redirecting to login page...');
       setTimeout(() => {
         navigate('/login');
       }, 1500);
     } catch (err) {
-      setError(err.payload?.error || err.message || 'নিবন্ধন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।');
+      setError(err.payload?.error || err.message || (language === 'bn' ? 'নিবন্ধন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' : 'Registration failed. Please try again.'));
       setIsLoading(false);
     }
   }
@@ -118,17 +118,16 @@ export default function Register() {
           <span className="form-watermark-text">ARTICULATE AI</span>
         </Link>
 
-        <h1 className="glass-title">Create Account</h1>
-        <p className="glass-subtitle">নিবন্ধন করুন এবং আপনার নিজস্ব লার্নিং জার্নি শুরু করুন।</p>
+        <h1 className="glass-title">{language === 'bn' ? 'অ্যাকাউন্ট তৈরি করুন' : 'Create Account'}</h1>
+        <p className="glass-subtitle">{language === 'bn' ? 'নিবন্ধন করুন এবং আপনার নিজস্ব লার্নিং জার্নি শুরু করুন।' : 'Register and start your own learning journey.'}</p>
 
         <form onSubmit={handleSubmit} className="glass-grid two-cols">
           
-          {/* Full Name */}
           <label className="glass-label relative">
-            <span>Full Name <span className="text-red-400">*</span></span>
+            <span>{language === 'bn' ? 'সম্পূর্ণ নাম' : 'Full Name'} <span className="text-red-400">*</span></span>
             <input
               className={getInputClass('name', isNameValid)}
-              placeholder="যেমন: Pritom Biswas"
+              placeholder={language === 'bn' ? 'যেমন: Pritom Biswas' : 'e.g. Pritom Biswas'}
               value={name}
               onChange={(e) => setName(e.target.value)}
               onBlur={() => handleBlur('name')}
@@ -136,14 +135,13 @@ export default function Register() {
               disabled={isLoading}
             />
             {touched.name && !isNameValid && (
-              <span className="val-error-text">নাম কমপক্ষে ৩ অক্ষরের হতে হবে।</span>
+              <span className="val-error-text">{language === 'bn' ? 'নাম কমপক্ষে ৩ অক্ষরের হতে হবে।' : 'Name must be at least 3 characters long.'}</span>
             )}
             {touched.name && isNameValid && <span className="val-check-icon">✓</span>}
           </label>
 
-          {/* Email */}
           <label className="glass-label relative">
-            <span>Email Address <span className="text-red-400">*</span></span>
+            <span>{language === 'bn' ? 'ইমেইল ঠিকানা' : 'Email Address'} <span className="text-red-400">*</span></span>
             <input
               className={getInputClass('email', isEmailValid)}
               type="email"
@@ -155,18 +153,17 @@ export default function Register() {
               disabled={isLoading}
             />
             {touched.email && !isEmailValid && (
-              <span className="val-error-text">সঠিক ইমেইল ঠিকানা প্রদান করুন।</span>
+              <span className="val-error-text">{language === 'bn' ? 'সঠিক ইমেইল ঠিকানা প্রদান করুন।' : 'Please provide a valid email address.'}</span>
             )}
             {touched.email && isEmailValid && <span className="val-check-icon">✓</span>}
           </label>
 
-          {/* Phone */}
           <label className="glass-label relative">
-            <span>Phone Number <span className="text-red-400">*</span></span>
+            <span>{language === 'bn' ? 'মোবাইল নম্বর' : 'Phone Number'} <span className="text-red-400">*</span></span>
             <input
               className={getInputClass('phone', isPhoneValid)}
               type="tel"
-              placeholder="যেমন: 01712345678"
+              placeholder={language === 'bn' ? 'যেমন: 01712345678' : 'e.g. 01712345678'}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               onBlur={() => handleBlur('phone')}
@@ -174,14 +171,13 @@ export default function Register() {
               disabled={isLoading}
             />
             {touched.phone && !isPhoneValid && (
-              <span className="val-error-text">১১ ডিজিটের সচল মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)</span>
+              <span className="val-error-text">{language === 'bn' ? '১১ ডিজিটের সচল মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)' : 'Enter an 11-digit active mobile number (e.g., 017XXXXXXXX)'}</span>
             )}
             {touched.phone && isPhoneValid && <span className="val-check-icon">✓</span>}
           </label>
 
-          {/* Gender */}
           <label className="glass-label relative">
-            <span>Gender <span className="text-red-400">*</span></span>
+            <span>{language === 'bn' ? 'লিঙ্গ' : 'Gender'} <span className="text-red-400">*</span></span>
             <select
               className={touched.gender && !isGenderValid ? 'glass-select val-invalid' : 'glass-select'}
               value={gender}
@@ -189,19 +185,18 @@ export default function Register() {
               onBlur={() => handleBlur('gender')}
               disabled={isLoading}
             >
-              <option value="">Select gender</option>
-              <option value="MALE">Male (পুরুষ)</option>
-              <option value="FEMALE">Female (নারী)</option>
-              <option value="NON-BINARY">Other (অন্যান্য)</option>
+              <option value="">{language === 'bn' ? 'লিঙ্গ নির্বাচন করুন' : 'Select gender'}</option>
+              <option value="MALE">{language === 'bn' ? 'Male (পুরুষ)' : 'Male'}</option>
+              <option value="FEMALE">{language === 'bn' ? 'Female (নারী)' : 'Female'}</option>
+              <option value="NON-BINARY">{language === 'bn' ? 'Other (অন্যান্য)' : 'Other'}</option>
             </select>
             {touched.gender && !isGenderValid && (
-              <span className="val-error-text">লিঙ্গ নির্বাচন করা আবশ্যক।</span>
+              <span className="val-error-text">{language === 'bn' ? 'লিঙ্গ নির্বাচন করা আবশ্যক।' : 'Gender selection is required.'}</span>
             )}
           </label>
 
-          {/* Date of Birth */}
           <label className="glass-label relative">
-            <span>Date of Birth <span className="text-red-400">*</span></span>
+            <span>{language === 'bn' ? 'জন্মতারিখ' : 'Date of Birth'} <span className="text-red-400">*</span></span>
             <input
               className={getInputClass('dateOfBirth', isDobValid)}
               type="date"
@@ -212,13 +207,12 @@ export default function Register() {
               disabled={isLoading}
             />
             {touched.dateOfBirth && !isDobValid && (
-              <span className="val-error-text">জন্মতারিখ দেওয়া আবশ্যক।</span>
+              <span className="val-error-text">{language === 'bn' ? 'জন্মতারিখ দেওয়া আবশ্যক।' : 'Date of birth is required.'}</span>
             )}
           </label>
 
-          {/* Password */}
           <label className="glass-label relative">
-            <span>Password <span className="text-red-400">*</span></span>
+            <span>{language === 'bn' ? 'পাসওয়ার্ড' : 'Password'} <span className="text-red-400">*</span></span>
             <input
               className={getInputClass('password', isPasswordValid)}
               type="password"
@@ -230,7 +224,7 @@ export default function Register() {
               disabled={isLoading}
             />
             {touched.password && !isPasswordValid && (
-              <span className="val-error-text">পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।</span>
+              <span className="val-error-text">{language === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' : 'Password must be at least 6 characters long.'}</span>
             )}
             {touched.password && isPasswordValid && <span className="val-check-icon">✓</span>}
 
@@ -258,19 +252,19 @@ export default function Register() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Account তৈরি হচ্ছে...
+                  {language === 'bn' ? 'Account তৈরি হচ্ছে...' : 'Creating Account...'}
                 </>
               ) : (
-                'Create Account (নিবন্ধন করুন)'
+                language === 'bn' ? 'Create Account (নিবন্ধন করুন)' : 'Create Account'
               )}
             </button>
           </div>
         </form>
 
         <p className="glass-note">
-          Already have an account?{' '}
+          {language === 'bn' ? 'ইতিমধ্যে অ্যাকাউন্ট আছে?' : 'Already have an account?'} {' '}
           <Link className="glass-link" to="/login">
-            Login here (লগইন করুন)
+            {language === 'bn' ? 'Login here (লগইন করুন)' : 'Login here'}
           </Link>
         </p>
 

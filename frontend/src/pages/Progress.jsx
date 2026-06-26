@@ -67,7 +67,7 @@ export default function Progress() {
         setXpLogs(logsRes || []);
         setCalendarActiveDates(calRes.map(r => new Date(r.active_date).getDate()));
       } catch (err) {
-        setError(err.payload?.error || err.message || t('prog_loading_error') || 'অগ্রগতি লোড করা যায়নি।');
+        setError(err.payload?.error || err.message || t('prog_loading_error') || (language === 'bn' ? 'অগ্রগতি লোড করা যায়নি।' : 'Progress could not be loaded.'));
       } finally {
         setLoading(false);
       }

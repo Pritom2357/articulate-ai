@@ -4,12 +4,19 @@ import useAuth from '../hooks/useAuth.js';
 import { updateProfile, updateMicStatus, saveOnboarding } from '../api/user.js';
 import { assessPronunciation } from '../api/progress.js';
 import { Mic, Volume2 } from 'lucide-react';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 // Import tutor assets
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articucate_female.jpeg';
 
-const TEST_WORDS = [
+const TEST_WORDS_EN = [
+  { word: 'Apple', definition: 'Apple (a fruit)' },
+  { word: 'Computer', definition: 'Computer (an electronic device)' },
+  { word: 'English', definition: 'English (a language)' }
+];
+
+const TEST_WORDS_BN = [
   { word: 'Apple', definition: 'আপেল (একটি ফল)' },
   { word: 'Computer', definition: 'কম্পিউটার (একটি ইলেকট্রনিক যন্ত্র)' },
   { word: 'English', definition: 'ইংরেজি (একটি ভাষা)' }
@@ -17,10 +24,13 @@ const TEST_WORDS = [
 
 export default function Onboarding() {
   const { user, refreshUser } = useAuth();
+  const { language } = useThemeLanguage();
   const navigate = useNavigate();
   
   const [step, setStep] = useState(1); // 1: Select Guide, 2: Mic Check, 3: Speech Test, 4: Done
   const [guide, setGuide] = useState('MALE'); // 'MALE' or 'FEMALE'
+  
+  const testWords = language === 'bn' ? TEST_WORDS_BN : TEST_WORDS_EN;
   
   // Mic check states
   const [micStream, setMicStream] = useState(null);
@@ -79,7 +89,7 @@ export default function Onboarding() {
       await refreshUser();
       setStep(2);
     } catch (err) {
-      setApiError('গাইড নির্বাচন ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
+      setApiError(language === 'bn' ? 'গাইড নির্বাচন ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।' : 'Guide selection failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -215,7 +225,7 @@ export default function Onboarding() {
       
     } catch (err) {
       console.error('[micCheck] getUserMedia/setup failed', err);
-      setMicError('মাইক্রোফোন সংযোগ ব্যর্থ হয়েছে। ব্রাউজার পারমিশন চেক করুন।');
+      setMicError(language === 'bn' ? 'মাইক্রোফোন সংযোগ ব্যর্থ হয়েছে। ব্রাউজার পারমিশন চেক করুন।' : 'Microphone connection failed. Please check browser permissions.');
     }
   }
 
@@ -289,7 +299,7 @@ export default function Onboarding() {
       setRecording(true);
     } catch (err) {
       console.error('Failed to start audio recording:', err);
-      alert('রেকর্ডিং চালু করা যায়নি। অনুগ্রহ করে মাইক পারমিশন চেক করুন।');
+      alert(language === 'bn' ? 'রেকর্ডিং চালু করা যায়নি। অনুগ্রহ করে মাইক পারমিশন চেক করুন।' : 'Failed to start recording. Please check microphone permissions.');
     }
   }
 
@@ -314,10 +324,10 @@ export default function Onboarding() {
     try {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'attempt.webm');
-      formData.append('referenceText', TEST_WORDS[wordIndex].word);
+      formData.append('referenceText', testWords[wordIndex].word);
 
       console.log('[speechTest] sending to /assess/pronunciation/assess', {
-        referenceText: TEST_WORDS[wordIndex].word,
+        referenceText: testWords[wordIndex].word,
         blobSizeBytes: audioBlob.size,
         blobType: audioBlob.type
       });
@@ -343,9 +353,9 @@ export default function Onboarding() {
       setScores(prev => [...prev, isCorrect]);
     } catch (err) {
       console.error('[speechTest] Speech evaluation failed:', err);
-      setRecognizedText('(উচ্চারণ বোঝা যায়নি)');
+      setRecognizedText(language === 'bn' ? '(উচ্চারণ বোঝা যায়নি)' : '(Pronunciation not recognized)');
       setPronScore(0);
-      setPronFeedback('দুঃখিত, সংযোগে ত্রুটি হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
+      setPronFeedback(language === 'bn' ? 'দুঃখিত, সংযোগে ত্রুটি হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।' : 'Sorry, connection error occurred. Please try again.');
       setScores(prev => [...prev, false]);
     } finally {
       setIsEvaluating(false);
@@ -356,7 +366,7 @@ export default function Onboarding() {
   useEffect(() => {
     if (scores.length > wordIndex) {
       const timer = setTimeout(() => {
-        if (wordIndex < TEST_WORDS.length - 1) {
+        if (wordIndex < testWords.length - 1) {
           setWordIndex(prev => prev + 1);
           setRecognizedText('');
           setPronScore(null);
@@ -391,7 +401,7 @@ export default function Onboarding() {
       });
       await refreshUser();
     } catch (err) {
-      setApiError('অ্যাসেসমেন্ট ফলাফল সংরক্ষণ করা যায়নি।');
+      setApiError(language === 'bn' ? 'অ্যাসেসমেন্ট ফলাফল সংরক্ষণ করা যায়নি।' : 'Assessment results could not be saved.');
     } finally {
       setIsLoading(false);
     }
@@ -410,10 +420,10 @@ export default function Onboarding() {
         {/* Onboarding Stage Stepper */}
         <div className="flex justify-between items-center mb-6 p-2 rounded-2xl bg-slate-900/40 border border-white/5 backdrop-blur-md overflow-x-auto gap-2 scrollbar-none">
           {[
-            { step: 1, label: 'টিউটর গাইড' },
-            { step: 2, label: 'মাইক পরীক্ষা' },
-            { step: 3, label: 'প্লেসমেন্ট টেস্ট' },
-            { step: 4, label: 'ফলাফল সম্পন্ন' }
+            { step: 1, label: language === 'bn' ? 'টিউটর গাইড' : 'Tutor Guide' },
+            { step: 2, label: language === 'bn' ? 'মাইক পরীক্ষা' : 'Mic Test' },
+            { step: 3, label: language === 'bn' ? 'প্লেসমেন্ট টেস্ট' : 'Placement Test' },
+            { step: 4, label: language === 'bn' ? 'ফলাফল সম্পন্ন' : 'Result Complete' }
           ].map((s) => (
             <div
               key={s.step}
@@ -442,9 +452,9 @@ export default function Onboarding() {
         {/* STEP 1: SELECT TUTOR GUIDE */}
         {step === 1 && (
           <div>
-            <h1 className="glass-title">Choose Your Tutor</h1>
+            <h1 className="glass-title">{language === 'bn' ? 'টিউটর গাইড নির্বাচন করুন' : 'Choose Your Tutor'}</h1>
             <p className="glass-subtitle">
-              আপনার লার্নিং জার্নিতে আপনাকে সাহায্য করার জন্য একজন গাইড নির্বাচন করুন।
+              {language === 'bn' ? 'আপনার লার্নিং জার্নিতে আপনাকে সাহায্য করার জন্য একজন গাইড নির্বাচন করুন।' : 'Select a guide to help you in your learning journey.'}
             </p>
 
             <div className="grid grid-cols-2 gap-4 mb-6">
@@ -460,7 +470,7 @@ export default function Onboarding() {
                 <div className="w-24 h-24 rounded-full overflow-hidden mx-auto mb-3 border-2 border-indigo-500/30">
                   <img src={maleAvatar} alt="Rohit" className="w-full h-full object-cover" />
                 </div>
-                <div className="font-bold text-white text-lg">Rohit (রোহিত)</div>
+                <div className="font-bold text-white text-lg">{language === 'bn' ? 'Rohit (রোহিত)' : 'Rohit'}</div>
                 <div className="text-xs text-indigo-300 mt-1 font-semibold">Male Tutor Guide</div>
               </div>
 
@@ -476,13 +486,13 @@ export default function Onboarding() {
                 <div className="w-24 h-24 rounded-full overflow-hidden mx-auto mb-3 border-2 border-indigo-500/30">
                   <img src={femaleAvatar} alt="Riya" className="w-full h-full object-cover" />
                 </div>
-                <div className="font-bold text-white text-lg">Riya (রিয়া)</div>
+                <div className="font-bold text-white text-lg">{language === 'bn' ? 'Riya (রিয়া)' : 'Riya'}</div>
                 <div className="text-xs text-indigo-300 mt-1 font-semibold">Female Tutor Guide</div>
               </div>
             </div>
 
             <button onClick={handleSelectGuide} className="glass-button" disabled={isLoading}>
-              Next: Mic Quality Check
+              {language === 'bn' ? 'পরবর্তী: মাইক কোয়ালিটি পরীক্ষা' : 'Next: Mic Quality Check'}
             </button>
             {apiError && <div className="glass-alert glass-alert-error">{apiError}</div>}
           </div>
@@ -491,27 +501,31 @@ export default function Onboarding() {
         {/* STEP 2: MIC CHECK */}
         {step === 2 && (
           <div>
-            <h1 className="glass-title">Microphone Test</h1>
+            <h1 className="glass-title">{language === 'bn' ? 'মাইক্রোফোন টেস্ট' : 'Microphone Test'}</h1>
             <p className="glass-subtitle">
-              সঠিকভাবে স্পিচ টেস্ট এবং কথা বলার অনুশীলনের জন্য আপনার মাইক চেক করতে হবে।
+              {language === 'bn' ? 'সঠিকভাবে স্পিচ টেস্ট এবং কথা বলার অনুশীলনের জন্য আপনার মাইক চেক করতে হবে।' : 'You need to test your microphone for accurate speech tests and speaking practice.'}
             </p>
 
             <div className="bg-white/5 rounded-xl p-5 border border-white/10 mb-6 text-center">
               {!micStream ? (
                 <div>
                   <div className="text-slate-300 text-sm mb-4">
-                    মাইক টেস্ট শুরু করতে অনুমতি দিন। শান্ত ঘরে থাকা বাঞ্ছনীয়।
+                    {language === 'bn' ? 'মাইক টেস্ট শুরু করতে অনুমতি দিন। শান্ত ঘরে থাকা বাঞ্ছনীয়।' : 'Please grant permission to start the mic test. A quiet room is recommended.'}
                   </div>
                   <button onClick={startMicCheck} className="glass-button" style={{ display: 'inline-flex', width: 'auto' }}>
-                    🎙️ Grant Mic Access
+                    🎙️ {language === 'bn' ? 'মাইক অ্যাক্সেস দিন' : 'Grant Mic Access'}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {calibrating && (
                     <div>
-                      <div className="text-yellow-400 font-bold mb-2">নীরব থাকুন... (Calibration)</div>
-                      <div className="text-xs text-slate-400">আমরা ঘরের ব্যাকগ্রাউন্ড নয়েজ পরিমাপ করছি...</div>
+                      <div className="text-yellow-400 font-bold mb-2">
+                        {language === 'bn' ? 'নীরব থাকুন... (Calibration)' : 'Stay quiet... (Calibration)'}
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        {language === 'bn' ? 'আমরা ঘরের ব্যাকগ্রাউন্ড নয়েজ পরিমাপ করছি...' : 'We are measuring the background noise of the room...'}
+                      </div>
                       <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden mt-3">
                         <div
                           className="bg-indigo-500 h-full transition-all duration-200"
@@ -523,12 +537,16 @@ export default function Onboarding() {
 
                   {micChecked && (
                     <div>
-                      <div className="text-green-400 font-bold mb-1">✅ মাইক চেক সম্পন্ন!</div>
-                      <div className="text-slate-300 text-xs mb-3">মাইক ভলিউম লেভেল ট্র্যাকিং করা যাচ্ছে।</div>
+                      <div className="text-green-400 font-bold mb-1">
+                        {language === 'bn' ? '✅ মাইক চেক সম্পন্ন!' : '✅ Mic check completed!'}
+                      </div>
+                      <div className="text-slate-300 text-xs mb-3">
+                        {language === 'bn' ? 'মাইক ভলিউম লেভেল ট্র্যাকিং করা যাচ্ছে।' : 'Microphone volume level can be tracked.'}
+                      </div>
                       
                       {/* Live Volume Meter */}
                       <div className="flex items-center gap-3 justify-center">
-                        <span className="text-xs text-slate-400">ভলিউম:</span>
+                        <span className="text-xs text-slate-400">{language === 'bn' ? 'ভলিউম:' : 'Volume:'}</span>
                         <div className="flex-1 max-w-[200px] bg-white/10 h-3 rounded-full overflow-hidden">
                           <div
                             className="bg-cyan-400 h-full transition-all duration-100"
@@ -550,7 +568,7 @@ export default function Onboarding() {
                           }`}
                         >
                           <Mic size={13} />
-                          {isTestRecording ? 'রেকর্ড হচ্ছে... (৩ সেকেন্ড)' : '৩ সেকেন্ড রেকর্ড করে শুনুন'}
+                          {isTestRecording ? (language === 'bn' ? 'রেকর্ড হচ্ছে... (৩ সেকেন্ড)' : 'Recording... (3 seconds)') : (language === 'bn' ? '৩ সেকেন্ড রেকর্ড করে শুনুন' : 'Record & Listen for 3s')}
                         </button>
                         {recordedAudioUrl && (
                           <button
@@ -562,14 +580,18 @@ export default function Onboarding() {
                             }`}
                           >
                             <Volume2 size={13} />
-                            {isPlayingRecording ? 'বাজছে...' : 'আপনার রেকর্ডিং শুনুন'}
+                            {isPlayingRecording ? (language === 'bn' ? 'বাজছে...' : 'Playing...') : (language === 'bn' ? 'আপনার রেকর্ডিং শুনুন' : 'Listen to your recording')}
                           </button>
                         )}
                       </div>
 
                       {micJitter && (
                         <div className="glass-alert glass-alert-error mt-4 text-left">
-                          ⚠️ <strong>সতর্কতা:</strong> আপনার মাইকে প্রচুর জিটার/নয়েজ শনাক্ত হয়েছে। শান্ত পরিবেশে না গেলে আপনার উচ্চারণ ভুল হিসেবে মূল্যায়িত হতে পারে।
+                          {language === 'bn' ? (
+                            <>⚠️ <strong>সতর্কতা:</strong> আপনার মাইকে প্রচুর জিটার/নয়েজ শনাক্ত হয়েছে। শান্ত পরিবেশে না গেলে আপনার উচ্চারণ ভুল হিসেবে মূল্যায়িত হতে পারে।</>
+                          ) : (
+                            <>⚠️ <strong>Warning:</strong> High jitter/noise detected on your mic. If you don't move to a quiet environment, your pronunciation might be evaluated as incorrect.</>
+                          )}
                         </div>
                       )}
                     </div>
@@ -586,7 +608,7 @@ export default function Onboarding() {
               disabled={!micChecked}
               style={{ opacity: micChecked ? 1 : 0.5 }}
             >
-              Start Placement Speech Test
+              {language === 'bn' ? 'প্লেসমেন্ট স্পিচ টেস্ট শুরু করুন' : 'Start Placement Speech Test'}
             </button>
           </div>
         )}
@@ -594,20 +616,20 @@ export default function Onboarding() {
         {/* STEP 3: SPEECH PLACEMENT TEST */}
         {step === 3 && (
           <div>
-            <h1 className="glass-title">Placement Test</h1>
+            <h1 className="glass-title">{language === 'bn' ? 'প্লেসমেন্ট টেস্ট' : 'Placement Test'}</h1>
             <p className="glass-subtitle">
-              নিচের ইংরেজি শব্দটি জোরে এবং সঠিকভাবে উচ্চারণ করুন।
+              {language === 'bn' ? 'নিচের ইংরেজি শব্দটি জোরে এবং সঠিকভাবে উচ্চারণ করুন।' : 'Pronounce the English word below loudly and correctly.'}
             </p>
 
             <div className="text-center bg-white/5 rounded-2xl p-6 border border-white/10 mb-6">
               <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">
-                Word {wordIndex + 1} of {TEST_WORDS.length}
+                {language === 'bn' ? `শব্দ ${wordIndex + 1} / ${testWords.length}` : `Word ${wordIndex + 1} of ${testWords.length}`}
               </div>
               <div className="text-4xl font-extrabold text-white my-3 tracking-wide">
-                "{TEST_WORDS[wordIndex].word}"
+                "{testWords[wordIndex].word}"
               </div>
               <div className="text-sm text-cyan-400 font-medium mb-6">
-                {TEST_WORDS[wordIndex].definition}
+                {testWords[wordIndex].definition}
               </div>
 
               <div className="mt-6 flex flex-col items-center justify-center">
@@ -626,7 +648,9 @@ export default function Onboarding() {
                   {recording ? '🛑' : '🎙️'}
                 </button>
                 <div className="text-xs text-slate-400 mt-3 font-medium">
-                  {recording ? 'বলুন (ছেড়ে দিলে মূল্যায়িত হবে)' : 'রেকর্ড করতে চেপে ধরে রাখুন'}
+                  {recording 
+                    ? (language === 'bn' ? 'বলুন (ছেড়ে দিলে মূল্যায়িত হবে)' : 'Speak (release to evaluate)') 
+                    : (language === 'bn' ? 'রেকর্ড করতে চেপে ধরে রাখুন' : 'Press and hold to record')}
                 </div>
               </div>
 
@@ -636,14 +660,14 @@ export default function Onboarding() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                   </svg>
-                  <span>AI আপনার উচ্চারণ মূল্যায়ন করছে...</span>
+                  <span>{language === 'bn' ? 'AI আপনার উচ্চারণ মূল্যায়ন করছে...' : 'AI is evaluating your pronunciation...'}</span>
                 </div>
               )}
 
               {pronScore !== null && (
                 <div className="mt-6 p-4 rounded-xl bg-white/5 border border-white/10 animate-bounce-in">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-slate-300 font-medium">উচ্চারণ স্কোর:</span>
+                    <span className="text-sm text-slate-300 font-medium">{language === 'bn' ? 'উচ্চারণ স্কোর:' : 'Pronunciation Score:'}</span>
                     <span className={`text-xl font-black ${pronScore >= 60 ? 'text-green-400' : 'text-red-400'}`}>
                       {pronScore}%
                     </span>
@@ -651,7 +675,7 @@ export default function Onboarding() {
                   <div className="text-sm text-slate-200 mt-1 font-medium">{pronFeedback}</div>
                   {recognizedText && (
                     <div className="text-xs text-slate-400 mt-2">
-                      আমরা শুনেছি: <span className="italic font-semibold text-slate-300">"{recognizedText}"</span>
+                      {language === 'bn' ? 'আমরা শুনেছি:' : 'We heard:'} <span className="italic font-semibold text-slate-300">"{recognizedText}"</span>
                     </div>
                   )}
                   {recordedAudioUrl && (
@@ -664,7 +688,7 @@ export default function Onboarding() {
                       }`}
                     >
                       <Mic size={13} />
-                      {isPlayingRecording ? 'বাজছে...' : 'আপনার রেকর্ডিং শুনুন'}
+                      {isPlayingRecording ? (language === 'bn' ? 'বাজছে...' : 'Playing...') : (language === 'bn' ? 'আপনার রেকর্ডিং শুনুন' : 'Listen to your recording')}
                     </button>
                   )}
                 </div>
@@ -672,7 +696,7 @@ export default function Onboarding() {
             </div>
 
             <div className="flex gap-2 justify-center">
-              {TEST_WORDS.map((_, i) => (
+              {testWords.map((_, i) => (
                 <div
                   key={i}
                   className={`w-3 h-3 rounded-full transition-all duration-300 ${
@@ -693,19 +717,25 @@ export default function Onboarding() {
         {/* STEP 4: ASSESSMENT LEVEL ASSIGNED */}
         {step === 4 && (
           <div className="text-center">
-            <h1 className="glass-title">Assessment Completed!</h1>
+            <h1 className="glass-title">{language === 'bn' ? 'মূল্যায়ন সম্পন্ন!' : 'Assessment Completed!'}</h1>
             <p className="glass-subtitle">
-              আপনার ইংরেজি স্তরের মূল্যায়ন সম্পন্ন হয়েছে।
+              {language === 'bn' ? 'আপনার ইংরেজি স্তরের মূল্যায়ন সম্পন্ন হয়েছে।' : 'Your English level placement evaluation is complete.'}
             </p>
 
             {testResult && (
               <div className="my-8 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-6 animate-bounce-in">
-                <div className="text-slate-400 text-xs uppercase tracking-widest font-bold">Your Placement Level</div>
+                <div className="text-slate-400 text-xs uppercase tracking-widest font-bold">
+                  {language === 'bn' ? 'আপনার নির্ধারিত লেভেল' : 'Your Placement Level'}
+                </div>
                 <div className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400 my-2">
                   {testResult.level}
                 </div>
                 <div className="text-sm text-slate-300 mt-2">
-                  আপনি ৩টি শব্দের মধ্যে <strong>{testResult.correctCount}টি</strong> শব্দ সন্তোষজনকভাবে উচ্চারণ করতে পেরেছেন।
+                  {language === 'bn' ? (
+                    <>আপনি ৩টি শব্দের মধ্যে <strong>{testResult.correctCount}টি</strong> শব্দ সন্তোষজনকভাবে উচ্চারণ করতে পেরেছেন।</>
+                  ) : (
+                    <>You successfully pronounced <strong>{testResult.correctCount} out of 3</strong> words.</>
+                  )}
                 </div>
               </div>
             )}
@@ -713,17 +743,17 @@ export default function Onboarding() {
             <div className="text-left bg-white/5 rounded-xl p-4 border border-white/10 mb-6 text-sm text-slate-300 space-y-2">
               <div className="font-bold text-white flex items-center gap-2">
                 <span>{guide === 'FEMALE' ? '👩‍🏫' : '👨‍🏫'}</span>
-                <span>টিউটর গাইড বার্তা:</span>
+                <span>{language === 'bn' ? 'টিউটর গাইড বার্তা:' : 'Tutor Guide Message:'}</span>
               </div>
               <div className="leading-relaxed">
-                {testResult?.level === 'B1' && 'চমৎকার! আপনার ইংরেজি উচ্চারণ বেশ সুন্দর। আমরা আপনাকে সরাসরি চ্যাপ্টার ৩ (ইন্টারমিডিয়েট লেভেল) থেকে শুরু করছি।'}
-                {testResult?.level === 'A2' && 'বেশ ভালো! আপনার উচ্চারণ চমৎকার। আমরা প্রি-ইন্টারমিডিয়েট লেভেল (চ্যাপ্টার ২) থেকে শুরু করছি।'}
-                {testResult?.level === 'A1' && 'চিন্তা করবেন না! আমরা একদম গোঁড়া থেকে বেসিক ইংরেজি শব্দগুলো দিয়ে শুরু করব। চ্যাপ্টার ১ দিয়ে পথচলা শুরু হোক।'}
+                {testResult?.level === 'B1' && (language === 'bn' ? 'চমৎকার! আপনার ইংরেজি উচ্চারণ বেশ সুন্দর। আমরা আপনাকে সরাসরি চ্যাপ্টার ৩ (ইন্টারমিডিয়েট লেভেল) থেকে শুরু করছি।' : 'Excellent! Your English pronunciation is quite good. We are starting you directly from Chapter 3 (Intermediate Level).')}
+                {testResult?.level === 'A2' && (language === 'bn' ? 'বেশ ভালো! আপনার উচ্চারণ চমৎকার। আমরা প্রি-ইন্টারমিডিয়েট লেভেল (চ্যাপ্টার ২) থেকে শুরু করছি।' : 'Very good! Your pronunciation is great. We are starting you from the Pre-Intermediate Level (Chapter 2).')}
+                {testResult?.level === 'A1' && (language === 'bn' ? 'চিন্তা করবেন না! আমরা একদম গোঁড়া থেকে বেসিক ইংরেজি শব্দগুলো দিয়ে শুরু করব। চ্যাপ্টার ১ দিয়ে পথচলা শুরু হোক।' : 'No worries! We will start with basic English words from the very beginning. Let\'s begin our journey with Chapter 1.')}
               </div>
             </div>
 
             <button onClick={() => navigate('/curriculum')} className="glass-button" disabled={isLoading}>
-              Start Learning Journey
+              {language === 'bn' ? 'লার্নিং জার্নি শুরু করুন' : 'Start Learning Journey'}
             </button>
           </div>
         )}
