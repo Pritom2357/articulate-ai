@@ -4,13 +4,87 @@ import { getLesson } from '../api/curriculum.js';
 import { markLessonComplete, assessPronunciation, getPronunciationFeedback } from '../api/progress.js';
 import { getBookmarks, addBookmark, removeBookmark } from '../api/vocabulary.js';
 import useAuth from '../hooks/useAuth.js';
-import { Award, BookOpen, Volume2, ShieldAlert, Sparkles, Mic, Bookmark } from 'lucide-react';
+import { Award, BookOpen, Volume2, ShieldAlert, Sparkles, Mic, Bookmark, TrendingUp } from 'lucide-react';
 import { playWordAudio } from '../utils/playWordAudio.js';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 // Import tutor assets
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articulate_female.jpeg';
+
+// ─── Pronunciation Score Sparkline ───────────────────────────────────────────────
+const PRON_HISTORY_KEY = 'articulate_pron_history';
+
+function saveScoreToHistory(wordId, score) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(PRON_HISTORY_KEY) || '{}');
+    const existing = raw[wordId] || [];
+    raw[wordId] = [...existing, score].slice(-10); // keep last 10
+    localStorage.setItem(PRON_HISTORY_KEY, JSON.stringify(raw));
+  } catch { /* ignore */ }
+}
+
+function getScoreHistory(wordId) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(PRON_HISTORY_KEY) || '{}');
+    return (raw[wordId] || []).slice(-5); // show last 5
+  } catch { return []; }
+}
+
+function PronSparkline({ wordId, latestScore, language }) {
+  const history = getScoreHistory(wordId);
+  if (history.length < 2) return null;
+
+  const max = 100;
+  const barW = 24;
+  const barGap = 6;
+  const chartH = 40;
+  const total = history.length;
+
+  return (
+    <div className="mt-3 p-3 rounded-xl bg-white/3 border border-white/5">
+      <div className="flex items-center gap-1.5 mb-2">
+        <TrendingUp size={11} className="text-cyan-400" />
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+          {language === 'bn' ? 'শেষ ৫টি স্কোর' : 'Last 5 attempts'}
+        </span>
+      </div>
+      <svg width={(barW + barGap) * total - barGap} height={chartH + 16} className="overflow-visible">
+        {history.map((score, i) => {
+          const barH = Math.max(4, (score / max) * chartH);
+          const x = i * (barW + barGap);
+          const y = chartH - barH;
+          const isLatest = i === history.length - 1;
+          const color = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : '#ef4444';
+          return (
+            <g key={i}>
+              <rect x={x} y={y} width={barW} height={barH} rx="4"
+                fill={color} opacity={isLatest ? 1 : 0.4} />
+              <text x={x + barW / 2} y={chartH + 13} textAnchor="middle"
+                fontSize="9" fill={isLatest ? '#e2e8f0' : '#64748b'} fontWeight={isLatest ? 'bold' : 'normal'}>
+                {score}%
+              </text>
+            </g>
+          );
+        })}
+        {/* Trend line */}
+        {history.length > 1 && (
+          <polyline
+            fill="none"
+            stroke="rgba(99,102,241,0.5)"
+            strokeWidth="1.5"
+            strokeDasharray="3,2"
+            points={history.map((score, i) => {
+              const x = i * (barW + barGap) + barW / 2;
+              const y = chartH - Math.max(4, (score / max) * chartH);
+              return `${x},${y}`;
+            }).join(' ')}
+          />
+        )}
+      </svg>
+    </div>
+  );
+}
 
 export default function LessonDetails() {
   const { id } = useParams();
@@ -248,6 +322,7 @@ export default function LessonDetails() {
       if (response.overall_score !== undefined && response.overall_score !== null) {
         if (isWordTest) {
           setWordScores(prev => ({...prev, [testWordIndex]: Math.max(prev[testWordIndex] || 0, response.overall_score)}));
+          saveScoreToHistory(`word_${words[testWordIndex].id}`, response.overall_score);
         } else {
           setPhraseScores(prev => ({...prev, [testPhraseIndex]: Math.max(prev[testPhraseIndex] || 0, response.overall_score)}));
         }
@@ -689,6 +764,13 @@ export default function LessonDetails() {
                     {t('mic_retry')}
                   </div>
                 )}
+
+                {/* Pronunciation Score Sparkline */}
+                <PronSparkline
+                  wordId={`word_${words[testWordIndex]?.id}`}
+                  latestScore={pronScore}
+                  language={language}
+                />
               </div>
             )}
           </div>
