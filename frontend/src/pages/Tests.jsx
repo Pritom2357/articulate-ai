@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Play, ArrowLeft, Mic, Award, CheckCircle, XCircle } from 'lucide-react';
 import { getTests, getTestDetails } from '../api/curriculum.js';
 import { assessPronunciation, submitTestAttempt } from '../api/progress.js';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 export default function Tests() {
   const navigate = useNavigate();
+  const { language } = useThemeLanguage();
   const [tests, setTests] = useState([]);
   const [selectedTest, setSelectedTest] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -129,7 +131,7 @@ export default function Tests() {
         questionText: question.question_text,
         questionTextBn: question.question_text_bn,
         score: mockScore,
-        feedback: 'মোটামুটি হয়েছে। (উচ্চারণ সফলভাবে রেকর্ড করা হয়েছে)'
+        feedback: language === 'bn' ? 'মোটামুটি হয়েছে। (উচ্চারণ সফলভাবে রেকর্ড করা হয়েছে)' : 'Moderately good. (Pronunciation successfully recorded)'
       }]);
     } finally {
       setIsEvaluating(false);
@@ -192,7 +194,9 @@ export default function Tests() {
                 <ClipboardList /> Speaking Evaluation Tests
               </h1>
               <p className="page-subtitle text-slate-400">
-                চ্যাপ্টার ভিত্তিক স্পিকিং টেস্টগুলোতে অংশ নিন এবং আপনার আইইএলটিএস ব্যান্ড স্কোরের দিকে এগিয়ে যান।
+                {language === 'bn' 
+                  ? 'চ্যাপ্টার ভিত্তিক স্পিকিং টেস্টগুলোতে অংশ নিন এবং আপনার আইইএলটিএস ব্যান্ড স্কোরের দিকে এগিয়ে যান।' 
+                  : 'Take chapter-based speaking tests and move closer to your IELTS band score goals.'}
               </p>
             </div>
           </div>
@@ -260,7 +264,7 @@ export default function Tests() {
               "{questions[currentQuestionIndex]?.question_text}"
             </h2>
             <p className="text-sm text-indigo-300 font-semibold mb-8">
-              অর্থ: {questions[currentQuestionIndex]?.question_text_bn}
+              {language === 'bn' ? 'অর্থ:' : 'Meaning:'} {questions[currentQuestionIndex]?.question_text_bn}
             </p>
 
             {/* Recorder Controls */}
@@ -304,7 +308,9 @@ export default function Tests() {
                   onClick={handleNext}
                   className="glass-button w-full bg-green-500 hover:bg-green-400 text-white border-none py-2.5 mt-2 font-bold"
                 >
-                  {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'Submit Test (ফলাফল দেখুন)'}
+                  {currentQuestionIndex < questions.length - 1 
+                    ? (language === 'bn' ? 'পরবর্তী প্রশ্ন' : 'Next Question') 
+                    : (language === 'bn' ? 'Submit Test (ফলাফল দেখুন)' : 'Submit Test')}
                 </button>
               </div>
             )}
@@ -321,7 +327,9 @@ export default function Tests() {
           
           <div>
             <h1 className="text-3xl font-black text-white">{selectedTest.title} Completed!</h1>
-            <p className="text-slate-400 mt-1">আপনার কথা বলার পরীক্ষা AI দ্বারা মূল্যায়িত হয়েছে।</p>
+            <p className="text-slate-400 mt-1">
+              {language === 'bn' ? 'আপনার কথা বলার পরীক্ষা AI দ্বারা মূল্যায়িত হয়েছে।' : 'Your speaking test has been evaluated by AI.'}
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto my-8">

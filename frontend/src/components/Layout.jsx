@@ -45,7 +45,7 @@ function SidebarBrand() {
 }
 
 function GuideIndicator({ user, onUpdate }) {
-  const { t } = useThemeLanguage();
+  const { t, language } = useThemeLanguage();
   const isFemale = user.guide_preference === 'FEMALE';
   const avatarImg = isFemale ? femaleAvatar : maleAvatar;
 
@@ -60,7 +60,11 @@ function GuideIndicator({ user, onUpdate }) {
             <img src={avatarImg} alt="Tutor" className="w-full h-full object-cover" />
           </div>
           <div>
-            <div className="font-semibold text-white">{isFemale ? 'Riya (রিয়া)' : 'Rohit (রোহিত)'}</div>
+            <div className="font-semibold text-white">
+              {isFemale 
+                ? (language === 'bn' ? 'Riya (রিয়া)' : 'Riya') 
+                : (language === 'bn' ? 'Rohit (রোহিত)' : 'Rohit')}
+            </div>
             <div className="text-slate-400 font-medium">{isFemale ? t('nav_tutor_female') : t('nav_tutor_male')}</div>
           </div>
         </div>
@@ -108,7 +112,7 @@ function GlobalSearch() {
     setQuery('');
   };
 
-  const { t } = useThemeLanguage();
+  const { t, language } = useThemeLanguage();
 
   return (
     <div className="relative w-full min-w-[200px] sm:min-w-[350px] md:min-w-[500px] lg:min-w-[650px] max-w-3xl">
@@ -145,8 +149,12 @@ function GlobalSearch() {
                   <div className="text-[10px] uppercase font-bold text-slate-500 mb-1 px-2">Lessons</div>
                   {results.lessons.slice(0, 3).map(lesson => (
                     <div key={lesson.id} onClick={() => handleResultClick(`/lessons/${lesson.id}`)} className="p-2 hover:bg-white/5 rounded-lg cursor-pointer transition-colors group">
-                      <div className="text-sm font-bold text-indigo-300 group-hover:text-indigo-200">{lesson.title}</div>
-                      <div className="text-xs text-slate-400 truncate">{lesson.objective_bn || lesson.title_bn}</div>
+                      <div className="text-sm font-bold text-indigo-300 group-hover:text-indigo-200">
+                        {language === 'bn' ? (lesson.title_bn || lesson.title) : lesson.title}
+                      </div>
+                      <div className="text-xs text-slate-400 truncate">
+                        {language === 'bn' ? (lesson.objective_bn || lesson.title_bn) : 'Practice pronunciation and speaking.'}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -165,7 +173,7 @@ function GlobalSearch() {
             </div>
           ) : (
             <div className="py-4 text-center text-slate-500 text-sm italic">
-              কোনো ফলাফল পাওয়া যায়নি।
+              {language === 'bn' ? 'কোনো ফলাফল পাওয়া যায়নি।' : 'No results found.'}
             </div>
           )}
         </div>

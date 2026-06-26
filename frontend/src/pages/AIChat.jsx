@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import useAuth from '../hooks/useAuth.js';
+import { Sparkles, Send, Mic, MicOff, AlertCircle } from 'lucide-react';
+import { generalChat } from '../api/progress.js';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 import { Sparkles, Send, Mic, MicOff, AlertCircle, Volume2 } from 'lucide-react';
 import { generalChat, textToSpeech } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
@@ -7,6 +10,7 @@ import femaleAvatar from '../assets/articulate_female.jpeg';
 
 export default function AIChat() {
   const { user } = useAuth();
+  const { language } = useThemeLanguage();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -17,7 +21,9 @@ export default function AIChat() {
 
   const activeTutor = user?.guide_preference || 'MALE';
   const tutorAvatar = activeTutor === 'FEMALE' ? femaleAvatar : maleAvatar;
-  const tutorName = activeTutor === 'FEMALE' ? 'Riya (রিয়া)' : 'Rohit (রোহিত)';
+  const tutorName = activeTutor === 'FEMALE'
+    ? (language === 'bn' ? 'Riya (রিয়া)' : 'Riya')
+    : (language === 'bn' ? 'Rohit (রোহিত)' : 'Rohit');
 
   const recognitionRef = useRef(null);
   const chatEndRef = useRef(null);
@@ -27,7 +33,9 @@ export default function AIChat() {
     setMessages([
       {
         role: 'assistant',
-        content: `Hi ${user?.name || 'there'}! I am ${tutorName}, your AI English Guide. You can talk to me about anything in English. If you make any mistakes, I will help you correct them. How is your day going?`
+        content: language === 'bn'
+          ? `হ্যালো! আমি ${tutorName}, আপনার এআই ইংলিশ গাইড। আপনি আমার সাথে যেকোনো বিষয়ে ইংরেজিতে কথা বলতে পারেন। যদি কোনো ভুল করেন, আমি তা সংশোধন করতে সাহায্য করব। আপনার আজকের দিনটি কেমন কাটছে?`
+          : `Hi ${user?.name || 'there'}! I am ${tutorName}, your AI English Guide. You can talk to me about anything in English. If you make any mistakes, I will help you correct them. How is your day going?`
       }
     ]);
 
@@ -149,7 +157,9 @@ export default function AIChat() {
             <Sparkles className="text-cyan-400 animate-pulse" /> AI Chat Assistant
           </h1>
           <p className="page-subtitle text-slate-400">
-            আপনার গাইড টিউটরের সাথে যেকোনো বিষয়ে কথা বলুন এবং আপনার ইংরেজি চর্চা করুন।
+            {language === 'bn' 
+              ? 'আপনার গাইড টিউটরের সাথে যেকোনো বিষয়ে কথা বলুন এবং আপনার ইংরেজি চর্চা করুন।' 
+              : 'Talk to your guide tutor on any topic and practice your English.'}
           </p>
         </div>
       </div>

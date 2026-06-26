@@ -25,7 +25,7 @@ export default function Curriculum() {
           setProgress(progressData);
         }
       } catch (err) {
-        setError(err.payload?.error || err.message || t('curr_loading_error') || 'চ্যাপ্টার লোড করা যায়নি।');
+        setError(err.payload?.error || err.message || t('curr_loading_error') || (language === 'bn' ? 'চ্যাপ্টার লোড করা যায়নি।' : 'Chapters could not be loaded.'));
       } finally {
         setLoading(false);
       }
