@@ -32,10 +32,8 @@ class DB_Connection {
 
         this.pool = new Pool(connectionConfig);
 
-        // Prevent unhandled 'error' events from crashing the process when Neon
-        // terminates an idle connection mid-flight.
-        this.pool.on('error', (err) => {
-            console.error('⚠️  DB pool idle-client error (safe to ignore):', err.message);
+        this.pool.on('error', (err, client) => {
+            console.error('Unexpected error on idle client', err);
         });
 
         this.pool.query('SELECT NOW()')

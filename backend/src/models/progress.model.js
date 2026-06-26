@@ -258,17 +258,15 @@ class ProgressModel {
                 ['words_500', goodWords >= 500],
                 ['words_750', goodWords >= 750],
                 ['words_1000', goodWords >= 1000],
-                // Chapters (dynamic — checks all 10)
-                ['chapter_1', completedChapters.has(1)],
-                ['chapter_2', completedChapters.has(2)],
-                ['chapter_3', completedChapters.has(3)],
-                ['chapter_4', completedChapters.has(4)],
-                ['chapter_5', completedChapters.has(5)],
-                ['chapter_6', completedChapters.has(6)],
-                ['chapter_7', completedChapters.has(7)],
-                ['chapter_8', completedChapters.has(8)],
-                ['chapter_9', completedChapters.has(9)],
-                ['chapter_10', completedChapters.has(10)],
+                // Chapters (dynamic — checks all 8)
+                ['chapter_1', completedChapters.has(9)],
+                ['chapter_2', completedChapters.has(10)],
+                ['chapter_3', completedChapters.has(11)],
+                ['chapter_4', completedChapters.has(12)],
+                ['chapter_5', completedChapters.has(13)],
+                ['chapter_6', completedChapters.has(14)],
+                ['chapter_7', completedChapters.has(15)],
+                ['chapter_8', completedChapters.has(16)]
                 // General milestones
                 ['first_lesson', parseInt(stats.completed_lessons) >= 1],
                 ['first_test', parseInt(stats.completed_tests) >= 1],

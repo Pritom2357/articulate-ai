@@ -4,7 +4,7 @@ import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 import { Sparkles, Send, Mic, MicOff, AlertCircle, Volume2, BookOpen, User, AlertTriangle } from 'lucide-react';
 import { generalChat, textToSpeech, getChatHistory } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
-import femaleAvatar from '../assets/articucate_female.jpeg';
+import femaleAvatar from '../assets/articulate_female.jpeg';
 import { speakText } from '../utils/tts.js';
 import { playWordAudio } from '../utils/playWordAudio.js';
 

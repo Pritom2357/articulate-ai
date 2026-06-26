@@ -18,6 +18,16 @@ All notable changes made during AI-assisted development sessions are recorded he
 - `frontend/src/pages/Curriculum.jsx` — Full rewrite: localStorage cache (`articulate_curriculum_${userId}`, 5-min TTL) with stale-while-revalidate; hard Refresh button; sequential chapter locking based on `placement_chapter` and completion state (skipped/active/completed/locked states with distinct icons and styles — `Lock`, `CheckCircle2`, `SkipForward`, `PlayCircle`); subtitle updated to explain sequential order; emojis removed.
 - `frontend/src/pages/ChapterDetails.jsx` — Full rewrite: localStorage cache (`articulate_chapter_${id}`, 5-min TTL); lessons now displayed in a **3-column grid** (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`) with compact vertical cards; lesson type icons (`BookOpen`, `Mic`, `ClipboardList`, `RotateCcw` for LEARN/PRACTICE/TEST/REVIEW); chapter progress bar in header; emojis removed.
 
+## 2026-06-26 (session 7)
+
+### Vocabulary page — remove emojis + localStorage cache + hard refresh
+- `frontend/src/pages/Vocabulary.jsx` — Replaced all emojis: tab labels now use `BookOpen` and `Star` Lucide icons; empty states use the same icons instead of `📚`/`⭐`. Added per-filter localStorage cache (`articulate_vocab_${userId}_${filter}`, 5-min TTL) and a separate bookmarks cache (`articulate_bookmarks_${userId}`). Stale-while-revalidate: cached data shown instantly, background revalidation runs silently. Hard **Refresh** button (`RefreshCw`) in page header clears all vocab cache keys for the user and force-fetches. Bookmark toggle also writes the updated bookmark list back to cache so it stays consistent. Filter chip `bg-gradient-to-r` → `bg-linear-to-r`, search wrapper `flex-grow` → `grow` (Tailwind canonical classes).
+
+## 2026-06-26 (session 6)
+
+### Progress page — localStorage cache + hard refresh button
+- `frontend/src/pages/Progress.jsx` — Added `articulate_progress_${userId}` localStorage cache (5-min TTL) with stale-while-revalidate: cached `progress` and `xpLogs` are shown immediately on page load, then silently re-fetched in the background. Hard **Refresh** button (`RefreshCw`) in the page header clears the cache and force-fetches. Calendar data (`getStreakCalendar`) kept in its own effect and not cached (changes per month navigation). Added `useAuth` import; added `useCallback` to imports.
+
 ## 2026-06-26 (session 4)
 
 ### DB routine — fix wrong Bangla meanings in words table

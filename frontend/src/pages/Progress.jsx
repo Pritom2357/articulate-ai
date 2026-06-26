@@ -1,8 +1,211 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState, useCallback } from 'react';
 import { getProgress, getXpLog, getStreakCalendar } from '../api/progress.js';
-import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Award, Clock, Flame, ShieldAlert, Sparkles, TrendingUp, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Award, Clock, Flame, ShieldAlert, Sparkles, TrendingUp, CalendarDays, ChevronLeft, ChevronRight, Shield, Target, RefreshCw } from 'lucide-react';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
+import useAuth from '../hooks/useAuth.js';
+
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const cacheKey = (userId) => `articulate_progress_${userId}`;
+
+function readCache(userId) {
+  try {
+    const raw = localStorage.getItem(cacheKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Date.now() - parsed.cachedAt > CACHE_TTL_MS) return null;
+    return parsed;
+  } catch { return null; }
+}
+
+function writeCache(userId, progress, xpLogs) {
+  try {
+    localStorage.setItem(cacheKey(userId), JSON.stringify({ progress, xpLogs, cachedAt: Date.now() }));
+  } catch { /* quota exceeded */ }
+}
+
+function clearCache(userId) {
+  try { localStorage.removeItem(cacheKey(userId)); } catch { /* ignore */ }
+}
+
+// ─── Daily XP Goal Widget ───────────────────────────────────────────────────
+const XP_GOAL_KEY = 'articulate_daily_xp_goal';
+const DAILY_GOALS = [25, 50, 100, 200];
+
+function DailyGoalWidget({ todayXp, language }) {
+  const [goal, setGoal] = useState(() => Number(localStorage.getItem(XP_GOAL_KEY)) || 50);
+  const [showPicker, setShowPicker] = useState(false);
+
+  const saveGoal = (g) => {
+    setGoal(g);
+    localStorage.setItem(XP_GOAL_KEY, String(g));
+    setShowPicker(false);
+  };
+
+  const pct = Math.min(100, Math.round((todayXp / goal) * 100));
+  const radius = 46;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference - (pct / 100) * circumference;
+  const done = pct >= 100;
+
+  return (
+    <div className="card-card p-5 bg-gradient-to-br from-violet-950/20 to-slate-950/40 border border-violet-500/20 relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-20 h-20 bg-violet-500/5 rounded-full filter blur-xl pointer-events-none" />
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="card-title text-white flex items-center gap-2">
+          <Target size={18} className="text-violet-400" />
+          {language === 'bn' ? 'দৈনিক XP লক্ষ্য' : 'Daily XP Goal'}
+        </h3>
+        <button
+          onClick={() => setShowPicker(p => !p)}
+          className="text-[10px] font-bold text-violet-400 hover:text-violet-300 border border-violet-500/30 px-2.5 py-1 rounded-full bg-violet-500/10 cursor-pointer border-none transition"
+        >
+          {language === 'bn' ? 'লক্ষ্য পরিবর্তন' : 'Change goal'}
+        </button>
+      </div>
+
+      {showPicker && (
+        <div className="flex gap-2 mb-4 flex-wrap">
+          {DAILY_GOALS.map(g => (
+            <button
+              key={g}
+              onClick={() => saveGoal(g)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold cursor-pointer transition border ${
+                goal === g
+                  ? 'bg-violet-600 border-violet-500 text-white'
+                  : 'bg-white/5 border-white/10 text-slate-300 hover:bg-violet-500/15 hover:border-violet-500/30'
+              }`}
+            >
+              {g} XP
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center gap-6">
+        {/* Radial SVG ring */}
+        <div className="relative flex-shrink-0">
+          <svg width="108" height="108" viewBox="0 0 108 108">
+            <circle cx="54" cy="54" r={radius} fill="none" stroke="#ffffff08" strokeWidth="10" />
+            <circle
+              cx="54" cy="54" r={radius} fill="none"
+              stroke={done ? '#a78bfa' : '#7c3aed'}
+              strokeWidth="10"
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={dashOffset}
+              style={{ transform: 'rotate(-90deg)', transformOrigin: '54px 54px', transition: 'stroke-dashoffset 0.6s ease, stroke 0.4s' }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div className={`text-2xl font-black ${done ? 'text-violet-300' : 'text-white'}`}>{pct}%</div>
+            <div className="text-[10px] text-slate-400 font-bold">{done ? '🎉' : `${todayXp}/${goal}`}</div>
+          </div>
+        </div>
+
+        <div className="flex-1">
+          {done ? (
+            <div className="text-sm font-bold text-violet-300">
+              {language === 'bn' ? 'অভিনন্দন! আজকের লক্ষ্য পূরণ হয়েছে! 🎉' : "You hit today's goal! 🎉"}
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <div className="text-sm font-bold text-white">
+                {language === 'bn' ? `আরও ${goal - todayXp} XP দরকার` : `${goal - todayXp} XP to go`}
+              </div>
+              <div className="text-xs text-slate-400">
+                {language === 'bn' ? `আজকের লক্ষ্য: ${goal} XP` : `Today's target: ${goal} XP`}
+              </div>
+              <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mt-2">
+                <div
+                  className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full transition-all duration-700"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Streak Shield Widget ────────────────────────────────────────────────────
+const SHIELD_KEY = 'articulate_streak_shield';
+
+function StreakShieldWidget({ streakDays, language }) {
+  const [shields, setShields] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(SHIELD_KEY) || '0'); } catch { return 0; }
+  });
+
+  useEffect(() => {
+    // Award 1 shield for every completed 7-day streak milestone
+    const earned = Math.floor(streakDays / 7);
+    const stored = Number(localStorage.getItem(`${SHIELD_KEY}_earned`) || '0');
+    if (earned > stored) {
+      const bonus = earned - stored;
+      localStorage.setItem(`${SHIELD_KEY}_earned`, String(earned));
+      setShields(prev => {
+        const next = Math.min(3, prev + bonus); // cap at 3
+        localStorage.setItem(SHIELD_KEY, String(next));
+        return next;
+      });
+    }
+  }, [streakDays]);
+
+  const milestoneNext = (Math.floor(streakDays / 7) + 1) * 7;
+  const progressToNext = streakDays % 7;
+
+  return (
+    <div className="card-card p-5 bg-gradient-to-br from-amber-950/20 to-slate-950/40 border border-amber-500/20 relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/5 rounded-full filter blur-xl pointer-events-none" />
+      <h3 className="card-title text-white flex items-center gap-2 mb-4">
+        <Shield size={18} className="text-amber-400" />
+        {language === 'bn' ? 'স্ট্রিক শিল্ড' : 'Streak Shield'}
+      </h3>
+      <div className="flex items-center gap-4">
+        {/* Shield Icons */}
+        <div className="flex gap-2">
+          {[0, 1, 2].map(i => (
+            <div
+              key={i}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center border text-lg transition-all ${
+                i < shields
+                  ? 'bg-amber-500/20 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
+                  : 'bg-white/3 border-white/10 opacity-30'
+              }`}
+            >
+              🛡️
+            </div>
+          ))}
+        </div>
+        <div className="flex-1">
+          <div className="text-sm font-bold text-white mb-1">
+            {shields > 0
+              ? (language === 'bn' ? `${shields}টি ফ্রিজ শিল্ড সক্রিয়` : `${shields} Freeze Shield${shields > 1 ? 's' : ''} active`)
+              : (language === 'bn' ? 'কোনো শিল্ড নেই' : 'No shields yet')}
+          </div>
+          <div className="text-[10px] text-slate-400">
+            {language === 'bn'
+              ? `${milestoneNext} দিনের স্ট্রিকে পরবর্তী শিল্ড পাবেন (${progressToNext}/7)`
+              : `Next shield at ${milestoneNext}-day streak (${progressToNext}/7)`}
+          </div>
+          <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mt-1.5">
+            <div
+              className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all duration-500"
+              style={{ width: `${(progressToNext / 7) * 100}%` }}
+            />
+          </div>
+          {shields > 0 && (
+            <div className="text-[10px] text-amber-300 mt-1.5">
+              {language === 'bn' ? '⚡ একদিন মিস করলেও স্ট্রিক থাকবে!' : '⚡ Miss a day? Your streak is protected!'}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const getLast7DaysData = (xpLogs, screenTimeData, t) => {
   const data = [];
@@ -42,10 +245,12 @@ const getLast7DaysData = (xpLogs, screenTimeData, t) => {
 
 export default function Progress() {
   const { t, language } = useThemeLanguage();
+  const { user } = useAuth();
   const [progress, setProgress] = useState(null);
   const [xpLogs, setXpLogs] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [calendarActiveDates, setCalendarActiveDates] = useState([]);
   const [calYear, setCalYear] = useState(new Date().getFullYear());
@@ -54,27 +259,52 @@ export default function Progress() {
   // Day specific activity popup details state
   const [selectedDayDetails, setSelectedDayDetails] = useState(null);
 
-  useEffect(() => {
-    async function loadProgressData() {
-      try {
-        setLoading(true);
-        const [progRes, logsRes, calRes] = await Promise.all([
-          getProgress(),
-          getXpLog(100),
-          getStreakCalendar(calYear, calMonth)
-        ]);
-        setProgress(progRes);
-        setXpLogs(logsRes || []);
-        setCalendarActiveDates(calRes.map(r => new Date(r.active_date).getDate()));
-      } catch (err) {
-        setError(err.payload?.error || err.message || t('prog_loading_error') || (language === 'bn' ? 'অগ্রগতি লোড করা যায়নি।' : 'Progress could not be loaded.'));
-      } finally {
+  const fetchProgressAndLogs = useCallback(async (forceRefresh = false) => {
+    if (!user?.id) return;
+
+    if (!forceRefresh) {
+      const cached = readCache(user.id);
+      if (cached) {
+        setProgress(cached.progress);
+        setXpLogs(cached.xpLogs || []);
         setLoading(false);
+        fetchProgressAndLogs(true).catch(() => {});
+        return;
       }
     }
 
-    loadProgressData();
-  }, [calYear, calMonth, t]);
+    try {
+      if (forceRefresh) setRefreshing(true);
+      else setLoading(true);
+
+      const [progRes, logsRes] = await Promise.all([getProgress(), getXpLog(100)]);
+      setProgress(progRes);
+      setXpLogs(logsRes || []);
+      writeCache(user.id, progRes, logsRes || []);
+    } catch (err) {
+      setError(err.payload?.error || err.message || 'Progress could not be loaded.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => { fetchProgressAndLogs(); }, [fetchProgressAndLogs]);
+
+  useEffect(() => {
+    async function loadCalendar() {
+      try {
+        const calRes = await getStreakCalendar(calYear, calMonth);
+        setCalendarActiveDates(calRes.map(r => new Date(r.active_date).getDate()));
+      } catch { /* non-fatal */ }
+    }
+    loadCalendar();
+  }, [calYear, calMonth]);
+
+  const handleRefresh = () => {
+    clearCache(user?.id);
+    fetchProgressAndLogs(true);
+  };
 
   if (loading && !progress) {
     return (
@@ -100,6 +330,14 @@ export default function Progress() {
           </h1>
           <p className="page-subtitle text-slate-400">{t('prog_subtitle')}</p>
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          title="Refresh progress"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/8 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 self-start mt-1">
+          <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+          {refreshing ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
 
       {error && (
@@ -111,6 +349,28 @@ export default function Progress() {
 
       {progress && (
         <div className="space-y-6">
+          {/* Daily Goal + Streak Shield Row */}
+          {(() => {
+            const todayKey = (() => {
+              const d = new Date();
+              return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            })();
+            const screenTimeData = JSON.parse(localStorage.getItem('articulate_screen_time') || '{}');
+            const todayXp = xpLogs
+              .filter(log => {
+                const d = new Date(log.created_at);
+                const logKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                return logKey === todayKey;
+              })
+              .reduce((sum, log) => sum + log.amount, 0);
+            return (
+              <div className="grid gap-4 md:grid-cols-2">
+                <DailyGoalWidget todayXp={todayXp} language={language} />
+                <StreakShieldWidget streakDays={progress.streak_days ?? 0} language={language} />
+              </div>
+            );
+          })()}
+
           {/* Key Stats Cards Grid */}
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="card-card p-5 bg-gradient-to-br from-indigo-950/20 to-slate-950/40 border border-white/5 hover:border-indigo-500/20 transition-all duration-300 relative overflow-hidden">
@@ -269,7 +529,7 @@ export default function Progress() {
                   return (
                     <div 
                       key={dateNum}
-                      onClick={() => handleCellClick(dateNum, dayXp, dayLogs)}
+                      onClick={() => {}}
                       className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold transition-all duration-300 cursor-pointer ${cellClass} ${isToday ? 'ring-2 ring-indigo-500' : ''}`}
                       title={dayXp > 0 ? `${dayXp} XP` : ''}
                     >
@@ -357,7 +617,7 @@ export default function Progress() {
 
             {/* Recharts Render Container */}
             <div className="h-[280px] w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={280}>
                 <ComposedChart data={getLast7DaysData(xpLogs, JSON.parse(localStorage.getItem('articulate_screen_time') || '{}'), t)} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff0a" />
                   <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickLine={false} />

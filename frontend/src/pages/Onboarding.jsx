@@ -8,7 +8,7 @@ import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 // Import tutor assets
 import maleAvatar from '../assets/articulate_male.jpeg';
-import femaleAvatar from '../assets/articucate_female.jpeg';
+import femaleAvatar from '../assets/articulate_female.jpeg';
 
 const TEST_WORDS_EN = [
   { word: 'Apple', definition: 'Apple (a fruit)' },
