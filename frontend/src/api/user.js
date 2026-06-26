@@ -52,6 +52,10 @@ export async function updateMicStatus(userId, payload) {
   });
 }
 
+export async function getOnboardingAttempts() {
+  return request('/user/onboarding/attempts');
+}
+
 export async function saveOnboarding(payload) {
   return request('/user/onboarding', {
     method: 'POST',

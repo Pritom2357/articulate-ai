@@ -1,8 +1,32 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState, useCallback } from 'react';
 import { getProgress, getXpLog, getStreakCalendar } from '../api/progress.js';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Award, Clock, Flame, ShieldAlert, Sparkles, TrendingUp, CalendarDays, ChevronLeft, ChevronRight, Shield, Target } from 'lucide-react';
+import { Award, Clock, Flame, ShieldAlert, Sparkles, TrendingUp, CalendarDays, ChevronLeft, ChevronRight, Shield, Target, RefreshCw } from 'lucide-react';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
+import useAuth from '../hooks/useAuth.js';
+
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const cacheKey = (userId) => `articulate_progress_${userId}`;
+
+function readCache(userId) {
+  try {
+    const raw = localStorage.getItem(cacheKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Date.now() - parsed.cachedAt > CACHE_TTL_MS) return null;
+    return parsed;
+  } catch { return null; }
+}
+
+function writeCache(userId, progress, xpLogs) {
+  try {
+    localStorage.setItem(cacheKey(userId), JSON.stringify({ progress, xpLogs, cachedAt: Date.now() }));
+  } catch { /* quota exceeded */ }
+}
+
+function clearCache(userId) {
+  try { localStorage.removeItem(cacheKey(userId)); } catch { /* ignore */ }
+}
 
 // ─── Daily XP Goal Widget ───────────────────────────────────────────────────
 const XP_GOAL_KEY = 'articulate_daily_xp_goal';
@@ -221,10 +245,12 @@ const getLast7DaysData = (xpLogs, screenTimeData, t) => {
 
 export default function Progress() {
   const { t, language } = useThemeLanguage();
+  const { user } = useAuth();
   const [progress, setProgress] = useState(null);
   const [xpLogs, setXpLogs] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [calendarActiveDates, setCalendarActiveDates] = useState([]);
   const [calYear, setCalYear] = useState(new Date().getFullYear());
@@ -233,27 +259,52 @@ export default function Progress() {
   // Day specific activity popup details state
   const [selectedDayDetails, setSelectedDayDetails] = useState(null);
 
-  useEffect(() => {
-    async function loadProgressData() {
-      try {
-        setLoading(true);
-        const [progRes, logsRes, calRes] = await Promise.all([
-          getProgress(),
-          getXpLog(100),
-          getStreakCalendar(calYear, calMonth)
-        ]);
-        setProgress(progRes);
-        setXpLogs(logsRes || []);
-        setCalendarActiveDates(calRes.map(r => new Date(r.active_date).getDate()));
-      } catch (err) {
-        setError(err.payload?.error || err.message || t('prog_loading_error') || (language === 'bn' ? 'অগ্রগতি লোড করা যায়নি।' : 'Progress could not be loaded.'));
-      } finally {
+  const fetchProgressAndLogs = useCallback(async (forceRefresh = false) => {
+    if (!user?.id) return;
+
+    if (!forceRefresh) {
+      const cached = readCache(user.id);
+      if (cached) {
+        setProgress(cached.progress);
+        setXpLogs(cached.xpLogs || []);
         setLoading(false);
+        fetchProgressAndLogs(true).catch(() => {});
+        return;
       }
     }
 
-    loadProgressData();
-  }, [calYear, calMonth, t]);
+    try {
+      if (forceRefresh) setRefreshing(true);
+      else setLoading(true);
+
+      const [progRes, logsRes] = await Promise.all([getProgress(), getXpLog(100)]);
+      setProgress(progRes);
+      setXpLogs(logsRes || []);
+      writeCache(user.id, progRes, logsRes || []);
+    } catch (err) {
+      setError(err.payload?.error || err.message || 'Progress could not be loaded.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => { fetchProgressAndLogs(); }, [fetchProgressAndLogs]);
+
+  useEffect(() => {
+    async function loadCalendar() {
+      try {
+        const calRes = await getStreakCalendar(calYear, calMonth);
+        setCalendarActiveDates(calRes.map(r => new Date(r.active_date).getDate()));
+      } catch { /* non-fatal */ }
+    }
+    loadCalendar();
+  }, [calYear, calMonth]);
+
+  const handleRefresh = () => {
+    clearCache(user?.id);
+    fetchProgressAndLogs(true);
+  };
 
   if (loading && !progress) {
     return (
@@ -279,6 +330,14 @@ export default function Progress() {
           </h1>
           <p className="page-subtitle text-slate-400">{t('prog_subtitle')}</p>
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          title="Refresh progress"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/8 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 self-start mt-1">
+          <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+          {refreshing ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
 
       {error && (

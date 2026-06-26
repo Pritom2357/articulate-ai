@@ -108,6 +108,17 @@ export async function generalChat(payload) {
   });
 }
 
+export async function getChatHistory(sessionId) {
+  return request(`/chatbot/history?sessionId=${sessionId}`);
+}
+
+export async function quickChat(messages) {
+  return request('/chatbot/quick-chat', {
+    method: 'POST',
+    body: JSON.stringify({ messages }),
+  });
+}
+
 export async function submitTestAttempt(payload) {
   return request('/assess/tests/submit', {
     method: 'POST',

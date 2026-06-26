@@ -70,7 +70,8 @@ CREATE TABLE words (
     CHECK(difficulty_level IN ('BEGINNER', 'INTERMEDIATE', 'ADVANCED')),
   ipa VARCHAR(100),
   syllables VARCHAR(100),
-  audio_url TEXT
+  audio_url TEXT,    -- female voice (en-US-JennyNeural)
+  audio_url_m TEXT   -- male voice   (en-US-AndrewNeural)
 );
 
 
@@ -78,7 +79,8 @@ CREATE TABLE phrases (
   id SERIAL PRIMARY KEY,
   phrase_en VARCHAR(300) NOT NULL UNIQUE,
   phrase_bn VARCHAR(400) NOT NULL,
-  audio_url TEXT,
+  audio_url TEXT,    -- female voice (en-US-JennyNeural)
+  audio_url_m TEXT,  -- male voice   (en-US-AndrewNeural)
   difficulty VARCHAR(20) DEFAULT 'BEGINNER'
     CHECK(difficulty IN ('BEGINNER', 'INTERMEDIATE', 'ADVANCED'))
 );

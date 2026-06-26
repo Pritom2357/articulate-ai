@@ -8,6 +8,7 @@ import femaleAvatar from '../assets/articulate_female.jpeg';
 import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key, Bookmark, Trophy, Search, X, Loader, Sun, Moon, Globe } from 'lucide-react';
 import { searchCurriculum } from '../api/curriculum.js';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
+import FloatingAssistant from './FloatingAssistant.jsx';
 
 
 function AnimatedBrandText({ text, baseDelay = 0, className = "" }) {
@@ -432,6 +433,8 @@ export default function Layout() {
 
         <Outlet />
       </main>
+
+      {location.pathname !== '/ai-chat' && <FloatingAssistant />}
     </div>
   );
 }

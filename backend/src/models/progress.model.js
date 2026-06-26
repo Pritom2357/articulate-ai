@@ -470,13 +470,18 @@ class ProgressModel {
                 LIMIT 1;
             `
 
+            const placementQuery = `
+                SELECT placement_chapter FROM user_progress WHERE user_id = $1
+            `
+
             // run all queries parallely
-            const [progressResult, badges, lessonsResult, chaptersResult, onboardingResult] = await Promise.all([
+            const [progressResult, badges, lessonsResult, chaptersResult, onboardingResult, placementResult] = await Promise.all([
                 this.db_connection.query_executor(progressQuery, [userId]),
                 this.getUserBadges(userId),
                 this.db_connection.query_executor(lessonsQuery, [userId]),
                 this.db_connection.query_executor(chaptersQuery, [userId]),
-                this.db_connection.query_executor(onboardingQuery, [userId])
+                this.db_connection.query_executor(onboardingQuery, [userId]),
+                this.db_connection.query_executor(placementQuery, [userId])
             ])
 
             const progress = progressResult.rows[0] || {
@@ -516,6 +521,7 @@ class ProgressModel {
                 xp: progress.xp,
                 level: progress.level,
                 streak_days: progress.streak_days,
+                placement_chapter: placementResult.rows[0]?.placement_chapter ?? 1,
                 badges: badges || [],
                 lessons: lessonMap,
                 chapters: chapterMap,

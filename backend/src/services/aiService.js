@@ -51,6 +51,15 @@ class AIService {
       console.error('Failed to load next session prompt file:', error.message)
       this.nextSessionPrompt = 'You are an AI English Tutor guiding a Bengali student. Generate a personalized next study session recommendation for the student. ' // fallback
     }
+
+    // Load app context for the floating quick assistant
+    try {
+      const appContextPath = path.join(__dirname, '../prompts/appContext.md')
+      this.appContextPrompt = fs.readFileSync(appContextPath, 'utf8')
+    } catch (error) {
+      console.error('Failed to load appContext.md:', error.message)
+      this.appContextPrompt = 'You are a quick in-app assistant for Articulate AI, a spoken English learning platform.'
+    }
   }
 
 
@@ -323,36 +332,197 @@ class AIService {
    * @returns {Promise<string>} - AI response
    */
   async generateChatResponse(chatMessages) {
+    return this.generateChatWithContext(chatMessages, null)
+  }
+
+  /**
+   * Chat with optional injected profile block
+   * @param {Array} chatMessages
+   * @param {string|null} profileBlock - Pre-formatted learner profile string to inject
+   * @returns {Promise<string>}
+   */
+  async generateChatWithContext(chatMessages, profileBlock = null) {
     if (!this.openai) {
       return "Hello! I am your Articulate AI English Guide. (Note: OpenAI API key is not configured, running in demo mode.)"
     }
 
     try {
-      const systemMessage = {
-        role: 'system',
-        content: this.chatSystemPrompt
-      };
+      let systemContent = this.chatSystemPrompt
+      if (profileBlock) {
+        systemContent = this.chatSystemPrompt + '\n\n' + profileBlock
+      }
 
       const messages = [
-        systemMessage,
+        { role: 'system', content: systemContent },
+        // content can be null for word-panel messages — replace with placeholder so
+        // OpenAI doesn't reject the history with "expected a string, got null"
         ...chatMessages.map(m => ({
-          role: m.role, // 'user' or 'assistant' both valid
-          content: m.content
+          role: m.role,
+          content: m.content ?? (m.wordPanel ? `[Word lookup: ${m.wordPanel.word || 'word'}]` : '[message]')
         }))
-      ];
+      ]
 
       const completion = await this.openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages,
         max_tokens: 500,
         temperature: 0.7,
-      });
+      })
 
-      return completion.choices[0].message.content.trim();
+      return completion.choices[0].message.content.trim()
     }
     catch (error) {
-      console.error('AI chat failed:', error.message);
-      return "I noticed a connection issue, but let's keep practicing!";
+      console.error('AI chat failed:', error.message)
+      return "I noticed a connection issue, but let's keep practicing!"
+    }
+  }
+
+  /**
+   * Lightweight quick-assistant response (for floating chat widget)
+   * @param {Array} chatMessages
+   * @param {string} userContext  - compact profile string (name, level, xp, streak, lessons)
+   * @returns {Promise<string>}
+   */
+  async generateQuickResponse(chatMessages, userContext = '') {
+    if (!this.openai) {
+      return "I'm your quick app assistant! Visit /ai-chat for full English tutoring."
+    }
+    try {
+      const systemContent = `You are a friendly in-app assistant for Articulate AI, a spoken English learning platform for Bengali learners.
+
+${this.appContextPrompt}
+
+${userContext ? `\n=== CURRENT USER ===\n${userContext}\n=== END USER ===` : ''}
+
+STRICT RULES:
+- Max 2-3 sentences per reply. Be direct and helpful.
+- Always mention a specific page route (/flashcards, /progress, etc.) when relevant.
+- For complex English questions (grammar, pronunciation deep-dive, vocabulary coaching): say "For that, visit the AI Chat Assistant at /ai-chat — it's built for exactly this."
+- Speak conversationally, not like a robot. Be encouraging.`
+
+      const messages = [
+        { role: 'system', content: systemContent },
+        ...chatMessages.map(m => ({ role: m.role, content: m.content ?? '[message]' }))
+      ]
+
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages,
+        max_tokens: 150,
+        temperature: 0.7,
+      })
+      return completion.choices[0].message.content.trim()
+    } catch (error) {
+      console.error('Quick chat failed:', error.message)
+      return "I had a hiccup! Try asking again, or visit /ai-chat for full support."
+    }
+  }
+
+  /**
+   * Check English grammar errors in a user message
+   * @param {string} userMessage
+   * @returns {Promise<Array|null>} Array of {original, corrected, explanation} or null if no errors
+   */
+  async checkGrammar(userMessage) {
+    if (!this.openai || !userMessage?.trim()) return null
+    try {
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a strict English grammar checker for Bengali learners.
+Analyze the message for grammatical errors (wrong tense, subject-verb agreement, word form, prepositions, articles, etc.).
+Return JSON: { "errors": [ { "original": "...", "corrected": "...", "explanation": "..." } ] }
+If no errors exist, return: { "errors": [] }
+Return ONLY the JSON — no preamble, no markdown.`
+          },
+          { role: 'user', content: userMessage }
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 300,
+        temperature: 0.1,
+      })
+      const parsed = JSON.parse(completion.choices[0].message.content)
+      return Array.isArray(parsed.errors) && parsed.errors.length > 0 ? parsed.errors : null
+    } catch (err) {
+      console.error('Grammar check failed:', err.message)
+      return null
+    }
+  }
+
+  /**
+   * Return structured info for any English word (used when the word is not in the local DB)
+   * @param {string} word
+   * @returns {Promise<object>} { word, ipa, part_of_speech, bangla_meaning, english_meaning, example, pronunciation_tip }
+   */
+  async generateWordInfo(word) {
+    if (!this.openai) {
+      return { word, ipa: null, part_of_speech: null, bangla_meaning: null, english_meaning: null, example: null, pronunciation_tip: null }
+    }
+    try {
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an English dictionary for Bengali learners.
+For the given word return ONLY a JSON object with these fields:
+{
+  "word": "exact word",
+  "ipa": "IPA transcription without slashes",
+  "part_of_speech": "noun/verb/adjective/etc",
+  "bangla_meaning": "accurate Bangla meaning — use real Bangla words, never English",
+  "english_meaning": "concise English definition (1 sentence)",
+  "example": "a natural example sentence using the word",
+  "pronunciation_tip": "syllable-broken pronunciation guide e.g. ih-NIG-muh"
+}
+No emojis. No markdown. Return ONLY the JSON.`
+          },
+          { role: 'user', content: word }
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 250,
+        temperature: 0.1,
+      })
+      const parsed = JSON.parse(completion.choices[0].message.content)
+      return { ...parsed, ai_generated: true }
+    } catch (err) {
+      console.error('generateWordInfo failed:', err.message)
+      return { word, ipa: null, part_of_speech: null, bangla_meaning: null, english_meaning: null, example: null, pronunciation_tip: null, ai_generated: true }
+    }
+  }
+
+  /**
+   * Detect if user is asking about a specific word (meaning, pronunciation, IPA, spelling)
+   * @param {string} userMessage
+   * @returns {Promise<string|null>} The word in lowercase or null
+   */
+  async extractWordQuery(userMessage) {
+    if (!this.openai || !userMessage?.trim()) return null
+    try {
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `Detect if the user is asking about a specific English word — its meaning, pronunciation, IPA, spelling, or how to say it.
+If they are asking about a specific word, return that word in lowercase.
+If they are asking about multiple words or no specific word, return null.
+Return JSON: { "word": "beautiful" } or { "word": null }
+Return ONLY the JSON — no preamble.`
+          },
+          { role: 'user', content: userMessage }
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 50,
+        temperature: 0,
+      })
+      const parsed = JSON.parse(completion.choices[0].message.content)
+      return parsed.word || null
+    } catch (err) {
+      console.error('Word extraction failed:', err.message)
+      return null
     }
   }
 

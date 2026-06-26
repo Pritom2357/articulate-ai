@@ -12,6 +12,24 @@ chatbotRouter.post(
     chatbotController.generalChat
 )
 
+chatbotRouter.get(
+    '/history',
+    authenticateToken.authenticateToken,
+    chatbotController.getHistory
+)
+
+chatbotRouter.post(
+    '/quick-chat',
+    authenticateToken.authenticateToken,
+    chatbotController.quickChat
+)
+
+chatbotRouter.get(
+    '/word-lookup',
+    authenticateToken.authenticateToken,
+    chatbotController.wordLookup
+)
+
 chatbotRouter.post(
     '/tts',
     authenticateToken.authenticateToken,

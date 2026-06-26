@@ -189,6 +189,19 @@ class UserController {
         }
     }
 
+    getOnboardingAttempts = async (req, res) => {
+        try {
+            const userId = req.user?.id;
+            if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+            const count = await this.userModel.getOnboardingAttemptCount(userId);
+            return res.status(200).json({ success: true, attempts: count, maxAttempts: 3 });
+        } catch (error) {
+            console.error('Get onboarding attempts error:', error);
+            return res.status(500).json({ success: false, error: 'Internal server error' });
+        }
+    }
+
     saveOnboarding = async (req, res) => {
         try {
             const userId = req.user?.id;
@@ -201,6 +214,16 @@ class UserController {
                 return res.status(400).json({ success: false, error: 'assessed_level is required' });
             }
 
+            const attemptCount = await this.userModel.getOnboardingAttemptCount(userId);
+            if (attemptCount >= 3) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Maximum placement test attempts (3) reached.',
+                    attempts: attemptCount,
+                    maxAttempts: 3
+                });
+            }
+
             const assessment = await this.userModel.saveOnboardingAssessment(userId, {
                 assessed_level,
                 vocab_score: vocab_score || 0,
@@ -211,7 +234,9 @@ class UserController {
             return res.status(201).json({
                 success: true,
                 message: 'Onboarding assessment saved and level assigned successfully.',
-                assessment
+                assessment,
+                attempts: attemptCount + 1,
+                maxAttempts: 3
             });
         } catch (error) {
             console.error('Save onboarding error:', error);

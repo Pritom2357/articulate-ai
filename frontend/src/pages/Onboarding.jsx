@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
-import { updateProfile, updateMicStatus, saveOnboarding } from '../api/user.js';
+import { updateProfile, updateMicStatus, saveOnboarding, getOnboardingAttempts } from '../api/user.js';
 import { assessPronunciation } from '../api/progress.js';
-import { Mic, Volume2 } from 'lucide-react';
+import { Mic, Volume2, Lock, AlertTriangle } from 'lucide-react';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 // Import tutor assets
@@ -27,8 +27,10 @@ export default function Onboarding() {
   const { language } = useThemeLanguage();
   const navigate = useNavigate();
   
+  const MAX_ATTEMPTS = 3;
   const [step, setStep] = useState(1); // 1: Select Guide, 2: Mic Check, 3: Speech Test, 4: Done
   const [guide, setGuide] = useState('MALE'); // 'MALE' or 'FEMALE'
+  const [attemptCount, setAttemptCount] = useState(null); // null = loading
   
   const testWords = language === 'bn' ? TEST_WORDS_BN : TEST_WORDS_EN;
   
@@ -64,6 +66,14 @@ export default function Onboarding() {
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+
+  // Fetch attempt count on mount
+  useEffect(() => {
+    if (!user) return;
+    getOnboardingAttempts()
+      .then(data => setAttemptCount(data.attempts ?? 0))
+      .catch(() => setAttemptCount(0));
+  }, [user]);
 
   // Clean up audio context & recorder on unmount
   useEffect(() => {
@@ -340,15 +350,6 @@ export default function Onboarding() {
       setPronScore(data.overall_score);
       setPronFeedback(data.feedback);
 
-      // The backend denoises the recording before scoring it — swap playback to that cleaned
-      // version once it comes back, so "your recording" matches what was actually scored.
-      if (data.denoised_audio_url) {
-        setRecordedAudioUrl(prev => {
-          if (prev) URL.revokeObjectURL(prev);
-          return data.denoised_audio_url;
-        });
-      }
-
       const isCorrect = data.overall_score >= 60; // 60% accuracy threshold to pass
       setScores(prev => [...prev, isCorrect]);
     } catch (err) {
@@ -407,6 +408,49 @@ export default function Onboarding() {
     }
   }
 
+  // Still loading attempt count
+  if (attemptCount === null) {
+    return (
+      <div className="colorful-mesh-container">
+        <div className="glass-form-card animate-fade-in" style={{ maxWidth: '550px' }}>
+          <div className="text-center py-10 text-slate-400 text-sm">Checking eligibility…</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Limit reached — show a clear block screen
+  if (attemptCount >= MAX_ATTEMPTS) {
+    return (
+      <div className="colorful-mesh-container">
+        <div className="mesh-blob-3"></div>
+        <div className="glass-form-card animate-fade-in" style={{ maxWidth: '520px' }}>
+          <div className="text-center py-6 space-y-5">
+            <div className="w-14 h-14 mx-auto rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+              <Lock size={26} className="text-red-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-extrabold text-white mb-2">Placement Test Locked</h2>
+              <p className="text-sm text-slate-400 max-w-sm mx-auto leading-relaxed">
+                You have used all <span className="text-red-400 font-bold">{MAX_ATTEMPTS}</span> placement test attempts.
+                Your curriculum has been set based on your best result.
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold">
+              <AlertTriangle size={14} />
+              Contact support if you believe this is an error.
+            </div>
+            <button
+              onClick={() => navigate('/curriculum')}
+              className="mt-4 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors w-full">
+              Go to My Curriculum
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="colorful-mesh-container">
       <div className="mesh-blob-3"></div>
@@ -415,6 +459,13 @@ export default function Onboarding() {
         <div className="form-watermark">
           <span className="form-watermark-icon">🎙️</span>
           <span className="form-watermark-text">ARTICULATE AI</span>
+        </div>
+
+        {/* Attempt counter badge */}
+        <div className="flex justify-end mb-3">
+          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full border bg-slate-900/40 border-white/10 text-slate-400">
+            Attempt {attemptCount + 1} of {MAX_ATTEMPTS}
+          </span>
         </div>
 
         {/* Onboarding Stage Stepper */}

@@ -2,7 +2,72 @@
 
 All notable changes made during AI-assisted development sessions are recorded here, grouped by date/session. Each entry lists the files touched and a short summary of what changed and why.
 
+## 2026-06-26 (session 5)
+
+### Curriculum overhaul — sequential locking, placement start, caching, 3-col lessons, no emojis
+
+**Backend:**
+- `backend/src/models/progress.model.js` — `getUserProgress` now also queries `placement_chapter` from `user_progress` and returns it in the response so the frontend knows where the user's curriculum starts.
+- `backend/src/models/user.model.js` — Added `getOnboardingAttemptCount(userId)` query (COUNT from `onboarding_assessments`).
+- `backend/src/controllers/user.controller.js` — `saveOnboarding` now checks attempt count before inserting; returns HTTP 403 if ≥ 3 attempts already used. Added `getOnboardingAttempts` handler returning `{ attempts, maxAttempts: 3 }`.
+- `backend/src/routes/user.routes.js` — Added `GET /user/onboarding/attempts` route.
+
+**Frontend:**
+- `frontend/src/api/user.js` — Added `getOnboardingAttempts()` helper.
+- `frontend/src/pages/Onboarding.jsx` — Fetches attempt count on mount; shows a "Placement Test Locked" block screen with a `Lock` icon if attempts ≥ 3; shows "Attempt X of 3" badge during the test flow.
+- `frontend/src/pages/Curriculum.jsx` — Full rewrite: localStorage cache (`articulate_curriculum_${userId}`, 5-min TTL) with stale-while-revalidate; hard Refresh button; sequential chapter locking based on `placement_chapter` and completion state (skipped/active/completed/locked states with distinct icons and styles — `Lock`, `CheckCircle2`, `SkipForward`, `PlayCircle`); subtitle updated to explain sequential order; emojis removed.
+- `frontend/src/pages/ChapterDetails.jsx` — Full rewrite: localStorage cache (`articulate_chapter_${id}`, 5-min TTL); lessons now displayed in a **3-column grid** (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`) with compact vertical cards; lesson type icons (`BookOpen`, `Mic`, `ClipboardList`, `RotateCcw` for LEARN/PRACTICE/TEST/REVIEW); chapter progress bar in header; emojis removed.
+
+## 2026-06-26 (session 7)
+
+### Vocabulary page — remove emojis + localStorage cache + hard refresh
+- `frontend/src/pages/Vocabulary.jsx` — Replaced all emojis: tab labels now use `BookOpen` and `Star` Lucide icons; empty states use the same icons instead of `📚`/`⭐`. Added per-filter localStorage cache (`articulate_vocab_${userId}_${filter}`, 5-min TTL) and a separate bookmarks cache (`articulate_bookmarks_${userId}`). Stale-while-revalidate: cached data shown instantly, background revalidation runs silently. Hard **Refresh** button (`RefreshCw`) in page header clears all vocab cache keys for the user and force-fetches. Bookmark toggle also writes the updated bookmark list back to cache so it stays consistent. Filter chip `bg-gradient-to-r` → `bg-linear-to-r`, search wrapper `flex-grow` → `grow` (Tailwind canonical classes).
+
+## 2026-06-26 (session 6)
+
+### Progress page — localStorage cache + hard refresh button
+- `frontend/src/pages/Progress.jsx` — Added `articulate_progress_${userId}` localStorage cache (5-min TTL) with stale-while-revalidate: cached `progress` and `xpLogs` are shown immediately on page load, then silently re-fetched in the background. Hard **Refresh** button (`RefreshCw`) in the page header clears the cache and force-fetches. Calendar data (`getStreakCalendar`) kept in its own effect and not cached (changes per month navigation). Added `useAuth` import; added `useCallback` to imports.
+
+## 2026-06-26 (session 4)
+
+### DB routine — fix wrong Bangla meanings in words table
+- `backend/src/database/fixBanglaMeaning.js` (new) — Dedicated one-time script to audit and repair `bangla_meaning` for every word. Fetches word + bangla_meaning in batches of 40, sends each batch to GPT-4o-mini with a strict system prompt that explicitly handles common failures: English text used as meaning (e.g. "in" → "ভেতরে / মধ্যে"), bracket-wrapped phonetics ("[In]"), wrong single characters ("ক" for "a"), and NULL values. Supports `--dry-run` to preview changes and saves progress to `.fixbangla_progress.json` for resumable runs. Performs a pre-scan query at startup to show the count of obviously broken entries before the main loop.
+
+## 2026-06-26 (session 3)
+
+### AIChat — grammar box left-aligned + chat width constrained
+- `frontend/src/pages/AIChat.jsx` — Grammar corrections box changed from `ml-auto` (right-side under user bubble) to left-aligned under the assistant response: uses a `flex gap-3` row with an 8px spacer div matching the avatar width, so it visually lines up with the assistant's message column.
+- `frontend/src/App.css` — `.ai-chat-card` now has `max-width: 960px; margin: 0 auto` so the entire chat (header, messages, input bar) is constrained and centered rather than filling the full viewport width. Also increased horizontal padding on `.ai-chat-header` and `.ai-chat-form` from `2rem` to `3rem` for breathing room.
+
+## 2026-06-26 (session 2)
+
+### AIChat.jsx full-width redesign + FloatingAssistant
+- `frontend/src/pages/AIChat.jsx` — Full rewrite: removed `page-container` wrapper; wraps in `.ai-chat-card` (calc height, no border, transparent bg). Header now has title+subtitle on the left and a small circular tutor avatar + agent-toggle chips on the right. Only the messages div scrolls (`.ai-chat-messages`); input form is fixed at the bottom with mic, mistake-toggle, profile-toggle, and send all in one row. Word panel + grammar correction boxes unchanged in content, styled consistently.
+- `frontend/src/components/FloatingAssistant.jsx` (new) — Lightweight 340×460 floating chat panel rendered on all pages except `/ai-chat`. Calls `POST /chatbot/quick-chat` (the lightweight endpoint that loads `appContext.md` for route-aware answers). Panel opens/closes via a fixed indigo FAB in the bottom-right. Typing indicator, auto-scroll, "Full chat" link to `/ai-chat`. Hidden when user is not logged in.
+- `frontend/src/components/Layout.jsx` — Imports `FloatingAssistant` and renders it after `<Outlet />`, conditionally excluded when `location.pathname === '/ai-chat'`.
+- `frontend/src/App.css` — Added `.floating-assistant-btn` (fixed FAB, gradient, hover scale) after existing `.floating-assistant-panel` styles.
+
 ## 2026-06-26
+
+### AI Chat — history persistence (DB + localStorage) and null-content crash fix
+- `backend/src/database/migrateChatHistory.js` (new, run once) — creates `chat_sessions` and `chat_messages` tables plus an index on `(session_id, created_at)`.
+- `backend/src/models/chat.model.js` (new) — `getOrCreateSession`, `saveMessage`, `getHistory`, `getSessions`.
+- `backend/src/services/aiService.js` — `generateChatWithContext` now maps `null` content to `"[Word lookup: word]"` before building the OpenAI payload, fixing the 400 crash when word-panel messages were in the history.
+- `backend/src/controllers/chatbot.controller.js` — `generalChat` now resolves/creates a session, saves user + assistant messages to DB, returns `sessionId` in response. Added `getHistory` handler.
+- `backend/src/routes/chatbot.routes.js` — Added `GET /chatbot/history?sessionId=` route.
+- `frontend/src/api/progress.js` — Added `getChatHistory(sessionId)` helper.
+- `frontend/src/pages/AIChat.jsx` — On mount: reads `articulate_chat_${userId}` from localStorage for instant display, then silently syncs from DB. Each send/receive writes updated messages + sessionId back to localStorage. `sessionId` is threaded through every chat request so the server reuses one session per user.
+
+### AI Chat — Word Lookup panel improvements (no emojis, AI fallback, structured layout)
+- `backend/src/services/aiService.js` — Added `generateWordInfo(word)` returning structured JSON `{ word, ipa, part_of_speech, bangla_meaning, english_meaning, example, pronunciation_tip }` for words not in the local DB.
+- `backend/src/controllers/chatbot.controller.js` — Word lookup now falls back to `generateWordInfo` when the DB has no match; `response` is set to `null` when `wordPanel` is returned so the AI chat text is never shown alongside the panel.
+- `frontend/src/pages/AIChat.jsx` — Word panel redesigned: word + part-of-speech badge + IPA at top, separate sections for বাংলা অর্থ / Meaning / Example / pronunciation tip. "Pronounce" button uses real audio_url when available, otherwise calls TTS on the bare word. `handleReadAloud` now strips emoji/symbol characters with a regex before passing text to TTS so Azure reads naturally.
+
+### AI Chat Agents: Grammar Mistake Detector, Personal Profile Tracker, Pronunciation Helper
+- `backend/src/services/aiService.js` — Added `generateChatWithContext(messages, profileBlock)` (replaces `generateChatResponse` internally, adds optional learner-profile injection), `checkGrammar(userMessage)` (parallel OpenAI call returning `[{original, corrected, explanation}]` or `null`), and `extractWordQuery(userMessage)` (detects if user is asking about a specific word, returns the word string or `null`).
+- `backend/src/controllers/chatbot.controller.js` — Rewrote `generalChat` to accept `{ messages, mistakeCheck, includeProfile }`. Fetches user profile + weak words when `includeProfile` is true, then runs grammar check + main chat response + word detection in `Promise.all`. Adds `wordLookup` handler querying the `words` table by exact (case-insensitive) word match. Returns `{ response, grammarErrors, wordPanel }`.
+- `backend/src/routes/chatbot.routes.js` — Added `GET /chatbot/word-lookup?q=word` route for direct word lookup.
+- `frontend/src/pages/AIChat.jsx` — Added two toggle buttons in the chat header (Mistakes detector, default ON; Profile tracker, default OFF) persisted in `localStorage`. `handleSend` now passes `mistakeCheck`/`includeProfile` flags and handles new response shape. Grammar errors are attached to the user message that triggered them and rendered as a yellow correction box beneath the bubble. Word panel responses (pronunciation helper) skip the regular AI text bubble and show a teal card with word, IPA, Bangla meaning, syllables, and an audio listen button using `playWordAudio`.
 
 ### AI Chatbot & RAG Session Refactoring (OpenAI & Azure TTS)
 - `backend/src/services/aiService.js` — Refactored to replace Gemini with OpenAI (`gpt-4o-mini`). Implemented `assessConversation`, `generalChat`, and `generateNextSessionRAG` with optimized temperature settings (0.3 for strict scoring, 0.7 for creative chat and recommendations). Added `textToSpeech()` using Azure's REST TTS API and SSML.
@@ -93,3 +158,14 @@ All notable changes made during AI-assisted development sessions are recorded he
 ### `npm run dev` now also starts the denoiser worker
 - `backend/package.json` — split `dev` into `dev:backend` (the old `nodemon src/index.js`) and `dev:denoiser` (`cd ../denoiser-worker && .venv\Scripts\python.exe -m uvicorn main:app --port 8001`), with `dev` now running both together via the new `concurrently` devDependency, labeled/colored `BACKEND`/`DENOISER` in the combined output. No `--kill-others` — if the worker isn't set up yet, the backend still runs fine in its existing degraded mode (raw audio, no denoising) rather than refusing to start.
 - First version used a forward-slash path (`.venv/Scripts/python.exe`); on Windows, npm scripts run through `cmd.exe`, which doesn't resolve that the same way bash does (`'.venv' is not recognized as an internal or external command`) — fixed by switching to a backslash path. Verified live: `npm run dev:denoiser` alone starts the worker and `/health` responds correctly.
+
+### Denoiser worker temporarily detached — moving to a standalone HTTPS service later
+- `backend/src/services/aiService.js` — `assessPronunciation()` no longer attempts the local denoiser call at all (was always failing fast anyway since nothing's running it locally right now); goes straight to the `convertToWav()` ffmpeg conversion before sending to Azure. The `denoiserClient.js` import was removed from this file (left as a dead-but-intact module, not deleted) so it's a one-line re-add once the worker comes back as a remote HTTPS service.
+- `backend/package.json` — `dev` reverted to just `nodemon src/index.js` (no longer runs `concurrently` with the denoiser). `dev:denoiser` script kept standalone for whenever local testing of the worker is needed again.
+- Also built but did not finish verifying before priorities shifted: `denoiser-worker/bootstrap.js`, which auto-creates `.venv` and runs `pip install -r requirements.txt` on first run (logging progress) instead of failing with "the system cannot find the path specified" on a fresh clone. Still present and wired to `npm run dev:denoiser` for whenever the worker is run locally again, but the requirements.txt-resolves-cleanly check was abandoned mid-verification when the denoiser was deprioritized — re-verify before relying on it.
+- Re-verified the simplified pipeline live against real Azure: same test clip, `overall_score: 100`, no wasted fetch-and-timeout against a denoiser that isn't running.
+
+### "Your recording" playback was still gated behind denoised audio that no longer exists
+- `backend/src/services/aiService.js` — removed the dead `denoisedAudioDataUrl`/`denoised_audio_url` machinery entirely (it was always `null` since the denoiser stopped being called, but the field still existed on the response). Renamed `denoisedBuffer`/`denoisedMimeType` → `azureBuffer`/`azureMimeType` since they're just "whatever bytes get sent to Azure" now (raw, or ffmpeg-converted) — calling them "denoised" was misleading given no denoising happens here at all anymore.
+- `frontend/src/pages/LessonDetails.jsx`, `frontend/src/pages/Onboarding.jsx` — removed the `if (response.denoised_audio_url) { swap playback source }` blocks. "আপনার রেকর্ডিং" / "your recording" now always plays the original raw mic capture (the object URL created immediately from the recorded blob), never anything processed — this field would never be present anymore anyway, but the dead conditional and its comments incorrectly implied playback might still be swapped to a "cleaned" version.
+- Verified live: `assessPronunciation()`'s response no longer has a `denoised_audio_url` key at all, and scoring still works (`overall_score: 100` on the same test clip).
