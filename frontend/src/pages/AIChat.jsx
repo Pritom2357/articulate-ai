@@ -194,15 +194,15 @@ export default function AIChat() {
         </div>
       )}
 
-      <div className="card-card p-0 overflow-hidden flex flex-col h-[550px] bg-slate-950/40 border border-white/10 shadow-xl">
+      <div className="ai-chat-card">
         {/* Tutor Header */}
-        <div className="bg-indigo-950/80 text-white p-4 flex items-center gap-3 border-b border-white/5">
+        <div className="ai-chat-header">
           <div className="w-10 h-10 rounded-full overflow-hidden border border-white/20">
             <img src={tutorAvatar} alt="Tutor" className="w-full h-full object-cover" />
           </div>
           <div>
-            <div className="font-bold text-sm">{tutorName}</div>
-            <div className="text-xs text-indigo-300">AI Personal English Tutor</div>
+            <div className="ai-chat-tutor-name">{tutorName}</div>
+            <div className="ai-chat-tutor-role">AI Personal English Tutor</div>
           </div>
         </div>
 
@@ -220,20 +220,13 @@ export default function AIChat() {
                 </div>
               )}
               <div
-                className={`p-3 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
-                    ? 'bg-indigo-600 text-white rounded-tr-none shadow-md'
-                    : 'bg-slate-800 text-white rounded-tl-none border border-slate-700/50 shadow-sm'
-                  }`}
+                className={msg.role === 'user' ? 'ai-chat-bubble-user' : 'ai-chat-bubble-assistant'}
               >
                 {msg.content}
                 {msg.role === 'assistant' && (
                   <button
                     onClick={() => handleReadAloud(msg.content, i)}
-                    className={`mt-2 flex items-center gap-1 text-xs border-none cursor-pointer transition ${playingIdx === i
-                        ? 'text-cyan-400 animate-pulse'
-                        : 'text-slate-400 hover:text-indigo-300'
-                      }`}
-                    style={{ background: 'transparent', padding: '2px 0' }}
+                    className={`ai-chat-audio-btn ${playingIdx === i ? 'playing' : ''}`}
                     title={playingIdx === i ? 'Stop reading' : 'Read aloud'}
                   >
                     <Volume2 size={14} />
@@ -249,7 +242,7 @@ export default function AIChat() {
               <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-white/10">
                 <img src={tutorAvatar} alt="Tutor" className="w-full h-full object-cover" />
               </div>
-              <div className="bg-slate-800 border border-slate-700/50 p-3 rounded-2xl rounded-tl-none text-slate-400 text-xs shadow-sm flex items-center gap-1.5 font-bold">
+              <div className="ai-chat-typing-bubble">
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce"></span>
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0.15s' }}></span>
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0.3s' }}></span>
@@ -260,20 +253,17 @@ export default function AIChat() {
         </div>
 
         {/* Input Form */}
-        <form onSubmit={handleSend} className="p-3 bg-slate-900/60 border-t border-white/5 flex gap-2 items-center">
+        <form onSubmit={handleSend} className="ai-chat-form">
           <button
             type="button"
             onClick={toggleListening}
-            className={`w-10 h-10 rounded-full border-none flex items-center justify-center cursor-pointer transition ${isListening
-                ? 'bg-red-500 text-white animate-pulse'
-                : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/25'
-              }`}
+            className={`ai-chat-mic-btn ${isListening ? 'listening' : ''}`}
             title="Speech-to-text"
           >
             {isListening ? <MicOff size={18} /> : <Mic size={18} />}
           </button>
           <input
-            className="flex-grow p-3 rounded-xl bg-slate-950/60 border border-white/10 text-white outline-none text-sm focus:border-indigo-500 transition placeholder-slate-500"
+            className="ai-chat-input"
             placeholder={isListening ? 'Listening...' : 'Write your message in English...'}
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -281,7 +271,7 @@ export default function AIChat() {
           />
           <button
             type="submit"
-            className="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center border-none cursor-pointer transition"
+            className="ai-chat-send-btn"
             disabled={isTyping || !input.trim()}
           >
             <Send size={18} />
