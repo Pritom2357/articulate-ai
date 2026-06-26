@@ -6,7 +6,7 @@ import { assessPronunciation } from '../api/progress.js';
 
 // Import tutor assets
 import maleAvatar from '../assets/articulate_male.jpeg';
-import femaleAvatar from '../assets/articucate_female.jpeg';
+import femaleAvatar from '../assets/articulate_female.jpeg';
 
 const TEST_WORDS = [
   { word: 'Apple', definition: 'আপেল (একটি ফল)' },

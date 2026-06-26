@@ -26,6 +26,9 @@ class DB_Connection {
 
         this.pool = new Pool(connectionConfig);
 
+        this.pool.on('error', (err, client) => {
+            console.error('Unexpected error on idle pg client', err.message);
+        });
         this.pool.query('SELECT NOW()')
             .then(() => console.log('✅ Database connected successfully'))
             .catch((err) => console.error('❌ Database connection failed:', err.message));

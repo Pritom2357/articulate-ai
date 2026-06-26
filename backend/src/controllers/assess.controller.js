@@ -129,7 +129,7 @@ class AssessController {
             const query = `
                 INSERT INTO test_progress (user_id, test_id, score, obtained_marks, status, completed_at)
                 VALUES ($1, $2, $3, $4, 'EVALUATED', NOW())
-                ON CONFLICT DO NOTHING
+                ON CONFLICT DO NOTHING 
                 RETURNING *;
             `;
             const result = await this.progressModel.db_connection.query_executor(query, [

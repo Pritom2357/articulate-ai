@@ -20,10 +20,6 @@ class NotificationService {
             if (this.enablePush) this.push?.pushToUser(userId, 'email_verified', { email });
         });
 
-        bus.on(Events.USER_LOGIN, ({ userId }) => {
-            if (this.enablePush) this.push?.pushToUser(userId, 'login', { message: 'Login successful' });
-        });
-
         bus.on(Events.USER_PROFILE_UPDATED, ({ userId, changed }) => {
             if (this.enablePush) this.push?.pushToUser(userId, 'profile_updated', { changed });
         });

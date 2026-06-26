@@ -30,7 +30,7 @@ export async function uploadAvatar(userId, file) {
   formData.append('avatar', file);
 
   const token = localStorage.getItem('articulate_access_token');
-  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/user/avatar/${userId}`, {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'}/user/avatar/${userId}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,

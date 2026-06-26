@@ -4,8 +4,13 @@ import useAuth from '../hooks/useAuth.js';
 import { updateProfile } from '../api/user.js';
 import { getNotifications } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
+<<<<<<< HEAD
 import femaleAvatar from '../assets/articucate_female.jpeg';
 import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key, Bookmark, Trophy, Search, X, Loader } from 'lucide-react';
+=======
+import femaleAvatar from '../assets/articulate_female.jpeg';
+import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key, Bookmark, Trophy, Search, X, Loader, Sun, Moon, Globe } from 'lucide-react';
+>>>>>>> 766fa5f (updated Terms of Service)
 import { searchCurriculum } from '../api/curriculum.js';
 
 
@@ -386,6 +391,73 @@ export default function Layout() {
       </aside>
 
       <main className="main-content">
+<<<<<<< HEAD
+=======
+        {/* Persistent Top Bar with Notifications & Profile */}
+        <div className="top-bar">
+          <div className="top-bar-left"></div>
+
+          <div className="top-bar-center">
+            {/* Global Search Bar */}
+            {user && <GlobalSearch />}
+          </div>
+
+          <div className="top-bar-actions">
+            {/* Language Switcher */}
+            <button 
+              onClick={toggleLanguage} 
+              className="top-bar-icon-btn font-extrabold text-xs" 
+              title={language === 'bn' ? 'Switch to English' : 'বাংলায় পরিবর্তন করুন'}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '0 8px', width: 'auto', borderRadius: '1rem' }}
+            >
+              <Globe size={14} className="text-indigo-400" />
+              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                <span className={language === 'bn' ? 'text-white drop-shadow-md' : 'text-slate-500 hover:text-slate-300 transition-colors'}>বাং</span>
+                <span className="text-white/20">|</span>
+                <span className={language === 'en' ? 'text-white drop-shadow-md' : 'text-slate-500 hover:text-slate-300 transition-colors'}>EN</span>
+              </div>
+            </button>
+
+            {/* Theme Switcher */}
+            <button 
+              onClick={toggleTheme} 
+              className="top-bar-icon-btn" 
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {theme === 'dark' ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-indigo-600" />}
+            </button>
+
+            {/* Notification Bell */}
+            <Link to="/notifications" className="top-bar-icon-btn" title="Notifications">
+              <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="top-bar-badge">
+                  <span className="top-bar-badge-ping"></span>
+                  <span className="top-bar-badge-count">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                </span>
+              )}
+            </Link>
+
+            {/* Profile Avatar */}
+            {user ? (
+              <Link to="/profile" className="top-bar-profile" title="Profile">
+                {user.profile_photo ? (
+                  <img src={user.profile_photo} alt={user.name} className="top-bar-avatar" />
+                ) : (
+                  <div className="top-bar-avatar-placeholder">
+                    {user.name?.charAt(0)?.toUpperCase() || <User size={18} />}
+                  </div>
+                )}
+              </Link>
+            ) : (
+              <Link to="/login" className="top-bar-icon-btn" title="Sign in">
+                <User size={20} />
+              </Link>
+            )}
+          </div>
+        </div>
+
+>>>>>>> 766fa5f (updated Terms of Service)
         <Outlet />
       </main>
     </div>
