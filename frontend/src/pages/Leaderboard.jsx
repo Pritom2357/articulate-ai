@@ -3,9 +3,11 @@ import { getLeaderboard } from '../api/progress.js';
 import useAuth from '../hooks/useAuth.js';
 import { Trophy, Medal, Flame, ShieldAlert, Sparkles, User, Crown } from 'lucide-react';
 import maleAvatar from '../assets/articulate_male.jpeg';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 export default function Leaderboard() {
   const { user } = useAuth();
+  const { language } = useThemeLanguage();
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -17,19 +19,19 @@ export default function Leaderboard() {
         const data = await getLeaderboard(100);
         setLeaderboard(data);
       } catch (err) {
-        setError(err.message || 'লিডারবোর্ড লোড করা যায়নি।');
+        setError(err.message || (language === 'bn' ? 'লিডারবোর্ড লোড করা যায়নি।' : 'Failed to load leaderboard.'));
       } finally {
         setLoading(false);
       }
     }
     fetchLeaderboard();
-  }, []);
+  }, [language]);
 
   if (loading && leaderboard.length === 0) {
     return (
       <div className="page-container text-center py-20">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-        <div className="text-slate-400 font-semibold font-mono">লিডারবোর্ড লোড হচ্ছে...</div>
+        <div className="text-slate-400 font-semibold font-mono">{language === 'bn' ? 'লিডারবোর্ড লোড হচ্ছে...' : 'Loading leaderboard...'}</div>
       </div>
     );
   }
@@ -42,10 +44,12 @@ export default function Leaderboard() {
             <span className="p-2.5 rounded-2xl bg-yellow-500/10 border border-yellow-500/25 flex items-center justify-center">
               <Trophy className="text-yellow-400" size={28} />
             </span>
-            লিডারবোর্ড (Leaderboard)
+            {language === 'bn' ? 'লিডারবোর্ড (Leaderboard)' : 'Leaderboard'}
           </h1>
           <p className="page-subtitle text-slate-400 mt-2">
-            সর্বোচ্চ XP অর্জনকারী শীর্ষ শিক্ষার্থীদের তালিকা। আপনার স্থান কোথায় দেখে নিন!
+            {language === 'bn' 
+              ? 'সর্বোচ্চ XP অর্জনকারী শীর্ষ শিক্ষার্থীদের তালিকা। আপনার স্থান কোথায় দেখে নিন!' 
+              : 'List of top learners with the highest XP. Find out where you stand!'}
           </p>
         </div>
         <div className="bg-slate-900/60 border border-white/5 rounded-xl px-4 py-2 flex items-center gap-3 shadow-inner">
@@ -202,7 +206,7 @@ export default function Leaderboard() {
           
           {leaderboard.length === 0 && !loading && (
             <li className="px-6 py-12 text-center text-slate-500 text-sm font-semibold italic">
-              কোনো ডেটা পাওয়া যায়নি।
+              {language === 'bn' ? 'কোনো ডেটা পাওয়া যায়নি।' : 'No data found.'}
             </li>
           )}
         </ul>

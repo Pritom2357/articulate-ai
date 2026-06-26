@@ -172,6 +172,14 @@ class UserModel {
         }
     }
 
+    getOnboardingAttemptCount = async (userId) => {
+        const result = await this.db_connection.query_executor(
+            `SELECT COUNT(*)::int AS count FROM onboarding_assessments WHERE user_id = $1`,
+            [userId]
+        );
+        return result.rows[0]?.count ?? 0;
+    }
+
     saveOnboardingAssessment = async (userId, assessmentData) => {
         try {
             const { assessed_level, vocab_score, pronunciation_score, ai_notes } = assessmentData;

@@ -102,9 +102,20 @@ export async function getStreakCalendar(year, month) {
 }
 
 export async function generalChat(payload) {
-  return request('/assess/ai-chat', {
+  return request('/chatbot/chat', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export async function getChatHistory(sessionId) {
+  return request(`/chatbot/history?sessionId=${sessionId}`);
+}
+
+export async function quickChat(messages) {
+  return request('/chatbot/quick-chat', {
+    method: 'POST',
+    body: JSON.stringify({ messages }),
   });
 }
 
@@ -113,4 +124,19 @@ export async function submitTestAttempt(payload) {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export async function textToSpeech(text, voice = 'en-US-JennyNeural') {
+  const response = await authorizedFetch('/chatbot/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, voice }),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error || 'Text-to-speech failed');
+  }
+
+  return response.blob();
 }

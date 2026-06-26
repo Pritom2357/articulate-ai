@@ -2,16 +2,19 @@ import { useEffect, useState } from 'react';
 import { getProgress, getXpLog, getStreakCalendar } from '../api/progress.js';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Award, Clock, Flame, ShieldAlert, Sparkles, TrendingUp, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
-const getLast7DaysData = (xpLogs, screenTimeData) => {
+const getLast7DaysData = (xpLogs, screenTimeData, t) => {
   const data = [];
   const today = new Date();
+  const xpKey = t('chart_xp_bar');
+  const screenTimeKey = t('chart_screentime_line');
   
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(today.getDate() - i);
     const dateString = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const dateLabel = d.toLocaleDateString('bn-BD', { month: 'short', day: 'numeric' });
+    const dateLabel = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     
     // Calculate total XP gained on this day
     const dayXp = xpLogs
@@ -29,8 +32,8 @@ const getLast7DaysData = (xpLogs, screenTimeData) => {
 
     data.push({
       date: dateLabel,
-      "XP অর্জিত (Progress)": dayXp,
-      "স্ক্রিন টাইম (মিনিট)": dayScreenTimeMin,
+      [xpKey]: dayXp,
+      [screenTimeKey]: dayScreenTimeMin,
     });
   }
   
@@ -38,6 +41,7 @@ const getLast7DaysData = (xpLogs, screenTimeData) => {
 };
 
 export default function Progress() {
+  const { t, language } = useThemeLanguage();
   const [progress, setProgress] = useState(null);
   const [xpLogs, setXpLogs] = useState([]);
   const [error, setError] = useState('');
@@ -46,6 +50,9 @@ export default function Progress() {
   const [calendarActiveDates, setCalendarActiveDates] = useState([]);
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth() + 1);
+
+  // Day specific activity popup details state
+  const [selectedDayDetails, setSelectedDayDetails] = useState(null);
 
   useEffect(() => {
     async function loadProgressData() {
@@ -60,23 +67,26 @@ export default function Progress() {
         setXpLogs(logsRes || []);
         setCalendarActiveDates(calRes.map(r => new Date(r.active_date).getDate()));
       } catch (err) {
-        setError(err.payload?.error || err.message || 'অগ্রগতি লোড করা যায়নি।');
+        setError(err.payload?.error || err.message || t('prog_loading_error') || (language === 'bn' ? 'অগ্রগতি লোড করা যায়নি।' : 'Progress could not be loaded.'));
       } finally {
         setLoading(false);
       }
     }
 
     loadProgressData();
-  }, [calYear, calMonth]);
+  }, [calYear, calMonth, t]);
 
   if (loading && !progress) {
     return (
       <div className="page-container text-center py-20">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-        <div className="text-slate-400 font-semibold font-mono">অগ্রগতি বিশ্লেষণ করা হচ্ছে...</div>
+        <div className="text-slate-400 font-semibold font-mono">{t('prog_loading')}</div>
       </div>
     );
   }
+
+  const xpKey = t('chart_xp_bar');
+  const screenTimeKey = t('chart_screentime_line');
 
   return (
     <div className="page-container animate-fade-in">
@@ -86,9 +96,9 @@ export default function Progress() {
             <span className="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center">
               <TrendingUp className="text-indigo-400" size={24} />
             </span>
-            অগ্রগতি ড্যাশবোর্ড (My Progress)
+            {t('prog_title')}
           </h1>
-          <p className="page-subtitle text-slate-400">আপনার শেখার অগ্রগতি, এক্সপি অর্জন এবং স্ক্রিন টাইম বিশ্লেষণ একনজরে দেখুন।</p>
+          <p className="page-subtitle text-slate-400">{t('prog_subtitle')}</p>
         </div>
       </div>
 
@@ -105,16 +115,16 @@ export default function Progress() {
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="card-card p-5 bg-gradient-to-br from-indigo-950/20 to-slate-950/40 border border-white/5 hover:border-indigo-500/20 transition-all duration-300 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/5 rounded-full filter blur-lg pointer-events-none"></div>
-              <div className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-2">XP অর্জিত (Total XP)</div>
+              <div className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-2">{t('prog_xp_earned')}</div>
               <div className="text-3xl font-black text-indigo-400 flex items-baseline gap-1">
                 <span>{progress.xp ?? 0}</span>
-                <span className="text-xs text-slate-500 font-bold">Points</span>
+                <span className="text-xs text-slate-500 font-bold">{t('prog_points')}</span>
               </div>
             </div>
 
             <div className="card-card p-5 bg-gradient-to-br from-cyan-950/20 to-slate-950/40 border border-white/5 hover:border-cyan-500/20 transition-all duration-300 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-16 h-16 bg-cyan-500/5 rounded-full filter blur-lg pointer-events-none"></div>
-              <div className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-2">আপনার লেভেল (Current Level)</div>
+              <div className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-2">{t('prog_level')}</div>
               <div className="text-3xl font-black text-cyan-400 flex items-baseline gap-1">
                 <span>Lvl {progress.level ?? 1}</span>
               </div>
@@ -122,10 +132,10 @@ export default function Progress() {
 
             <div className="card-card p-5 bg-gradient-to-br from-rose-950/20 to-slate-950/40 border border-white/5 hover:border-rose-500/20 transition-all duration-300 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-16 h-16 bg-rose-500/5 rounded-full filter blur-lg pointer-events-none"></div>
-              <div className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-2">অধ্যবসায় (Active Streak)</div>
+              <div className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-2">{t('prog_streak')}</div>
               <div className="text-3xl font-black text-rose-400 flex items-baseline gap-1">
                 <span>{progress.streak_days ?? 0}</span>
-                <span className="text-xs text-slate-500 font-bold">Days</span>
+                <span className="text-xs text-slate-500 font-bold">{t('prog_days')}</span>
                 <Flame size={20} className="text-rose-500 ml-1.5 self-center animate-pulse" />
               </div>
             </div>
@@ -137,21 +147,21 @@ export default function Progress() {
               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full filter blur-xl pointer-events-none"></div>
               
               <h3 className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
-                <Sparkles size={16} className="text-cyan-400" /> প্লেসমেন্ট পরীক্ষার মূল্যায়ন (Placement Assessment)
+                <Sparkles size={16} className="text-cyan-400" /> {t('prog_placement')}
               </h3>
               
               <div className="grid gap-6 md:grid-cols-3 items-center">
                 <div className="bg-white/3 border border-white/5 rounded-2xl p-4 text-center">
-                  <div className="text-[10px] text-slate-400 uppercase tracking-widest font-black">Placed level</div>
+                  <div className="text-[10px] text-slate-400 uppercase tracking-widest font-black">{t('prog_placed_lvl')}</div>
                   <div className="text-4xl font-black text-cyan-400 my-1">{progress.onboarding.assessed_level}</div>
                   <div className="text-[10px] text-slate-500 font-semibold">
-                    Placed at Chapter {progress.onboarding.assessed_level === 'B1' ? '3' : progress.onboarding.assessed_level === 'A2' ? '2' : '1'}
+                    {t('prog_placed_chapter')} {progress.onboarding.assessed_level === 'B1' ? '3' : progress.onboarding.assessed_level === 'A2' ? '2' : '1'}
                   </div>
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex justify-between items-center text-xs font-semibold">
-                    <span className="text-slate-400">Vocabulary accuracy:</span>
+                    <span className="text-slate-400">{language === 'bn' ? 'ভোকাবুলারি নির্ভুলতা:' : 'Vocabulary accuracy:'}</span>
                     <span className="text-indigo-400">{Math.round(progress.onboarding.vocab_score)}%</span>
                   </div>
                   <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
@@ -159,7 +169,7 @@ export default function Progress() {
                   </div>
 
                   <div className="flex justify-between items-center text-xs font-semibold">
-                    <span className="text-slate-400">Pronunciation accuracy:</span>
+                    <span className="text-slate-400">{language === 'bn' ? 'উচ্চারণ নির্ভুলতা:' : 'Pronunciation accuracy:'}</span>
                     <span className="text-cyan-400">{Math.round(progress.onboarding.pronunciation_score)}%</span>
                   </div>
                   <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
@@ -169,11 +179,11 @@ export default function Progress() {
 
                 <div className="text-xs text-slate-300 leading-relaxed bg-slate-900/40 p-3.5 rounded-xl border border-white/5 h-full flex flex-col justify-between">
                   <div>
-                    <span className="font-bold text-white block mb-1">AI Analyst Feedback:</span>
-                    <span className="italic">"{progress.onboarding.ai_notes || 'কোনো বিবরণ উপলব্ধ নেই।'}"</span>
+                    <span className="font-bold text-white block mb-1">{language === 'bn' ? 'এআই অ্যানালিস্ট ফিডব্যাক:' : 'AI Analyst Feedback:'}</span>
+                    <span className="italic">"{progress.onboarding.ai_notes || (language === 'bn' ? 'কোনো বিবরণ উপলব্ধ নেই।' : 'No details available.')}"</span>
                   </div>
                   <div className="text-[10px] text-slate-500 font-semibold mt-3">
-                    অ্যাসেসমেন্টের তারিখ: {new Date(progress.onboarding.assessed_at).toLocaleDateString('bn-BD')}
+                    {language === 'bn' ? 'অ্যাসেসমেন্টের তারিখ:' : 'Assessment Date:'} {new Date(progress.onboarding.assessed_at).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US')}
                   </div>
                 </div>
               </div>
@@ -182,59 +192,146 @@ export default function Progress() {
 
           {/* Streak Calendar Banner */}
           <div className="card-card p-6 bg-slate-950/40 border border-white/10 relative overflow-hidden">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="card-title text-white flex items-center gap-2 mb-1">
-                  <CalendarDays size={18} className="text-rose-400" />
-                  ধারাবাহিকতা ক্যালেন্ডার (Streak Calendar)
-                </h3>
-                <p className="text-xs text-slate-400">এই মাসে আপনার শেখার সক্রিয় দিনগুলো।</p>
-              </div>
-              <div className="flex items-center gap-3 bg-slate-900/50 rounded-lg p-1 border border-white/5">
-                <button 
-                  onClick={() => {
-                    if (calMonth === 1) { setCalMonth(12); setCalYear(calYear - 1); }
-                    else { setCalMonth(calMonth - 1); }
-                  }}
-                  className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <span className="text-sm font-bold text-white min-w-[100px] text-center">
-                  {new Date(calYear, calMonth - 1).toLocaleString('bn-BD', { month: 'long', year: 'numeric' })}
-                </span>
-                <button 
-                  onClick={() => {
-                    if (calMonth === 12) { setCalMonth(1); setCalYear(calYear + 1); }
-                    else { setCalMonth(calMonth + 1); }
-                  }}
-                  className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="text-[10px] font-bold text-slate-500 uppercase py-1">{day}</div>
-              ))}
-              {Array.from({ length: new Date(calYear, calMonth - 1, 1).getDay() }).map((_, i) => (
-                <div key={`empty-${i}`} className="p-2"></div>
-              ))}
-              {Array.from({ length: new Date(calYear, calMonth, 0).getDate() }).map((_, i) => {
-                const dateNum = i + 1;
-                const isActive = calendarActiveDates.includes(dateNum);
-                const isToday = new Date().getDate() === dateNum && new Date().getMonth() + 1 === calMonth && new Date().getFullYear() === calYear;
-                return (
-                  <div 
-                    key={dateNum} 
-                    className={`aspect-square flex items-center justify-center rounded-xl text-sm font-bold transition-all duration-300 ${isActive ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-[0_0_10px_rgba(244,63,94,0.1)]' : 'bg-slate-900/40 text-slate-500 border border-white/5'} ${isToday && !isActive ? 'border-slate-400 text-slate-300 bg-slate-800' : ''}`}
+            <div className="max-w-md mx-auto">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="card-title text-white flex items-center gap-2 mb-1">
+                    <CalendarDays size={18} className="text-rose-400" />
+                    {t('cal_title')}
+                  </h3>
+                  <p className="text-xs text-slate-400">{t('cal_subtitle')}</p>
+                </div>
+                <div className="flex items-center gap-3 bg-slate-900/50 rounded-lg p-1 border border-white/5">
+                  <button 
+                    onClick={() => {
+                      if (calMonth === 1) { setCalMonth(12); setCalYear(calYear - 1); }
+                      else { setCalMonth(calMonth - 1); }
+                      setSelectedDayDetails(null);
+                    }}
+                    className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
                   >
-                    {dateNum}
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="text-sm font-bold text-white min-w-[100px] text-center">
+                    {new Date(calYear, calMonth - 1).toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US', { month: 'long', year: 'numeric' })}
+                  </span>
+                  <button 
+                    onClick={() => {
+                      if (calMonth === 12) { setCalMonth(1); setCalYear(calYear + 1); }
+                      else { setCalMonth(calMonth + 1); }
+                      setSelectedDayDetails(null);
+                    }}
+                    className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Streak Calendar grid */}
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center">
+                {(language === 'bn' 
+                  ? ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহ', 'শুক্র', 'শনি'] 
+                  : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                ).map(day => (
+                  <div key={day} className="text-[10px] font-bold text-slate-500 uppercase py-1">{day}</div>
+                ))}
+                {Array.from({ length: new Date(calYear, calMonth - 1, 1).getDay() }).map((_, i) => (
+                  <div key={`empty-${i}`} className="aspect-square"></div>
+                ))}
+                {Array.from({ length: new Date(calYear, calMonth, 0).getDate() }).map((_, i) => {
+                  const dateNum = i + 1;
+                  const isActive = calendarActiveDates.includes(dateNum);
+                  
+                  // Get logs and XP for this day
+                  const dayLogs = xpLogs.filter(log => {
+                    const logDate = new Date(log.created_at);
+                    return logDate.getDate() === dateNum && 
+                           logDate.getMonth() + 1 === calMonth && 
+                           logDate.getFullYear() === calYear;
+                  });
+                  const dayXp = dayLogs.reduce((sum, log) => sum + log.amount, 0);
+
+                  const isToday = new Date().getDate() === dateNum && new Date().getMonth() + 1 === calMonth && new Date().getFullYear() === calYear;
+                  
+                  // Heatmap logic colors
+                  let cellClass = "";
+                  if (dayXp >= 100) {
+                    cellClass = "bg-rose-600 text-white border border-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.3)] hover:scale-108";
+                  } else if (dayXp >= 50) {
+                    cellClass = "bg-rose-500/40 text-rose-200 border border-rose-500/30 shadow-[0_0_8px_rgba(244,63,94,0.15)] hover:scale-108";
+                  } else if (dayXp > 0 || isActive) {
+                    cellClass = "bg-rose-500/15 text-rose-300 border border-rose-500/20 hover:scale-108";
+                  } else {
+                    cellClass = "bg-slate-900/40 text-slate-500 border border-white/5 hover:bg-slate-900/70 hover:text-slate-300";
+                  }
+                  
+                  return (
+                    <div 
+                      key={dateNum}
+                      onClick={() => handleCellClick(dateNum, dayXp, dayLogs)}
+                      className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold transition-all duration-300 cursor-pointer ${cellClass} ${isToday ? 'ring-2 ring-indigo-500' : ''}`}
+                      title={dayXp > 0 ? `${dayXp} XP` : ''}
+                    >
+                      {dateNum}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap items-center justify-between mt-4 pt-4 border-t border-white/5 text-xs text-slate-400 gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span>{t('cal_legend')}</span>
+                  <div className="flex gap-1 items-center ml-1">
+                    <span className="w-3 h-3 rounded bg-slate-900/40 border border-white/5" title={t('cal_legend_none')}></span>
+                    <span className="w-3 h-3 rounded bg-rose-500/15 border border-rose-500/20" title={t('cal_legend_low')}></span>
+                    <span className="w-3 h-3 rounded bg-rose-500/40 border border-rose-500/30" title={t('cal_legend_mid')}></span>
+                    <span className="w-3 h-3 rounded bg-rose-600" title={t('cal_legend_high')}></span>
                   </div>
-                );
-              })}
+                </div>
+                <div className="font-bold text-slate-300">
+                  {language === 'bn' ? `ধারাবাহিকতা: ${progress.streak_days} দিন` : `Streak: ${progress.streak_days} Days`}
+                </div>
+              </div>
+
+              {/* Day Specific details panel */}
+              {selectedDayDetails && (
+                <div className="mt-5 p-4 rounded-2xl bg-indigo-950/20 border border-indigo-500/15 animate-fade-in text-left">
+                  <div className="flex justify-between items-center border-b border-indigo-500/10 pb-2 mb-3">
+                    <h4 className="text-xs font-black text-indigo-300 flex items-center gap-1.5">
+                      <span>📅</span> {t('cal_selected_details')}: {selectedDayDetails.day} {new Date(calYear, calMonth - 1).toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US', { month: 'long', year: 'numeric' })}
+                    </h4>
+                    <button 
+                      onClick={() => setSelectedDayDetails(null)} 
+                      className="text-[10px] uppercase font-bold tracking-wider text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
+                    >
+                      {language === 'bn' ? 'বন্ধ করুন' : 'Close'}
+                    </button>
+                  </div>
+                  <div className="text-xs text-slate-300">
+                    <div className="mb-2 font-semibold">
+                      {t('prog_xp_earned')}: <span className="text-sm font-black text-indigo-400">+{selectedDayDetails.xp} XP</span>
+                    </div>
+                    {selectedDayDetails.logs.length > 0 ? (
+                      <div className="space-y-1.5 mt-2">
+                        <div className="font-bold text-slate-400 mb-1">{t('cal_activity_logs')}</div>
+                        {selectedDayDetails.logs.map((log) => (
+                          <div key={log.log_id} className="flex items-center gap-2 p-1.5 rounded-lg bg-white/3 border border-white/5">
+                            <span className="text-indigo-400 font-bold flex-shrink-0">+{log.amount} XP</span>
+                            <span className="text-slate-200 capitalize font-medium">{log.reason ? log.reason.replace('_', ' ') : 'Learning Activity'}</span>
+                            <span className="text-[10px] text-slate-500 font-mono ml-auto">
+                              {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-slate-500 italic text-center py-2">{t('cal_no_activity')}</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -246,20 +343,22 @@ export default function Progress() {
               <div>
                 <h3 className="card-title text-white flex items-center gap-2 font-black">
                   <TrendingUp className="text-cyan-400" size={20} /> 
-                  সাপ্তাহিক স্ক্রিন টাইম ও অগ্রগতি বিশ্লেষণ
+                  {t('chart_title')}
                 </h3>
-                <p className="text-xs text-slate-400 mt-1">গত ৭ দিনে প্রতিদিনের অর্জিত XP এবং অ্যাপ ব্যবহারের সক্রিয় সময়ের তুলনামূলক চার্ট।</p>
+                <p className="text-xs text-slate-400 mt-1">{t('chart_desc')}</p>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-slate-300 font-semibold bg-white/5 border border-white/5 rounded-full px-3 py-1.5">
                 <Clock size={12} className="text-indigo-400" />
-                <span>আজকের ব্যবহার: {Math.round((JSON.parse(localStorage.getItem('articulate_screen_time') || '{}')[new Date().toISOString().split('T')[0]] || 0) / 60)} মিনিট</span>
+                <span>
+                  {t('chart_today_use')} {Math.round((JSON.parse(localStorage.getItem('articulate_screen_time') || '{}')[new Date().toISOString().split('T')[0]] || 0) / 60)} {t('chart_minutes')}
+                </span>
               </div>
             </div>
 
             {/* Recharts Render Container */}
             <div className="h-[280px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={getLast7DaysData(xpLogs, JSON.parse(localStorage.getItem('articulate_screen_time') || '{}'))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <ComposedChart data={getLast7DaysData(xpLogs, JSON.parse(localStorage.getItem('articulate_screen_time') || '{}'), t)} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff0a" />
                   <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickLine={false} />
                   <YAxis yAxisId="left" stroke="#818cf8" fontSize={10} tickLine={false} />
@@ -268,9 +367,8 @@ export default function Progress() {
                     contentStyle={{ backgroundColor: '#0b0f19', borderColor: '#1e293b', borderRadius: '12px', fontSize: '11px', color: '#fff' }}
                     labelStyle={{ fontWeight: 'black', color: '#818cf8', marginBottom: '4px' }}
                   />
-                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                  <Bar yAxisId="left" name="XP অর্জিত" dataKey="XP অর্জিত (Progress)" fill="url(#colorXp)" barSize={22} radius={[4, 4, 0, 0]} />
-                  <Line yAxisId="right" name="স্ক্রিন টাইম (মিনিট)" type="monotone" dataKey="স্ক্রিন টাইম (মিনিট)" stroke="#06b6d4" strokeWidth={3} dot={{ fill: '#06b6d4', r: 4 }} activeDot={{ r: 6 }} />
+                  <Bar yAxisId="left" name={xpKey} dataKey={xpKey} fill="url(#colorXp)" barSize={22} radius={[4, 4, 0, 0]} />
+                  <Line yAxisId="right" name={screenTimeKey} type="monotone" dataKey={screenTimeKey} stroke="#06b6d4" strokeWidth={3} dot={{ fill: '#06b6d4', r: 4 }} activeDot={{ r: 6 }} />
                   
                   {/* Gradients */}
                   <defs>
@@ -289,7 +387,7 @@ export default function Progress() {
             <div className="card-card p-5 bg-slate-950/40 border border-white/10">
               <h3 className="card-title text-white flex items-center gap-2 mb-4">
                 <Award size={18} className="text-yellow-400" />
-                অর্জিত ব্যাজসমূহ (Badges)
+                {language === 'bn' ? 'অর্জিত ব্যাজসমূহ (Badges)' : 'Earned Badges'}
               </h3>
               {progress.badges?.length ? (
                 <ul className="space-y-2">
@@ -317,14 +415,14 @@ export default function Progress() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-slate-500 text-xs italic">কোনো ব্যাজ এখনো আনলক করা হয়নি।</p>
+                <p className="text-slate-500 text-xs italic">{language === 'bn' ? 'কোনো ব্যাজ এখনো আনলক করা হয়নি।' : 'No badges unlocked yet.'}</p>
               )}
             </div>
 
             <div className="card-card p-5 bg-slate-950/40 border border-white/10">
               <h3 className="card-title text-white flex items-center gap-2 mb-4">
                 <span>📖</span>
-                চ্যাপ্টার প্রগ্রেস (Chapter progress)
+                {language === 'bn' ? 'চ্যাপ্টার প্রগ্রেস (Chapter progress)' : 'Chapter Progress'}
               </h3>
               {progress.chapters ? (
                 <ul className="space-y-3">
@@ -332,7 +430,7 @@ export default function Progress() {
                     <li key={chapterId} className="p-3 border border-white/5 rounded-xl bg-white/2">
                       <div className="flex justify-between items-start mb-2">
                         <div className="font-bold text-white text-sm">{chapter.chapter_title || `Chapter ${chapterId}`}</div>
-                        <div className="text-xs text-indigo-300 font-bold">{chapter.completion_pct ?? 0}% completed</div>
+                        <div className="text-xs text-indigo-300 font-bold">{chapter.completion_pct ?? 0}% {language === 'bn' ? 'সম্পন্ন' : 'completed'}</div>
                       </div>
                       {/* Custom premium slider progress bar */}
                       <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
@@ -342,7 +440,7 @@ export default function Progress() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-slate-500 text-xs italic">কারিকুলাম প্রগ্রেস উপলব্ধ নেই।</p>
+                <p className="text-slate-500 text-xs italic">{language === 'bn' ? 'কারিকুলাম প্রগ্রেস উপলব্ধ নেই।' : 'No curriculum progress available.'}</p>
               )}
             </div>
           </div>

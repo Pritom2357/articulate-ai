@@ -15,7 +15,7 @@ class AssessController {
     assessPronunciation = async (req, res) => {
         try {
             const userId = req.user.id;
-            const { referenceText, wordId } = req.body || {};
+            const { referenceText, wordId, phraseId } = req.body || {};
 
             if (!req.file) {
                 return res.status(400).json({ success: false, error: 'Audio file is required' });
@@ -59,6 +59,7 @@ class AssessController {
                     const { ragTriggerPhonemes } = await this.progressModel.logPhonemeScores(
                         userId,
                         wordId ? parseInt(wordId) : null,
+                        phraseId ? parseInt(phraseId) : null,
                         result.phonemes
                     );
 
@@ -162,19 +163,6 @@ class AssessController {
         }
     }
 
-    generalChat = async (req, res) => {
-        try {
-            const { messages } = req.body;
-            if (!messages || !Array.isArray(messages)) {
-                return res.status(400).json({ success: false, error: 'messages array is required' });
-            }
-            const response = await aiService.generateChatResponse(messages);
-            return res.status(200).json({ success: true, response });
-        } catch (error) {
-            console.error('AI general chat controller error:', error);
-            return res.status(500).json({ success: false, error: 'Internal server error' });
-        }
-    }
 
     submitTestAttempt = async (req, res) => {
         try {

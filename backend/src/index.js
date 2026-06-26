@@ -27,6 +27,7 @@ const { progressRouter } = require('./routes/progress.routes.js');
 const { assessRouter } = require('./routes/assess.routes.js');
 const { notificationsRouter } = require('./routes/notifications.routes.js');
 const { vocabularyRouter } = require('./routes/vocabulary.routes.js');
+const { chatbotRouter } = require('./routes/chatbot.routes.js');
 
 
 
@@ -140,6 +141,7 @@ app.use('/api/user', apiLimiter, userRouter);
 app.use('/api/curriculum', apiLimiter, curriculumRouter);
 app.use('/api/progress', apiLimiter, progressRouter);
 app.use('/api/assess', apiLimiter, assessRouter);
+app.use('/api/chatbot', apiLimiter, chatbotRouter);
 app.use('/api/notifications', apiLimiter, notificationsRouter);
 app.use('/api/vocabulary', apiLimiter, vocabularyRouter);
 

@@ -286,3 +286,27 @@ CREATE TABLE notifications (
 );
 
 CREATE INDEX IF NOT EXISTS idx_notif_multicast ON notifications(multicast) WHERE multicast IS NOT NULL;
+
+
+
+---------- phonemes (added from addPhonemeTables.js) ----------
+CREATE TABLE IF NOT EXISTS user_phoneme_scores (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  phoneme VARCHAR(10) NOT NULL,
+  score INTEGER NOT NULL CHECK (score BETWEEN 0 AND 100),
+  word_id INTEGER REFERENCES words(id) ON DELETE SET NULL,
+  recorded_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+alter table user_phoneme_scores add column phrase_id INTEGER REFERENCES phrases(id) ON DELETE SET NULL
+
+
+CREATE TABLE IF NOT EXISTS user_phoneme_summary (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  phoneme VARCHAR(10) NOT NULL,
+  avg_score FLOAT NOT NULL DEFAULT 0,
+  total_attempts INTEGER NOT NULL DEFAULT 0,
+  fail_streak INTEGER NOT NULL DEFAULT 0,
+  mastered BOOLEAN NOT NULL DEFAULT FALSE,
+  PRIMARY KEY (user_id, phoneme)
+);

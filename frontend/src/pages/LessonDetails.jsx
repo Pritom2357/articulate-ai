@@ -6,6 +6,7 @@ import { getBookmarks, addBookmark, removeBookmark } from '../api/vocabulary.js'
 import useAuth from '../hooks/useAuth.js';
 import { Award, BookOpen, Volume2, ShieldAlert, Sparkles, Mic, Bookmark } from 'lucide-react';
 import { playWordAudio } from '../utils/playWordAudio.js';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 // Import tutor assets
 import maleAvatar from '../assets/articulate_male.jpeg';
@@ -15,6 +16,7 @@ export default function LessonDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
+  const { t, language } = useThemeLanguage();
 
   const [lesson, setLesson] = useState(null);
   const [words, setWords] = useState([]);
@@ -28,7 +30,9 @@ export default function LessonDetails() {
   // Active guide selection
   const activeTutor = user?.guide_preference || 'MALE';
   const tutorAvatar = activeTutor === 'FEMALE' ? femaleAvatar : maleAvatar;
-  const tutorName = activeTutor === 'FEMALE' ? 'Riya (রিয়া)' : 'Rohit (রোহিত)';
+  const tutorName = activeTutor === 'FEMALE'
+    ? (language === 'bn' ? 'Riya (রিয়া)' : 'Riya')
+    : (language === 'bn' ? 'Rohit (রোহিত)' : 'Rohit');
 
   // TTS speaking states
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -55,6 +59,8 @@ export default function LessonDetails() {
   const [recordedAudioUrl, setRecordedAudioUrl] = useState(null);
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
   const [bookmarkedWordIds, setBookmarkedWordIds] = useState(new Set());
+  const [wordScores, setWordScores] = useState({});
+  const [phraseScores, setPhraseScores] = useState({});
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -75,7 +81,7 @@ export default function LessonDetails() {
           console.error('Failed to load bookmarks', bErr);
         }
       } catch (err) {
-        setError(err.payload?.error || err.message || 'লেসন লোড করতে সমস্যা হয়েছে।');
+        setError(err.payload?.error || err.message || (language === 'bn' ? 'লেসন লোড করতে সমস্যা হয়েছে।' : 'Failed to load lesson.'));
       } finally {
         setLoading(false);
       }
@@ -171,7 +177,7 @@ export default function LessonDetails() {
       setRecording(true);
     } catch (err) {
       console.error('Mic error:', err);
-      alert('মাইক্রোফোন চালু করা যায়নি। অনুগ্রহ করে পারমিশন চেক করুন।');
+      alert(language === 'bn' ? 'মাইক্রোফোন চালু করা যায়নি। অনুগ্রহ করে পারমিশন চেক করুন।' : 'Could not activate microphone. Please check permissions.');
     }
   };
 
@@ -222,7 +228,7 @@ export default function LessonDetails() {
 
       if (response.rejected) {
         setPronScore(0);
-        setPronFeedback('রেকর্ডিংয়ের শব্দ স্পষ্ট নয়। অনুগ্রহ করে শান্ত জায়গায় আবার রেকর্ড করুন।');
+        setPronFeedback(language === 'bn' ? 'রেকর্ডিংয়ের শব্দ স্পষ্ট নয়। অনুগ্রহ করে শান্ত জায়গায় আবার রেকর্ড করুন।' : 'The recorded audio is not clear. Please record again in a quiet place.');
         return;
       }
 
@@ -230,6 +236,22 @@ export default function LessonDetails() {
       setPronScore(response.overall_score);
       setPronFeedback(response.feedback);
       setPhonemeScores(response.phonemes || []);
+
+      // The backend runs the recording through a denoiser before scoring it — once that comes
+      // back, swap the playback source to it so "your recording" is the cleaned-up version
+      // actually used for scoring, not the raw mic capture.
+      if (response.denoised_audio_url) {
+        URL.revokeObjectURL(rawUrl);
+        setRecordedAudioUrl(response.denoised_audio_url);
+      }
+
+      if (response.overall_score !== undefined && response.overall_score !== null) {
+        if (isWordTest) {
+          setWordScores(prev => ({...prev, [testWordIndex]: Math.max(prev[testWordIndex] || 0, response.overall_score)}));
+        } else {
+          setPhraseScores(prev => ({...prev, [testPhraseIndex]: Math.max(prev[testPhraseIndex] || 0, response.overall_score)}));
+        }
+      }
 
       if (response.overall_score >= 60) {
         setPassCount(prev => prev + 1);
@@ -244,7 +266,7 @@ export default function LessonDetails() {
     } catch (err) {
       console.error('Speech assessment error:', err);
       setPronScore(0);
-      setPronFeedback('মূল্যায়ন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।');
+      setPronFeedback(language === 'bn' ? 'মূল্যায়ন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' : 'Evaluation failed. Please try again.');
     } finally {
       setIsEvaluating(false);
     }
@@ -285,11 +307,21 @@ export default function LessonDetails() {
   const completeLesson = async () => {
     try {
       setLoading(true);
-      await markLessonComplete({ lessonId: id, score: 100 });
+      const wordWeight = 1;
+      const phraseWeight = 2;
+
+      let totalWeightedScore = 0;
+      Object.values(wordScores).forEach(s => totalWeightedScore += s * wordWeight);
+      Object.values(phraseScores).forEach(s => totalWeightedScore += s * phraseWeight);
+
+      const totalWeight = (words.length * wordWeight) + (phrases.length * phraseWeight);
+      const avgScore = totalWeight > 0 ? Math.round(totalWeightedScore / totalWeight) : 100;
+
+      await markLessonComplete({ lessonId: id, score: avgScore });
       await refreshUser();
       setWizardStep(5);
     } catch (err) {
-      setError('প্রোগ্রেস সংরক্ষণ ব্যর্থ হয়েছে।');
+      setError(language === 'bn' ? 'প্রোগ্রেস সংরক্ষণ ব্যর্থ হয়েছে।' : 'Failed to save progress.');
     } finally {
       setLoading(false);
     }
@@ -299,7 +331,7 @@ export default function LessonDetails() {
     return (
       <div className="page-container text-center py-20">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-        <div className="text-slate-400 font-semibold">লেসন লোড হচ্ছে...</div>
+        <div className="text-slate-400 font-semibold">{t('lesson_loading')}</div>
       </div>
     );
   }
@@ -315,10 +347,10 @@ export default function LessonDetails() {
             </span>
             {lesson?.title || `Lesson ${lesson?.order_num || id}`}
           </h1>
-          <p className="page-subtitle text-slate-400">{lesson?.title_bn}</p>
+          <p className="page-subtitle text-slate-400">{language === 'bn' ? lesson?.title_bn : lesson?.title}</p>
         </div>
         <div className="flex items-center gap-2 text-xs bg-white/5 border border-white/5 rounded-full px-3 py-1.5 font-bold text-slate-300">
-          <span>🎯 লেসন ক্যাটাগরি:</span>
+          <span>🎯 {language === 'bn' ? 'লেসন ক্যাটাগরি:' : 'Lesson Category:'}</span>
           <span className="text-indigo-400 uppercase">{lesson?.type}</span>
         </div>
       </div>
@@ -333,11 +365,11 @@ export default function LessonDetails() {
       {/* Visual Stepper */}
       <div className="flex justify-between items-center mb-6 p-2 rounded-2xl bg-slate-900/40 border border-white/5 backdrop-blur-md overflow-x-auto gap-2 scrollbar-none">
         {[
-          { step: 1, label: 'শব্দভান্ডার (Vocabulary)' },
-          { step: 2, label: 'ফ্ল্যাশ-কার্ড প্র্যাকটিস' },
-          { step: 3, label: 'শব্দ উচ্চারণ পরীক্ষা' },
-          { step: 4, label: 'বাক্য উচ্চারণ পরীক্ষা' },
-          { step: 5, label: 'লেসন সম্পন্ন! 🎉' }
+          { step: 1, label: t('step_vocab') },
+          { step: 2, label: t('step_flash') },
+          { step: 3, label: t('step_word') },
+          { step: 4, label: t('step_sentence') },
+          { step: 5, label: t('step_complete') }
         ].map((s) => (
           <button
             key={s.step}
@@ -369,13 +401,23 @@ export default function LessonDetails() {
           <img src={tutorAvatar} alt="Tutor" className="w-full h-full object-cover" />
         </div>
         <div className="flex-1">
-          <div className="font-bold text-indigo-400 text-sm">{tutorName} (গাইড)</div>
+          <div className="font-bold text-indigo-400 text-sm">{tutorName} ({t('lesson_tutor')})</div>
           <div className="text-sm text-slate-200 leading-relaxed mt-1.5 font-medium italic">
-            {wizardStep === 1 && `"স্বাগতম! আজকে আমরা নতুন শব্দ শিখব। প্রতিটি শব্দ শুনুন এবং তা বাংলা অর্থের সাথে মুখস্থ করুন।"`}
-            {wizardStep === 2 && `"এবার ফ্ল্যাশ-কার্ড দিয়ে প্র্যাকটিস করার পালা। কার্ডগুলো উল্টে তার বাংলা অর্থ মেলাবার চেষ্টা করুন।"`}
-            {wizardStep === 3 && `"উচ্চারণ টেস্ট শুরু করা যাক! মাইক চেপে ধরে শব্দটি বলুন। কমপক্ষে ৬০% নির্ভুল হতে হবে।"`}
-            {wizardStep === 4 && `"খুব ভালো করেছেন! এবার আমরা শব্দগুলো নিয়ে সম্পূর্ণ বাক্য বলব। মাইক চেপে পুরো বাক্যটি বলুন।"`}
-            {wizardStep === 5 && `"অভিনন্দন! আপনার আজকের লেসনটি সম্পূর্ণ সফল হয়েছে। আপনার প্রোগ্রেস সেভ করা হয়েছে এবং আপনি ৫০ XP পেয়েছেন।"`}
+            {wizardStep === 1 && (language === 'bn' 
+              ? `"স্বাগতম! আজকে আমরা নতুন শব্দ শিখব। প্রতিটি শব্দ শুনুন এবং তা বাংলা অর্থের সাথে মুখস্থ করুন।"` 
+              : `"Welcome! Today we will learn new vocabulary. Listen to each word and memorize it along with its meaning."`)}
+            {wizardStep === 2 && (language === 'bn'
+              ? `"এবার ফ্ল্যাশ-কার্ড দিয়ে প্র্যাকটিস করার পালা। কার্ডগুলো উল্টে তার বাংলা অর্থ মেলাবার চেষ্টা করুন।"`
+              : `"Now it's time to practice with flashcards. Flip the cards to match their meanings."`)}
+            {wizardStep === 3 && (language === 'bn'
+              ? `"উচ্চারণ টেস্ট শুরু করা যাক! মাইক চেপে ধরে শব্দটি বলুন। কমপক্ষে ৬০% নির্ভুল হতে হবে।"`
+              : `"Let's start the pronunciation test! Press and hold the mic to say the word. You need at least 60% accuracy to pass."`)}
+            {wizardStep === 4 && (language === 'bn'
+              ? `"খুব ভালো করেছেন! এবার আমরা শব্দগুলো নিয়ে সম্পূর্ণ বাক্য বলব। মাইক চেপে পুরো বাক্যটি বলুন।"`
+              : `"Excellent job! Now let's practice full sentences using these words. Press and hold the mic to speak."`)}
+            {wizardStep === 5 && (language === 'bn'
+              ? `"অভিনন্দন! আপনার আজকের লেসনটি সম্পূর্ণ সফল হয়েছে। আপনার প্রোগ্রেস সেভ করা হয়েছে এবং আপনি ৫০ XP পেয়েছেন।"`
+              : `"Congratulations! You have successfully completed today's lesson. Your progress has been saved and you earned 50 XP."`)}
           </div>
         </div>
       </div>
@@ -421,7 +463,7 @@ export default function LessonDetails() {
                           }`}
                       >
                         <Volume2 size={13} />
-                        {speakingWordId === word.id ? 'বাজছে...' : 'উচ্চারণ শুনুন'}
+                        {speakingWordId === word.id ? t('vocab_playing') : t('vocab_listen')}
                       </button>
                       <button
                         onClick={() => handleToggleBookmark(word.id)}
@@ -444,14 +486,14 @@ export default function LessonDetails() {
                   onClick={() => setLearnIndex(prev => Math.max(0, prev - 3))}
                   className="glass-button w-full bg-slate-800 text-slate-300 border-none hover:bg-slate-700"
                 >
-                  ◀ পূর্ববর্তী ৩টি শব্দ
+                  {t('btn_prev_words')}
                 </button>
               )}
               <button
                 onClick={() => isLastPage ? setWizardStep(2) : setLearnIndex(prev => prev + 3)}
                 className="glass-button w-full bg-gradient-to-r from-indigo-600 to-cyan-600 border-none"
               >
-                {isLastPage ? 'পরবর্তী ধাপ: ফ্ল্যাশ-কার্ড প্র্যাকটিস ▶' : 'পরবর্তী ৩টি শব্দ ▶'}
+                {isLastPage ? t('btn_next_step_flash') : t('btn_next_words')}
               </button>
             </div>
           </div>
@@ -471,7 +513,7 @@ export default function LessonDetails() {
         return (
           <div className="space-y-6">
             <div className="text-center text-xs text-slate-400 font-bold uppercase tracking-wider">
-              পেইজ {currentPair} / {totalPairs}
+              {t('flash_page')} {currentPair} / {totalPairs}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
@@ -492,7 +534,7 @@ export default function LessonDetails() {
                           {word.ipa && (
                             <div className="text-xs text-slate-400 font-mono mt-1">[{word.ipa}]</div>
                           )}
-                          <div className="text-xs text-cyan-300 mt-5 font-semibold animate-pulse">ক্লিক করুন 🔄</div>
+                          <div className="text-xs text-cyan-300 mt-5 font-semibold animate-pulse">{t('flash_tap_to_flip')}</div>
                         </div>
                         <div className="card-face card-face-back flex flex-col justify-center items-center px-4">
                           <div className="text-xl font-bold text-white text-center mb-1">{word.bangla_meaning}</div>
@@ -519,7 +561,7 @@ export default function LessonDetails() {
                   }}
                   className="form-button"
                 >
-                  {isLastPair ? 'পরবর্তী ধাপ: শব্দ টেস্ট ▶' : 'পরবর্তী ২টি শব্দ ▶'}
+                  {isLastPair ? t('btn_next_step_word') : t('btn_next_2_words')}
                 </button>
               </div>
             )}
@@ -532,7 +574,7 @@ export default function LessonDetails() {
         <div className="space-y-6">
           <div className="card-card p-6 text-center bg-slate-950/40 border border-white/10 max-w-xl mx-auto">
             <div className="text-xs text-slate-400 font-bold mb-2 uppercase">
-              শব্দ {testWordIndex + 1} / {words.length}
+              {language === 'bn' ? 'শব্দ' : 'Word'} {testWordIndex + 1} / {words.length}
             </div>
             <div className="flex flex-col md:flex-row items-center justify-center gap-6 mb-6 mt-4">
               <div className="text-center md:text-left flex-1">
@@ -540,7 +582,7 @@ export default function LessonDetails() {
                   "{words[testWordIndex]?.word}"
                 </h2>
                 <div className="text-xs text-slate-400 font-semibold">
-                  [{words[testWordIndex]?.ipa || 'no ipa'}] | অর্থ: {words[testWordIndex]?.bangla_meaning}
+                  [{words[testWordIndex]?.ipa || 'no ipa'}] | {language === 'bn' ? 'অর্থ:' : 'Meaning:'} {words[testWordIndex]?.bangla_meaning}
                 </div>
               </div>
 
@@ -559,21 +601,21 @@ export default function LessonDetails() {
                   <Mic size={32} />
                 </button>
                 <div className="text-[10px] text-slate-400 mt-2 font-semibold text-center leading-tight">
-                  {recording ? 'ছেড়ে দিলে মূল্যায়িত হবে' : 'রেকর্ড করতে বাটনে চেপে ধরে রাখুন'}
+                  {recording ? t('mic_release_to_evaluate') : t('mic_hold_to_record')}
                 </div>
               </div>
             </div>
 
             {isEvaluating && (
               <div className="text-sm text-indigo-400 font-bold animate-pulse py-4 flex items-center justify-center gap-2">
-                <Sparkles size={16} /> Tutor Guide আপনার উচ্চারণ বিশ্লেষণ করছে...
+                <Sparkles size={16} /> {t('mic_evaluating')}
               </div>
             )}
 
             {pronScore !== null && (
               <div className="max-w-md mx-auto p-4 rounded-xl bg-slate-900/60 border border-white/10 mt-6 animate-bounce-in">
                 <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
-                  <span className="text-sm text-slate-400 font-semibold">AI উচ্চারণ নির্ভুলতা:</span>
+                  <span className="text-sm text-slate-400 font-semibold">{t('mic_accuracy')}</span>
                   <span className={`text-2xl font-black ${pronScore >= 60 ? 'text-green-500' : 'text-red-500'}`}>
                     {pronScore}%
                   </span>
@@ -581,7 +623,7 @@ export default function LessonDetails() {
                 <p className="text-sm text-slate-200 font-medium">{pronFeedback}</p>
                 {recognizedText && (
                   <div className="text-xs text-slate-400 mt-2">
-                    শনাক্ত শব্দ: <span className="italic font-bold text-slate-300">"{recognizedText}"</span>
+                    {t('mic_recognized')} <span className="italic font-bold text-slate-300">"{recognizedText}"</span>
                   </div>
                 )}
                 {pronunciationTip && (
@@ -593,7 +635,7 @@ export default function LessonDetails() {
 
                 {phonemeScores.length > 0 && (
                   <div className="mt-3 text-left">
-                    <div className="text-xs text-slate-400 font-semibold mb-1.5">ধ্বনি বিশ্লেষণ (কোথায় ভুল হয়েছে):</div>
+                    <div className="text-xs text-slate-400 font-semibold mb-1.5">{t('mic_tips')}</div>
                     <div className="flex flex-wrap gap-1.5">
                       {phonemeScores.map((p, i) => (
                         <span
@@ -623,7 +665,7 @@ export default function LessonDetails() {
                         }`}
                     >
                       <Mic size={13} />
-                      {isPlayingRecording ? 'বাজছে...' : 'আপনার রেকর্ডিং'}
+                      {isPlayingRecording ? t('vocab_playing') : t('mic_your_recording')}
                     </button>
                     <button
                       onClick={() => handlePlayAudio(words[testWordIndex], words[testWordIndex]?.id)}
@@ -633,18 +675,18 @@ export default function LessonDetails() {
                         }`}
                     >
                       <Volume2 size={13} />
-                      সঠিক উচ্চারণ
+                      {t('mic_correct_pron')}
                     </button>
                   </div>
                 )}
 
                 {pronScore >= 60 ? (
                   <button onClick={nextWordTest} className="glass-button mt-4 bg-green-500 text-white border-none w-full">
-                    {testWordIndex < words.length - 1 ? 'পরবর্তী শব্দ' : 'পরবর্তী ধাপ: বাক্য টেস্ট'} ▶
+                    {testWordIndex < words.length - 1 ? t('mic_next_word') : t('mic_next_sentence')} ▶
                   </button>
                 ) : (
                   <div className="text-xs text-red-500 mt-3 font-bold">
-                    *দয়া করে আবার বলুন। পাশ করতে কমপক্ষে ৬০% স্কোর প্রয়োজন।
+                    {t('mic_retry')}
                   </div>
                 )}
               </div>
@@ -658,7 +700,7 @@ export default function LessonDetails() {
         <div className="space-y-6">
           <div className="card-card p-6 text-center bg-slate-950/40 border border-white/10 max-w-xl mx-auto">
             <div className="text-xs text-slate-400 font-bold mb-2 uppercase">
-              বাক্য চ্যালেঞ্জ {testPhraseIndex + 1} / {phrases.length}
+              {language === 'bn' ? 'বাক্য চ্যালেঞ্জ' : 'Sentence Challenge'} {testPhraseIndex + 1} / {phrases.length}
             </div>
             <div className="flex flex-col md:flex-row items-center justify-center gap-6 mb-6 mt-4">
               <div className="text-center md:text-left flex-1">
@@ -666,7 +708,7 @@ export default function LessonDetails() {
                   "{phrases[testPhraseIndex]?.phrase_en}"
                 </h2>
                 <div className="text-sm text-slate-400 font-semibold">
-                  অর্থ: {phrases[testPhraseIndex]?.phrase_bn}
+                  {language === 'bn' ? 'অর্থ:' : 'Meaning:'} {phrases[testPhraseIndex]?.phrase_bn}
                 </div>
               </div>
 
@@ -685,21 +727,21 @@ export default function LessonDetails() {
                   <Mic size={32} />
                 </button>
                 <div className="text-[10px] text-slate-400 mt-2 font-semibold text-center leading-tight">
-                  {recording ? 'ছেড়ে দিলে মূল্যায়িত হবে' : 'রেকর্ড করতে বাটনে চেপে ধরে রাখুন'}
+                  {recording ? t('mic_release_to_evaluate') : t('mic_hold_to_record')}
                 </div>
               </div>
             </div>
 
             {isEvaluating && (
               <div className="text-sm text-indigo-400 font-bold animate-pulse py-4 flex items-center justify-center gap-2">
-                <Sparkles size={16} /> গাইড বাক্যটি বিশ্লেষণ করছে...
+                <Sparkles size={16} /> {t('mic_evaluating')}
               </div>
             )}
 
             {pronScore !== null && (
               <div className="max-w-md mx-auto p-4 rounded-xl bg-slate-900/60 border border-white/10 mt-6 animate-bounce-in">
                 <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
-                  <span className="text-sm text-slate-400 font-semibold">AI উচ্চারণ নির্ভুলতা:</span>
+                  <span className="text-sm text-slate-400 font-semibold">{t('mic_accuracy')}</span>
                   <span className={`text-2xl font-black ${pronScore >= 60 ? 'text-green-500' : 'text-red-500'}`}>
                     {pronScore}%
                   </span>
@@ -707,13 +749,13 @@ export default function LessonDetails() {
                 <p className="text-sm text-slate-200 font-medium">{pronFeedback}</p>
                 {recognizedText && (
                   <div className="text-xs text-slate-400 mt-2">
-                    শনাক্ত বাক্য: <span className="italic font-bold text-slate-300">"{recognizedText}"</span>
+                    {language === 'bn' ? 'শনাক্ত বাক্য:' : 'Recognized sentence:'} <span className="italic font-bold text-slate-300">"{recognizedText}"</span>
                   </div>
                 )}
 
                 {phonemeScores.length > 0 && (
                   <div className="mt-3 text-left">
-                    <div className="text-xs text-slate-400 font-semibold mb-1.5">ধ্বনি বিশ্লেষণ (কোথায় ভুল হয়েছে):</div>
+                    <div className="text-xs text-slate-400 font-semibold mb-1.5">{t('mic_tips')}</div>
                     <div className="flex flex-wrap gap-1.5">
                       {phonemeScores.map((p, i) => (
                         <span
@@ -743,7 +785,7 @@ export default function LessonDetails() {
                         }`}
                     >
                       <Mic size={13} />
-                      {isPlayingRecording ? 'বাজছে...' : 'আপনার রেকর্ডিং'}
+                      {isPlayingRecording ? t('vocab_playing') : t('mic_your_recording')}
                     </button>
                     <button
                       onClick={() => handlePlayAudio(phrases[testPhraseIndex], phrases[testPhraseIndex]?.id)}
@@ -753,18 +795,18 @@ export default function LessonDetails() {
                         }`}
                     >
                       <Volume2 size={13} />
-                      সঠিক উচ্চারণ
+                      {t('mic_correct_pron')}
                     </button>
                   </div>
                 )}
 
                 {pronScore >= 60 ? (
                   <button onClick={nextPhraseTest} className="glass-button mt-4 bg-green-500 text-white border-none w-full">
-                    {testPhraseIndex < phrases.length - 1 ? 'পরবর্তী বাক্য' : 'লেসন শেষ করুন'} ▶
+                    {testPhraseIndex < phrases.length - 1 ? t('mic_next_sentence') : (language === 'bn' ? 'লেসন শেষ করুন' : 'Finish Lesson')} ▶
                   </button>
                 ) : (
                   <div className="text-xs text-red-500 mt-3 font-bold">
-                    *দয়া করে আবার বলুন। পাশ করতে কমপক্ষে ৬০% স্কোর প্রয়োজন।
+                    {t('mic_retry')}
                   </div>
                 )}
               </div>
@@ -782,31 +824,31 @@ export default function LessonDetails() {
 
           <div className="text-7xl animate-bounce">🎉🏆</div>
           <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-cyan-400 to-indigo-400 mt-4">
-            লেসন সফলভাবে সম্পন্ন হয়েছে!
+            {t('cel_title')}
           </h1>
           <p className="text-slate-300 max-w-md mx-auto font-medium leading-relaxed">
-            আপনি আজকের লেসন সম্পূর্ণ করেছেন। এর মাধ্যমে আপনি ইংরেজি উচ্চারণে আরও এক ধাপ এগিয়ে গেলেন।
+            {t('cel_desc')}
           </p>
 
           <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto my-8">
             <div className="card-card p-5 bg-gradient-to-br from-indigo-950/40 to-slate-950/40 border border-indigo-500/25 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/10 rounded-full filter blur-xl pointer-events-none"></div>
-              <div className="text-slate-400 text-xs uppercase font-bold tracking-wider">এক্সপি পুরস্কার</div>
+              <div className="text-slate-400 text-xs uppercase font-bold tracking-wider">{t('cel_xp_reward')}</div>
               <div className="text-3xl font-black text-indigo-400 mt-1.5">+50 XP</div>
             </div>
             <div className="card-card p-5 bg-gradient-to-br from-emerald-950/40 to-slate-950/40 border border-emerald-500/25 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-full filter blur-xl pointer-events-none"></div>
-              <div className="text-slate-400 text-xs uppercase font-bold tracking-wider">আপনার ফলাফল</div>
-              <div className="text-3xl font-black text-emerald-400 mt-1.5">পাস ✅</div>
+              <div className="text-slate-400 text-xs uppercase font-bold tracking-wider">{t('cel_result')}</div>
+              <div className="text-3xl font-black text-emerald-400 mt-1.5">{t('cel_pass')}</div>
             </div>
           </div>
 
           <div className="flex gap-4 justify-center flex-wrap">
             <button onClick={() => navigate('/curriculum')} className="glass-button w-auto">
-              কারিকুলামে ফিরে যান
+              {t('cel_back_curr')}
             </button>
             <button onClick={() => navigate('/progress')} className="secondary-button w-auto" style={{ padding: '0.85rem 1.25rem', borderRadius: '0.75rem' }}>
-              প্রোগ্রেস দেখুন 📈
+              {t('cel_view_prog')}
             </button>
           </div>
         </div>

@@ -7,8 +7,10 @@ import {
   deleteNotification,
   markNotificationRead
 } from '../api/progress.js';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 export default function Notifications() {
+  const { language } = useThemeLanguage();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -137,7 +139,7 @@ export default function Notifications() {
             Notifications
           </h1>
           <p className="page-subtitle text-slate-400">
-            আপনার সাম্প্রতিক অর্জন, ব্যাজ এবং এক্টিভিটি আপডেটগুলো দেখুন।
+            {language === 'bn' ? 'আপনার সাম্প্রতিক অর্জন, ব্যাজ এবং এক্টিভিটি আপডেটগুলো দেখুন।' : 'View your recent achievements, badges, and activity updates.'}
           </p>
         </div>
 

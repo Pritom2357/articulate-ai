@@ -182,6 +182,11 @@ userRouter.patch('/mic/:userId',
     userController.updateMicStatus
 );
 
+userRouter.get('/onboarding/attempts',
+    authenticateToken.authenticateToken,
+    userController.getOnboardingAttempts
+);
+
 userRouter.post('/onboarding',
     authenticateToken.authenticateToken,
     userController.saveOnboarding

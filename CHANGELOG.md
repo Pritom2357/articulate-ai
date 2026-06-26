@@ -2,6 +2,71 @@
 
 All notable changes made during AI-assisted development sessions are recorded here, grouped by date/session. Each entry lists the files touched and a short summary of what changed and why.
 
+## 2026-06-26 (session 5)
+
+### Curriculum overhaul — sequential locking, placement start, caching, 3-col lessons, no emojis
+
+**Backend:**
+- `backend/src/models/progress.model.js` — `getUserProgress` now also queries `placement_chapter` from `user_progress` and returns it in the response so the frontend knows where the user's curriculum starts.
+- `backend/src/models/user.model.js` — Added `getOnboardingAttemptCount(userId)` query (COUNT from `onboarding_assessments`).
+- `backend/src/controllers/user.controller.js` — `saveOnboarding` now checks attempt count before inserting; returns HTTP 403 if ≥ 3 attempts already used. Added `getOnboardingAttempts` handler returning `{ attempts, maxAttempts: 3 }`.
+- `backend/src/routes/user.routes.js` — Added `GET /user/onboarding/attempts` route.
+
+**Frontend:**
+- `frontend/src/api/user.js` — Added `getOnboardingAttempts()` helper.
+- `frontend/src/pages/Onboarding.jsx` — Fetches attempt count on mount; shows a "Placement Test Locked" block screen with a `Lock` icon if attempts ≥ 3; shows "Attempt X of 3" badge during the test flow.
+- `frontend/src/pages/Curriculum.jsx` — Full rewrite: localStorage cache (`articulate_curriculum_${userId}`, 5-min TTL) with stale-while-revalidate; hard Refresh button; sequential chapter locking based on `placement_chapter` and completion state (skipped/active/completed/locked states with distinct icons and styles — `Lock`, `CheckCircle2`, `SkipForward`, `PlayCircle`); subtitle updated to explain sequential order; emojis removed.
+- `frontend/src/pages/ChapterDetails.jsx` — Full rewrite: localStorage cache (`articulate_chapter_${id}`, 5-min TTL); lessons now displayed in a **3-column grid** (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`) with compact vertical cards; lesson type icons (`BookOpen`, `Mic`, `ClipboardList`, `RotateCcw` for LEARN/PRACTICE/TEST/REVIEW); chapter progress bar in header; emojis removed.
+
+## 2026-06-26 (session 4)
+
+### DB routine — fix wrong Bangla meanings in words table
+- `backend/src/database/fixBanglaMeaning.js` (new) — Dedicated one-time script to audit and repair `bangla_meaning` for every word. Fetches word + bangla_meaning in batches of 40, sends each batch to GPT-4o-mini with a strict system prompt that explicitly handles common failures: English text used as meaning (e.g. "in" → "ভেতরে / মধ্যে"), bracket-wrapped phonetics ("[In]"), wrong single characters ("ক" for "a"), and NULL values. Supports `--dry-run` to preview changes and saves progress to `.fixbangla_progress.json` for resumable runs. Performs a pre-scan query at startup to show the count of obviously broken entries before the main loop.
+
+## 2026-06-26 (session 3)
+
+### AIChat — grammar box left-aligned + chat width constrained
+- `frontend/src/pages/AIChat.jsx` — Grammar corrections box changed from `ml-auto` (right-side under user bubble) to left-aligned under the assistant response: uses a `flex gap-3` row with an 8px spacer div matching the avatar width, so it visually lines up with the assistant's message column.
+- `frontend/src/App.css` — `.ai-chat-card` now has `max-width: 960px; margin: 0 auto` so the entire chat (header, messages, input bar) is constrained and centered rather than filling the full viewport width. Also increased horizontal padding on `.ai-chat-header` and `.ai-chat-form` from `2rem` to `3rem` for breathing room.
+
+## 2026-06-26 (session 2)
+
+### AIChat.jsx full-width redesign + FloatingAssistant
+- `frontend/src/pages/AIChat.jsx` — Full rewrite: removed `page-container` wrapper; wraps in `.ai-chat-card` (calc height, no border, transparent bg). Header now has title+subtitle on the left and a small circular tutor avatar + agent-toggle chips on the right. Only the messages div scrolls (`.ai-chat-messages`); input form is fixed at the bottom with mic, mistake-toggle, profile-toggle, and send all in one row. Word panel + grammar correction boxes unchanged in content, styled consistently.
+- `frontend/src/components/FloatingAssistant.jsx` (new) — Lightweight 340×460 floating chat panel rendered on all pages except `/ai-chat`. Calls `POST /chatbot/quick-chat` (the lightweight endpoint that loads `appContext.md` for route-aware answers). Panel opens/closes via a fixed indigo FAB in the bottom-right. Typing indicator, auto-scroll, "Full chat" link to `/ai-chat`. Hidden when user is not logged in.
+- `frontend/src/components/Layout.jsx` — Imports `FloatingAssistant` and renders it after `<Outlet />`, conditionally excluded when `location.pathname === '/ai-chat'`.
+- `frontend/src/App.css` — Added `.floating-assistant-btn` (fixed FAB, gradient, hover scale) after existing `.floating-assistant-panel` styles.
+
+## 2026-06-26
+
+### AI Chat — history persistence (DB + localStorage) and null-content crash fix
+- `backend/src/database/migrateChatHistory.js` (new, run once) — creates `chat_sessions` and `chat_messages` tables plus an index on `(session_id, created_at)`.
+- `backend/src/models/chat.model.js` (new) — `getOrCreateSession`, `saveMessage`, `getHistory`, `getSessions`.
+- `backend/src/services/aiService.js` — `generateChatWithContext` now maps `null` content to `"[Word lookup: word]"` before building the OpenAI payload, fixing the 400 crash when word-panel messages were in the history.
+- `backend/src/controllers/chatbot.controller.js` — `generalChat` now resolves/creates a session, saves user + assistant messages to DB, returns `sessionId` in response. Added `getHistory` handler.
+- `backend/src/routes/chatbot.routes.js` — Added `GET /chatbot/history?sessionId=` route.
+- `frontend/src/api/progress.js` — Added `getChatHistory(sessionId)` helper.
+- `frontend/src/pages/AIChat.jsx` — On mount: reads `articulate_chat_${userId}` from localStorage for instant display, then silently syncs from DB. Each send/receive writes updated messages + sessionId back to localStorage. `sessionId` is threaded through every chat request so the server reuses one session per user.
+
+### AI Chat — Word Lookup panel improvements (no emojis, AI fallback, structured layout)
+- `backend/src/services/aiService.js` — Added `generateWordInfo(word)` returning structured JSON `{ word, ipa, part_of_speech, bangla_meaning, english_meaning, example, pronunciation_tip }` for words not in the local DB.
+- `backend/src/controllers/chatbot.controller.js` — Word lookup now falls back to `generateWordInfo` when the DB has no match; `response` is set to `null` when `wordPanel` is returned so the AI chat text is never shown alongside the panel.
+- `frontend/src/pages/AIChat.jsx` — Word panel redesigned: word + part-of-speech badge + IPA at top, separate sections for বাংলা অর্থ / Meaning / Example / pronunciation tip. "Pronounce" button uses real audio_url when available, otherwise calls TTS on the bare word. `handleReadAloud` now strips emoji/symbol characters with a regex before passing text to TTS so Azure reads naturally.
+
+### AI Chat Agents: Grammar Mistake Detector, Personal Profile Tracker, Pronunciation Helper
+- `backend/src/services/aiService.js` — Added `generateChatWithContext(messages, profileBlock)` (replaces `generateChatResponse` internally, adds optional learner-profile injection), `checkGrammar(userMessage)` (parallel OpenAI call returning `[{original, corrected, explanation}]` or `null`), and `extractWordQuery(userMessage)` (detects if user is asking about a specific word, returns the word string or `null`).
+- `backend/src/controllers/chatbot.controller.js` — Rewrote `generalChat` to accept `{ messages, mistakeCheck, includeProfile }`. Fetches user profile + weak words when `includeProfile` is true, then runs grammar check + main chat response + word detection in `Promise.all`. Adds `wordLookup` handler querying the `words` table by exact (case-insensitive) word match. Returns `{ response, grammarErrors, wordPanel }`.
+- `backend/src/routes/chatbot.routes.js` — Added `GET /chatbot/word-lookup?q=word` route for direct word lookup.
+- `frontend/src/pages/AIChat.jsx` — Added two toggle buttons in the chat header (Mistakes detector, default ON; Profile tracker, default OFF) persisted in `localStorage`. `handleSend` now passes `mistakeCheck`/`includeProfile` flags and handles new response shape. Grammar errors are attached to the user message that triggered them and rendered as a yellow correction box beneath the bubble. Word panel responses (pronunciation helper) skip the regular AI text bubble and show a teal card with word, IPA, Bangla meaning, syllables, and an audio listen button using `playWordAudio`.
+
+### AI Chatbot & RAG Session Refactoring (OpenAI & Azure TTS)
+- `backend/src/services/aiService.js` — Refactored to replace Gemini with OpenAI (`gpt-4o-mini`). Implemented `assessConversation`, `generalChat`, and `generateNextSessionRAG` with optimized temperature settings (0.3 for strict scoring, 0.7 for creative chat and recommendations). Added `textToSpeech()` using Azure's REST TTS API and SSML.
+- `backend/src/prompts/` (new) — Extracted large system prompts (`chatPrompt.txt`, `assessPrompt.txt`, `nextSessionPrompt.txt`) from code logic. `aiService.js` now reads these via `fs.readFileSync` during initialization.
+- `backend/src/controllers/chatbot.controller.js` (new) & `backend/src/routes/chatbot.routes.js` (new) — Extracted chatbot and TTS logic from `assess.controller.js` and `assess.routes.js` to adhere to single-responsibility principles. The endpoints `/chat` and `/tts` are now isolated here.
+- `backend/src/index.js` — Mounted the new `chatbotRouter` at `/api/chatbot`.
+- `frontend/src/api/progress.js` — Updated `generalChat` and added `textToSpeech` fetch wrappers to point to the new `/chatbot` endpoints.
+- `frontend/src/pages/AIChat.jsx` — Implemented frontend audio playback (`handleReadAloud`). Added clickable speaker icons under AI responses. The voice selection automatically adapts to the user's preferred tutor gender (`en-US-JennyNeural` for Riya, `en-US-GuyNeural` for Rohit).
+
 ## 2026-06-16
 
 ### Word pronunciation audio: use real audio_url instead of browser TTS

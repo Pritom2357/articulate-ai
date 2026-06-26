@@ -3,6 +3,7 @@ import { getDueFlashcards, reviewFlashcard } from '../api/progress.js';
 import useAuth from '../hooks/useAuth.js';
 import { Award, Volume2, Sparkles, ShieldAlert } from 'lucide-react';
 import { playWordAudio } from '../utils/playWordAudio.js';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 // Import tutor assets for decoration/encouragement
 import maleAvatar from '../assets/articulate_male.jpeg';
@@ -10,6 +11,7 @@ import femaleAvatar from '../assets/articucate_female.jpeg';
 
 export default function Flashcards() {
   const { user } = useAuth();
+  const { language } = useThemeLanguage();
   const [cards, setCards] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -19,7 +21,9 @@ export default function Flashcards() {
 
   const activeTutor = user?.guide_preference || 'MALE';
   const tutorAvatar = activeTutor === 'FEMALE' ? femaleAvatar : maleAvatar;
-  const tutorName = activeTutor === 'FEMALE' ? 'Riya (রিয়া)' : 'Rohit (রোহিত)';
+  const tutorName = activeTutor === 'FEMALE'
+    ? (language === 'bn' ? 'Riya (রিয়া)' : 'Riya')
+    : (language === 'bn' ? 'Rohit (রোহিত)' : 'Rohit');
 
   useEffect(() => {
     async function loadCards() {
@@ -27,7 +31,7 @@ export default function Flashcards() {
         const dueCards = await getDueFlashcards();
         setCards(dueCards || []);
       } catch (err) {
-        setError(err.payload?.error || err.message || 'ফ্ল্যাশ-কার্ড লোড করা যায়নি।');
+        setError(err.payload?.error || err.message || (language === 'bn' ? 'ফ্ল্যাশ-কার্ড লোড করা যায়নি।' : 'Failed to load flashcards.'));
       }
     }
 
@@ -53,10 +57,20 @@ export default function Flashcards() {
       setFeedback('');
       await reviewFlashcard({ wordId: card.word_id || card.id, score });
       
-      let message = 'রিভিউ সেভ হয়েছে!';
-      if (score >= 90) message = `${tutorName}: "অসাধারণ! এটি আপনার চমৎকার মনে আছে।"`;
-      else if (score >= 70) message = `${tutorName}: "খুব ভালো! নিয়মিত অনুশীলনে রাখুন।"`;
-      else message = `${tutorName}: "কোনো ব্যাপার না, আমরা শীঘ্রই আবার এটি রিভিশন করব।"`;
+      let message = language === 'bn' ? 'রিভিউ সেভ হয়েছে!' : 'Review saved!';
+      if (score >= 90) {
+        message = language === 'bn' 
+          ? `${tutorName}: "অসাধারণ! এটি আপনার চমৎকার মনে আছে।"` 
+          : `${tutorName}: "Excellent! You remember this perfectly."`;
+      } else if (score >= 70) {
+        message = language === 'bn' 
+          ? `${tutorName}: "খুব ভালো! নিয়মিত অনুশীলনে রাখুন।"` 
+          : `${tutorName}: "Very good! Keep practicing regularly."`;
+      } else {
+        message = language === 'bn' 
+          ? `${tutorName}: "কোনো ব্যাপার না, আমরা শীঘ্রই আবার এটি রিভিশন করব।"` 
+          : `${tutorName}: "No worries, we will review this again soon."`;
+      }
       
       setFeedback(message);
       setIsFlipped(false);
@@ -68,7 +82,7 @@ export default function Flashcards() {
       }, 1500);
 
     } catch (err) {
-      setError(err.payload?.error || err.message || 'রিভিউ সংরক্ষণ ব্যর্থ হয়েছে।');
+      setError(err.payload?.error || err.message || (language === 'bn' ? 'রিভিউ সংরক্ষণ ব্যর্থ হয়েছে।' : 'Failed to save review.'));
     }
   }
 
@@ -82,10 +96,12 @@ export default function Flashcards() {
             <span className="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center">
               <Sparkles className="text-indigo-400" size={24} />
             </span>
-            ফ্ল্যাশ-কার্ড রিভিশন (Flashcards)
+            {language === 'bn' ? 'ফ্ল্যাশ-কার্ড রিভিশন (Flashcards)' : 'Flashcards Revision'}
           </h1>
           <p className="page-subtitle text-slate-400">
-            স্পেসড রিপিটেশন (SRS) পদ্ধতিতে ইংরেজি শব্দের অর্থ ও উচ্চারণ রিভিশন করুন।
+            {language === 'bn' 
+              ? 'স্পেসড রিপিটেশন (SRS) পদ্ধতিতে ইংরেজি শব্দের অর্থ ও উচ্চারণ রিভিশন করুন।' 
+              : 'Review English word meanings and pronunciations using the Spaced Repetition System (SRS).'}
           </p>
         </div>
       </div>
@@ -105,7 +121,7 @@ export default function Flashcards() {
 
             <div className="w-full flex justify-between items-center mb-4 text-xs font-bold text-slate-400">
               <span className="bg-white/5 border border-white/5 rounded px-2.5 py-1">
-                কার্ড নম্বর: {selectedIndex + 1} / {cards.length}
+                {language === 'bn' ? 'কার্ড নম্বর:' : 'Card Number:'} {selectedIndex + 1} / {cards.length}
               </span>
               {currentCard.difficulty_level && (
                 <span className="bg-indigo-500/15 border border-indigo-500/20 text-indigo-300 rounded px-2.5 py-1 uppercase tracking-wider text-[10px]">
@@ -142,13 +158,13 @@ export default function Flashcards() {
                         ? 'bg-red-500 text-white animate-pulse scale-105 shadow-red-500/40'
                         : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                     }`}
-                    title="উচ্চারণ শুনুন"
+                    title={language === 'bn' ? "উচ্চারণ শুনুন" : "Listen Pronunciation"}
                   >
                     <Volume2 size={20} />
                   </button>
 
                   <div className="text-[10px] text-cyan-400 mt-6 font-bold animate-pulse tracking-wide uppercase">
-                    কার্ডটি উল্টাতে ক্লিক করুন 🔄
+                    {language === 'bn' ? 'কার্ডটি উল্টাতে ক্লিক করুন 🔄' : 'Click to Flip Card 🔄'}
                   </div>
                 </div>
 
@@ -164,12 +180,12 @@ export default function Flashcards() {
 
                   {currentCard.syllables && (
                     <div className="text-xs text-slate-400 font-semibold mt-1">
-                      সিলেবল (Syllables): <span className="text-slate-300 font-bold">{currentCard.syllables}</span>
+                      {language === 'bn' ? 'সিলেবল' : 'Syllables'}: <span className="text-slate-300 font-bold">{currentCard.syllables}</span>
                     </div>
                   )}
 
                   <div className="text-[10px] text-slate-400 mt-8 font-bold tracking-wide uppercase">
-                    সামনে ফিরে যেতে ক্লিক করুন 🔄
+                    {language === 'bn' ? 'সামনে ফিরে যেতে ক্লিক করুন 🔄' : 'Click to Flip Back 🔄'}
                   </div>
                 </div>
 
@@ -179,7 +195,7 @@ export default function Flashcards() {
             {/* SRS Review Actions */}
             <div className="w-full mt-6 space-y-4 border-t border-white/5 pt-4">
               <div className="text-center text-xs text-slate-300 font-bold">
-                আপনার শব্দটির অর্থ কতটুকু মনে আছে?
+                {language === 'bn' ? 'আপনার শব্দটির অর্থ কতটুকু মনে আছে?' : 'How well do you remember this word\'s meaning?'}
               </div>
               <div className="flex flex-wrap justify-center gap-3">
                 <button
@@ -187,21 +203,21 @@ export default function Flashcards() {
                   onClick={() => handleReview(90)}
                   disabled={feedback}
                 >
-                  সহজ (Easy)
+                  {language === 'bn' ? 'সহজ (Easy)' : 'Easy'}
                 </button>
                 <button
                   className="px-5 py-3 rounded-xl font-bold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/25 transition cursor-pointer text-xs flex-1 min-w-[100px] text-center"
                   onClick={() => handleReview(70)}
                   disabled={feedback}
                 >
-                  ঠিক আছে (Good)
+                  {language === 'bn' ? 'ঠিক আছে (Good)' : 'Good'}
                 </button>
                 <button
                   className="px-5 py-3 rounded-xl font-bold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 transition cursor-pointer text-xs flex-1 min-w-[100px] text-center"
                   onClick={() => handleReview(50)}
                   disabled={feedback}
                 >
-                  কঠিন (Hard)
+                  {language === 'bn' ? 'কঠিন (Hard)' : 'Hard'}
                 </button>
               </div>
             </div>
@@ -224,16 +240,20 @@ export default function Flashcards() {
             <div className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mb-4">Your Tutor Guide</div>
             
             <p className="text-xs text-slate-300 leading-relaxed font-semibold italic bg-white/5 border border-white/5 p-3.5 rounded-2xl">
-              "আমি আপনাকে এই শব্দগুলো সহজে মনে রাখতে সাহায্য করব। প্রতিদিন এভাবে কার্ডগুলো রিভিশন করুন, আপনার ইংরেজি ভোকাবুলারি চমৎকার উন্নত হবে!"
+              {language === 'bn' 
+                ? '"আমি আপনাকে এই শব্দগুলো সহজে মনে রাখতে সাহায্য করব। প্রতিদিন এভাবে কার্ডগুলো রিভিশন করুন, আপনার ইংরেজি ভোকাবুলারি চমৎকার উন্নত হবে!"'
+                : '"I will help you memorize these words easily. Review these cards daily, and your English vocabulary will improve dramatically!"'}
             </p>
           </div>
         </div>
       ) : (
         <div className="empty-state max-w-md mx-auto py-16 border border-dashed border-white/10 bg-slate-950/20">
           <div className="text-5xl mb-4 animate-bounce">🎉</div>
-          <h3 className="font-extrabold text-white text-base">রিভিশন করার মতো শব্দ নেই</h3>
+          <h3 className="font-extrabold text-white text-base">{language === 'bn' ? 'রিভিশন করার মতো শব্দ নেই' : 'No words to review'}</h3>
           <p className="text-xs text-slate-400 mt-2 max-w-xs mx-auto leading-relaxed">
-            চমৎকার! সব ফ্ল্যাশ-কার্ড পড়া শেষ। নতুন চ্যাপ্টার ও লেসন সম্পন্ন করে আরও শব্দ যোগ করুন।
+            {language === 'bn' 
+              ? 'চমৎকার! সব ফ্ল্যাশ-কার্ড পড়া শেষ। নতুন চ্যাপ্টার ও লেসন সম্পন্ন করে আরও শব্দ যোগ করুন।' 
+              : 'Excellent! You have reviewed all flashcards. Complete new chapters and lessons to add more words.'}
           </p>
         </div>
       )}
