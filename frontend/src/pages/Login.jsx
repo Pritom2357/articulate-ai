@@ -1,14 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
+import { Sun, Moon } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
+  const { theme, toggleTheme } = useThemeLanguage();
   const navigate = useNavigate();
+
+  // Redirect to curriculum if user is already authenticated
+  useEffect(() => {
+    if (user) {
+      navigate('/curriculum', { replace: true });
+    }
+  }, [user, navigate]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -17,7 +27,7 @@ export default function Login() {
 
     try {
       await login({ email, password });
-      navigate('/profile');
+      navigate('/curriculum');
     } catch (err) {
       setError(err.payload?.error || err.message || 'Login failed. Please check your credentials.');
     } finally {
@@ -30,12 +40,24 @@ export default function Login() {
       {/* Decorative third mesh blob */}
       <div className="mesh-blob-3"></div>
 
+      {/* Floating Theme Switcher */}
+      <div className="absolute top-4 right-4 z-50">
+        <button 
+          onClick={toggleTheme} 
+          className="top-bar-icon-btn" 
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          style={{ width: '40px', height: '40px' }}
+        >
+          {theme === 'dark' ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-indigo-600" />}
+        </button>
+      </div>
+
       <div className="glass-form-card">
         {/* Animated brand logo watermark */}
-        <div className="form-watermark">
+        <Link to="/" className="form-watermark hover:opacity-80 transition-opacity" style={{ textDecoration: 'none' }}>
           <span className="form-watermark-icon">🎙️</span>
           <span className="form-watermark-text">ARTICULATE AI</span>
-        </div>
+        </Link>
 
         <h1 className="glass-title">Welcome Back</h1>
         <p className="glass-subtitle">Log in to your account and continue your learning journey.</p>

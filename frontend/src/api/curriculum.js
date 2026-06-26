@@ -8,8 +8,8 @@ export async function getChapters() {
 export async function getChapter(id) {
   const response = await request(`/curriculum/chapters/${id}`);
   return {
-    chapter: response.chapter || response,
-    lessons: response.lessons || response.chapter?.lessons || [],
+    chapter: response.chapter?.chapter || response.chapter || response,
+    lessons: response.chapter?.lessons || response.lessons || [],
   };
 }
 
@@ -21,8 +21,9 @@ export async function getLessonsByChapter(chapterId) {
 export async function getLesson(id) {
   const response = await request(`/curriculum/lessons/${id}`);
   return {
-    lesson: response.lesson || response,
-    words: response.words || response.lesson?.words || [],
+    lesson: response.lesson?.lesson || response.lesson || response,
+    words: response.lesson?.words || response.words || [],
+    phrases: response.lesson?.phrases || response.phrases || [],
   };
 }
 

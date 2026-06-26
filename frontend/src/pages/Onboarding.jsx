@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
 import { updateProfile, updateMicStatus, saveOnboarding } from '../api/user.js';
 import { assessPronunciation } from '../api/progress.js';
+import { Mic, Volume2 } from 'lucide-react';
 
 // Import tutor assets
 import maleAvatar from '../assets/articulate_male.jpeg';
@@ -43,6 +44,9 @@ export default function Onboarding() {
   const [pronScore, setPronScore] = useState(null);
   const [pronFeedback, setPronFeedback] = useState('');
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [recordedAudioUrl, setRecordedAudioUrl] = useState(null);
+  const [isPlayingRecording, setIsPlayingRecording] = useState(false);
+  const [isTestRecording, setIsTestRecording] = useState(false);
 
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
@@ -59,6 +63,13 @@ export default function Onboarding() {
       if (micStream) micStream.getTracks().forEach(track => track.stop());
     };
   }, [micStream]);
+
+  // Revoke the last recorded-audio object URL on unmount (each new recording already revokes the prior one)
+  useEffect(() => {
+    return () => {
+      if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
+    };
+  }, [recordedAudioUrl]);
 
   // Handle Guide preference submission
   async function handleSelectGuide() {
@@ -78,16 +89,45 @@ export default function Onboarding() {
   async function startMicCheck() {
     setMicError('');
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Disabling these explicitly because Chrome's software noise-suppression/AGC, stacked on
+      // top of an array mic's own onboard DSP (e.g. Intel Smart Sound Technology), is a known
+      // cause of "track is live and unmuted, but the captured signal is suppressed to near-zero"
+      // on certain laptops — the OS/driver sees real audio, the browser hands WebAudio silence.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      });
       setMicStream(stream);
-      
+
+      const audioTrack = stream.getAudioTracks()[0];
+      console.log('[micCheck] got stream', {
+        trackLabel: audioTrack?.label,
+        enabled: audioTrack?.enabled,
+        muted: audioTrack?.muted,
+        readyState: audioTrack?.readyState,
+        settings: audioTrack?.getSettings?.()
+      });
+
       // Audio Analysis setup
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      console.log('[micCheck] AudioContext created', { state: audioCtx.state, sampleRate: audioCtx.sampleRate });
+
+      // Browsers often create/keep AudioContext in 'suspended' state until explicitly resumed —
+      // if that happens, the analyser never processes audio and volume reads as 0 forever.
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+        console.log('[micCheck] AudioContext was suspended, resumed -> state =', audioCtx.state);
+      }
+
       const analyser = audioCtx.createAnalyser();
       const source = audioCtx.createMediaStreamSource(stream);
       source.connect(analyser);
       analyser.fftSize = 256;
-      
+      // Lower the noise floor the byte-data mapping uses (default is -100dB) so quieter mics/rooms
+      // still produce visible non-zero values instead of clipping to 0.
+      analyser.minDecibels = -100;
+      analyser.maxDecibels = -10;
+      console.log('[micCheck] analyser config', { minDecibels: analyser.minDecibels, maxDecibels: analyser.maxDecibels, fftSize: analyser.fftSize });
+
       audioContextRef.current = audioCtx;
       analyserRef.current = analyser;
       
@@ -95,6 +135,8 @@ export default function Onboarding() {
       const dataArray = new Uint8Array(bufferLength);
       
       // Real-time volume visualizer
+      let frameCount = 0;
+      let peakEverSeen = 0;
       const drawVolume = () => {
         analyser.getByteFrequencyData(dataArray);
         let sum = 0;
@@ -102,7 +144,22 @@ export default function Onboarding() {
           sum += dataArray[i];
         }
         const average = sum / bufferLength;
+        const frameMax = Math.max(...dataArray);
+        if (frameMax > peakEverSeen) peakEverSeen = frameMax;
         setVolume(Math.min(100, Math.round(average * 1.5)));
+
+        // Throttled log so the console stays readable — once every ~60 frames (~1s)
+        frameCount++;
+        if (frameCount % 60 === 0) {
+          console.log('[micCheck] volume sample', {
+            average: average.toFixed(2),
+            frameMax,
+            peakEverSeen,
+            rawSnippet: Array.from(dataArray.slice(0, 10)),
+            contextState: audioCtx.state
+          });
+        }
+
         animationFrameRef.current = requestAnimationFrame(drawVolume);
       };
       drawVolume();
@@ -142,16 +199,53 @@ export default function Onboarding() {
         
         // Save to backend
         const micQualityScore = Math.max(0, Math.min(100, Math.round(100 - stdDev * 10)));
-        await updateMicStatus(user.id, {
-          mic_verified: true,
-          mic_quality_score: micQualityScore
-        });
+        console.log('[micCheck] calibration result', { samples, mean, stdDev, isJittery, micQualityScore });
+
+        try {
+          const res = await updateMicStatus(user.id, {
+            mic_verified: true,
+            mic_quality_score: micQualityScore
+          });
+          console.log('[micCheck] updateMicStatus response', res);
+        } catch (statusErr) {
+          console.error('[micCheck] updateMicStatus failed', statusErr);
+        }
         await refreshUser();
       }, 2000);
       
     } catch (err) {
+      console.error('[micCheck] getUserMedia/setup failed', err);
       setMicError('মাইক্রোফোন সংযোগ ব্যর্থ হয়েছে। ব্রাউজার পারমিশন চেক করুন।');
     }
+  }
+
+  // Quick 3-second record-and-playback, independent of the AI assessment pipeline --
+  // lets you verify with your own ears whether the browser is actually capturing your voice
+  // at all, before trusting any volume meter or Azure score.
+  function recordMicTestClip() {
+    if (!micStream || isTestRecording) return;
+    console.log('[micCheck] starting 3s raw test recording');
+
+    const chunks = [];
+    const recorder = new MediaRecorder(micStream, { mimeType: 'audio/webm' });
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'audio/webm' });
+      console.log('[micCheck] test recording captured', { sizeBytes: blob.size, chunkCount: chunks.length });
+      setRecordedAudioUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(blob);
+      });
+    };
+
+    recorder.start();
+    setIsTestRecording(true);
+    setTimeout(() => {
+      recorder.stop();
+      setIsTestRecording(false);
+    }, 3000);
   }
 
   // Audio recording handlers for Speech Test
@@ -162,14 +256,18 @@ export default function Onboarding() {
     audioChunksRef.current = [];
 
     try {
-      const stream = micStream || await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = micStream || await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      });
       if (!micStream) setMicStream(stream);
 
       // WebM audio format recording
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       mediaRecorderRef.current = mediaRecorder;
+      console.log('[speechTest] MediaRecorder started', { mimeType: mediaRecorder.mimeType, state: mediaRecorder.state });
 
       mediaRecorder.ondataavailable = (event) => {
+        console.log('[speechTest] chunk received', { sizeBytes: event.data.size });
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
@@ -177,6 +275,13 @@ export default function Onboarding() {
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        console.log('[speechTest] recording stopped', { totalSizeBytes: audioBlob.size, chunkCount: audioChunksRef.current.length });
+
+        setRecordedAudioUrl(prev => {
+          if (prev) URL.revokeObjectURL(prev);
+          return URL.createObjectURL(audioBlob);
+        });
+
         await evaluateSpeech(audioBlob);
       };
 
@@ -195,6 +300,15 @@ export default function Onboarding() {
     }
   }
 
+  function playRecordedAudio() {
+    if (!recordedAudioUrl) return;
+    const audio = new Audio(recordedAudioUrl);
+    setIsPlayingRecording(true);
+    audio.onended = () => setIsPlayingRecording(false);
+    audio.onerror = () => setIsPlayingRecording(false);
+    audio.play();
+  }
+
   async function evaluateSpeech(audioBlob) {
     setIsEvaluating(true);
     try {
@@ -202,17 +316,33 @@ export default function Onboarding() {
       formData.append('audio', audioBlob, 'attempt.webm');
       formData.append('referenceText', TEST_WORDS[wordIndex].word);
 
+      console.log('[speechTest] sending to /assess/pronunciation/assess', {
+        referenceText: TEST_WORDS[wordIndex].word,
+        blobSizeBytes: audioBlob.size,
+        blobType: audioBlob.type
+      });
+
       // Call pronunciation assessment API
       const data = await assessPronunciation(formData);
+      console.log('[speechTest] assessPronunciation response', data);
 
       setRecognizedText(data.recognized_text || '');
       setPronScore(data.overall_score);
       setPronFeedback(data.feedback);
 
+      // The backend denoises the recording before scoring it — swap playback to that cleaned
+      // version once it comes back, so "your recording" matches what was actually scored.
+      if (data.denoised_audio_url) {
+        setRecordedAudioUrl(prev => {
+          if (prev) URL.revokeObjectURL(prev);
+          return data.denoised_audio_url;
+        });
+      }
+
       const isCorrect = data.overall_score >= 60; // 60% accuracy threshold to pass
       setScores(prev => [...prev, isCorrect]);
     } catch (err) {
-      console.error('Speech evaluation failed:', err);
+      console.error('[speechTest] Speech evaluation failed:', err);
       setRecognizedText('(উচ্চারণ বোঝা যায়নি)');
       setPronScore(0);
       setPronFeedback('দুঃখিত, সংযোগে ত্রুটি হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
@@ -408,6 +538,35 @@ export default function Onboarding() {
                         <span className="text-xs text-cyan-400 font-bold">{volume}%</span>
                       </div>
 
+                      {/* Quick mic test: record 3s raw audio and play it back, no AI involved */}
+                      <div className="mt-4 flex flex-col items-center gap-2">
+                        <button
+                          onClick={recordMicTestClip}
+                          disabled={isTestRecording}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                            isTestRecording
+                              ? 'bg-red-500 text-white animate-pulse'
+                              : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20'
+                          }`}
+                        >
+                          <Mic size={13} />
+                          {isTestRecording ? 'রেকর্ড হচ্ছে... (৩ সেকেন্ড)' : '৩ সেকেন্ড রেকর্ড করে শুনুন'}
+                        </button>
+                        {recordedAudioUrl && (
+                          <button
+                            onClick={playRecordedAudio}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                              isPlayingRecording
+                                ? 'bg-red-500 text-white animate-pulse'
+                                : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
+                            }`}
+                          >
+                            <Volume2 size={13} />
+                            {isPlayingRecording ? 'বাজছে...' : 'আপনার রেকর্ডিং শুনুন'}
+                          </button>
+                        )}
+                      </div>
+
                       {micJitter && (
                         <div className="glass-alert glass-alert-error mt-4 text-left">
                           ⚠️ <strong>সতর্কতা:</strong> আপনার মাইকে প্রচুর জিটার/নয়েজ শনাক্ত হয়েছে। শান্ত পরিবেশে না গেলে আপনার উচ্চারণ ভুল হিসেবে মূল্যায়িত হতে পারে।
@@ -494,6 +653,19 @@ export default function Onboarding() {
                     <div className="text-xs text-slate-400 mt-2">
                       আমরা শুনেছি: <span className="italic font-semibold text-slate-300">"{recognizedText}"</span>
                     </div>
+                  )}
+                  {recordedAudioUrl && (
+                    <button
+                      onClick={playRecordedAudio}
+                      className={`mt-3 w-full h-9 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition cursor-pointer ${
+                        isPlayingRecording
+                          ? 'bg-red-500 text-white animate-pulse'
+                          : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
+                      }`}
+                    >
+                      <Mic size={13} />
+                      {isPlayingRecording ? 'বাজছে...' : 'আপনার রেকর্ডিং শুনুন'}
+                    </button>
                   )}
                 </div>
               )}

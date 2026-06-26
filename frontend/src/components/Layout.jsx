@@ -2,25 +2,21 @@ import { useState, useEffect } from 'react';
 import { Outlet, Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
 import { updateProfile } from '../api/user.js';
-import { getNotifications } from '../api/progress.js';
+import { getUnreadNotificationCount } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
-<<<<<<< HEAD
-import femaleAvatar from '../assets/articucate_female.jpeg';
-import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key, Bookmark, Trophy, Search, X, Loader } from 'lucide-react';
-=======
 import femaleAvatar from '../assets/articulate_female.jpeg';
 import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key, Bookmark, Trophy, Search, X, Loader, Sun, Moon, Globe } from 'lucide-react';
->>>>>>> 766fa5f (updated Terms of Service)
 import { searchCurriculum } from '../api/curriculum.js';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 
 function AnimatedBrandText({ text, baseDelay = 0, className = "" }) {
   return (
     <span className={className}>
       {text.split('').map((char, index) => (
-        <span 
-          key={index} 
-          className="brand-letter" 
+        <span
+          key={index}
+          className="brand-letter"
           style={{ animationDelay: `${baseDelay + index * 0.04}s` }}
         >
           {char}
@@ -49,13 +45,14 @@ function SidebarBrand() {
 }
 
 function GuideIndicator({ user, onUpdate }) {
+  const { t } = useThemeLanguage();
   const isFemale = user.guide_preference === 'FEMALE';
   const avatarImg = isFemale ? femaleAvatar : maleAvatar;
-  
+
   return (
     <div className="bg-white/3 rounded-xl p-3 mb-4 mt-2 border border-white/5 text-xs">
       <div className="flex items-center gap-2 mb-1.5 font-bold text-slate-300">
-        <span>🤖</span> Active Tutor:
+        <span>🤖</span> {t('nav_active_tutor')}
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -64,14 +61,14 @@ function GuideIndicator({ user, onUpdate }) {
           </div>
           <div>
             <div className="font-semibold text-white">{isFemale ? 'Riya (রিয়া)' : 'Rohit (রোহিত)'}</div>
-            <div className="text-slate-400 font-medium">{isFemale ? 'Female Guide' : 'Male Guide'}</div>
+            <div className="text-slate-400 font-medium">{isFemale ? t('nav_tutor_female') : t('nav_tutor_male')}</div>
           </div>
         </div>
         <button
           onClick={() => onUpdate(isFemale ? 'MALE' : 'FEMALE')}
           className="text-indigo-400 hover:text-indigo-300 font-bold border-none bg-transparent cursor-pointer transition-colors"
         >
-          Change
+          {t('nav_change')}
         </button>
       </div>
     </div>
@@ -111,13 +108,15 @@ function GlobalSearch() {
     setQuery('');
   };
 
+  const { t } = useThemeLanguage();
+
   return (
-    <div className="relative mb-4 px-2">
+    <div className="relative w-full min-w-[200px] sm:min-w-[350px] md:min-w-[500px] lg:min-w-[650px] max-w-3xl">
       <div className={`flex items-center bg-slate-900/50 border ${isOpen ? 'border-indigo-500/50' : 'border-white/10'} rounded-xl px-3 py-2 transition-all`}>
         <Search size={16} className="text-slate-400 mr-2" />
         <input
           type="text"
-          placeholder="Search lessons, words..."
+          placeholder={t('nav_search')}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -171,7 +170,7 @@ function GlobalSearch() {
           )}
         </div>
       )}
-      
+
       {/* Click outside overlay */}
       {isOpen && <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>}
     </div>
@@ -180,6 +179,7 @@ function GlobalSearch() {
 
 export default function Layout() {
   const { user, logout, refreshUser } = useAuth();
+  const { theme, language, toggleTheme, toggleLanguage, t } = useThemeLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -192,23 +192,10 @@ export default function Layout() {
 
     async function fetchUnread() {
       try {
-        const notifications = await getNotifications();
-        const readIds = JSON.parse(localStorage.getItem('read_notification_ids') || '[]');
-        const clearedIds = JSON.parse(localStorage.getItem('cleared_notification_ids') || '[]');
-        
-        // Filter out cleared ones
-        const activeNotifs = notifications.filter(n => !clearedIds.includes(n.id));
-
-        if (location.pathname === '/notifications') {
-          const newReadIds = Array.from(new Set([...readIds, ...activeNotifs.map(n => n.id)]));
-          localStorage.setItem('read_notification_ids', JSON.stringify(newReadIds));
-          setUnreadCount(0);
-        } else {
-          const unread = activeNotifs.filter(n => !readIds.includes(n.id));
-          setUnreadCount(unread.length);
-        }
+        const count = await getUnreadNotificationCount();
+        setUnreadCount(count);
       } catch (err) {
-        console.error('Failed to fetch notifications for badge:', err);
+        console.error('Failed to fetch unread count:', err);
       }
     }
 
@@ -310,7 +297,7 @@ export default function Layout() {
 
   function handleLogout() {
     logout();
-    navigate('/login');
+    navigate('/');
   }
 
   return (
@@ -319,59 +306,37 @@ export default function Layout() {
         <SidebarBrand />
 
         {user && <GuideIndicator user={user} onUpdate={handleToggleGuide} />}
-        {user && <GlobalSearch />}
+
 
         <nav className="sidebar-nav">
-          <div className="nav-section-label">Learn</div>
+          <div className="nav-section-label">{language === 'bn' ? 'শিখুন' : 'Learn'}</div>
           <NavLink to="/curriculum" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon"><BookOpen size={16} /></span> Curriculum
+            <span className="nav-icon"><BookOpen size={16} /></span> {t('nav_curriculum')}
           </NavLink>
           <NavLink to="/flashcards" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon"><Layers size={16} /></span> Flashcards
+            <span className="nav-icon"><Layers size={16} /></span> {t('nav_flashcards')}
           </NavLink>
           <NavLink to="/progress" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon"><BarChart2 size={16} /></span> My Progress
+            <span className="nav-icon"><BarChart2 size={16} /></span> {t('nav_progress')}
           </NavLink>
           <NavLink to="/leaderboard" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon"><Trophy size={16} /></span> Leaderboard
+            <span className="nav-icon"><Trophy size={16} /></span> {t('nav_leaderboard')}
           </NavLink>
           <NavLink to="/vocabulary" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon"><Bookmark size={16} /></span> My Vocabulary
+            <span className="nav-icon"><Bookmark size={16} /></span> {t('nav_vocabulary')}
           </NavLink>
           <NavLink to="/onboarding" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon"><ClipboardList size={16} /></span> Placement Test
+            <span className="nav-icon"><ClipboardList size={16} /></span> {t('nav_placement')}
           </NavLink>
 
           {user && (
             <>
-              <div className="nav-section-label" style={{ marginTop: '0.5rem' }}>AI Assistant</div>
+              <div className="nav-section-label" style={{ marginTop: '0.5rem' }}>{language === 'bn' ? 'এআই অ্যাসিস্ট্যান্ট' : 'AI Assistant'}</div>
               <NavLink to="/ai-chat" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="nav-icon"><Sparkles size={16} /></span> AI Chat
+                <span className="nav-icon"><Sparkles size={16} /></span> {t('nav_ai_chat')}
               </NavLink>
               <NavLink to="/tests" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="nav-icon"><ClipboardList size={16} /></span> Tests
-              </NavLink>
-              <NavLink to="/notifications" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="nav-icon" style={{ position: 'relative' }}>
-                  <Bell size={16} />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                    </span>
-                  )}
-                </span>
-                <span>Notifications</span>
-                {unreadCount > 0 && (
-                  <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center">
-                    {unreadCount}
-                  </span>
-                )}
-              </NavLink>
-
-              <div className="nav-section-label" style={{ marginTop: '0.5rem' }}>Account</div>
-              <NavLink to="/profile" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="nav-icon"><User size={16} /></span> Profile
+                <span className="nav-icon"><ClipboardList size={16} /></span> {t('nav_tests')}
               </NavLink>
             </>
           )}
@@ -380,19 +345,18 @@ export default function Layout() {
         <div className="sidebar-footer">
           {user ? (
             <button className="nav-button" onClick={handleLogout}>
-              <span className="nav-icon"><LogOut size={16} /></span> Sign out
+              <span className="nav-icon"><LogOut size={16} /></span> {t('nav_sign_out')}
             </button>
           ) : (
             <Link to="/login" className="nav-link" style={{ display: 'flex', gap: '0.75rem', padding: '0.65rem 0.75rem' }}>
-              <span className="nav-icon"><Key size={16} /></span> Sign in
+              <span className="nav-icon"><Key size={16} /></span> {t('nav_sign_in')}
             </Link>
           )}
         </div>
       </aside>
 
       <main className="main-content">
-<<<<<<< HEAD
-=======
+
         {/* Persistent Top Bar with Notifications & Profile */}
         <div className="top-bar">
           <div className="top-bar-left"></div>
@@ -457,7 +421,7 @@ export default function Layout() {
           </div>
         </div>
 
->>>>>>> 766fa5f (updated Terms of Service)
+
         <Outlet />
       </main>
     </div>

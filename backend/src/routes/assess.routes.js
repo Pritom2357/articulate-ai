@@ -17,6 +17,12 @@ assessRouter.post(
 );
 
 assessRouter.post(
+    '/pronunciation/feedback',
+    authenticateToken.authenticateToken,
+    assessController.pronunciationFeedback
+);
+
+assessRouter.post(
     '/conversation/assess',
     authenticateToken.authenticateToken,
     assessController.assessConversation
@@ -28,11 +34,6 @@ assessRouter.get(
     assessController.ragSession
 );
 
-assessRouter.post(
-    '/ai-chat',
-    authenticateToken.authenticateToken,
-    assessController.generalChat
-);
 
 assessRouter.post(
     '/tests/submit',

@@ -4,7 +4,7 @@ import { getWord } from '../api/curriculum.js';
 import { getBookmarks, addBookmark, removeBookmark } from '../api/vocabulary.js';
 import { Bookmark, Volume2, ChevronLeft } from 'lucide-react';
 import useAuth from '../hooks/useAuth.js';
-import { speakText } from '../utils/tts.js';
+import { playWordAudio } from '../utils/playWordAudio.js';
 
 export default function WordDetails() {
     const { user } = useAuth();
@@ -36,17 +36,13 @@ export default function WordDetails() {
         loadWordAndBookmarkStatus();
     }, [id]);
 
-    const playTTS = (text) => {
-        if ('speechSynthesis' in window) {
-            speakText(
-                text,
-                activeTutor,
-                () => setIsSpeaking(true),
-                () => setIsSpeaking(false)
-            );
-        } else {
-            alert('Your browser does not support text-to-speech.');
-        }
+    const handlePlayAudio = async () => {
+        await playWordAudio(
+            word,
+            activeTutor,
+            () => setIsSpeaking(true),
+            () => setIsSpeaking(false)
+        );
     };
 
     const handleToggleBookmark = async () => {
@@ -131,7 +127,7 @@ export default function WordDetails() {
                             <span className="text-xs text-slate-400 font-bold block uppercase tracking-wider mb-2">Pronunciation</span>
                             <div className="flex gap-4 items-center">
                                 <button
-                                    onClick={() => playTTS(word.word)}
+                                    onClick={handlePlayAudio}
                                     className={`w-12 h-12 rounded-full border-none flex items-center justify-center cursor-pointer transition-all duration-300 shadow-md ${
                                         isSpeaking
                                             ? 'bg-red-500 text-white animate-pulse scale-105'

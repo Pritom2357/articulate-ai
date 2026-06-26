@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { getDueFlashcards, reviewFlashcard } from '../api/progress.js';
 import useAuth from '../hooks/useAuth.js';
 import { Award, Volume2, Sparkles, ShieldAlert } from 'lucide-react';
-import { speakText } from '../utils/tts.js';
+import { playWordAudio } from '../utils/playWordAudio.js';
 
 // Import tutor assets for decoration/encouragement
 import maleAvatar from '../assets/articulate_male.jpeg';
@@ -34,18 +34,14 @@ export default function Flashcards() {
     loadCards();
   }, []);
 
-  const playTTS = (text, e) => {
-    if (e) e.stopPropagation(); // Prevent flipping card when clicking speaker
-    if ('speechSynthesis' in window) {
-      speakText(
-        text,
-        activeTutor,
-        () => setIsSpeaking(true),
-        () => setIsSpeaking(false)
-      );
-    } else {
-      alert('আপনার ব্রাউজার টেক্সট-টু-স্পিচ সাপোর্ট করে না।');
-    }
+  const handlePlayAudio = async (card, e) => {
+    if (e) e.stopPropagation();
+    await playWordAudio(
+      card,
+      activeTutor,
+      () => setIsSpeaking(true),
+      () => setIsSpeaking(false)
+    );
   };
 
   async function handleReview(score) {
@@ -140,7 +136,7 @@ export default function Flashcards() {
 
                   {/* Tutor Pronunciation Speaker button */}
                   <button
-                    onClick={(e) => playTTS(currentCard.word, e)}
+                    onClick={(e) => handlePlayAudio(currentCard, e)}
                     className={`mt-4 w-12 h-12 rounded-full border-none flex items-center justify-center cursor-pointer transition-all duration-300 shadow-md ${
                       isSpeaking
                         ? 'bg-red-500 text-white animate-pulse scale-105 shadow-red-500/40'

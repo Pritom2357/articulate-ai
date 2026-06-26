@@ -1,8 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register } from '../api/auth.js';
+import useAuth from '../hooks/useAuth.js';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
+import { Sun, Moon } from 'lucide-react';
 
 export default function Register() {
+  const { user } = useAuth();
+  const { theme, toggleTheme } = useThemeLanguage();
+  const navigate = useNavigate();
+
+  // Redirect to curriculum if user is already authenticated
+  useEffect(() => {
+    if (user) {
+      navigate('/curriculum', { replace: true });
+    }
+  }, [user, navigate]);
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -23,7 +37,6 @@ export default function Register() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
 
   // Real-time validation rules
   const isNameValid = name.trim().length >= 3;
@@ -100,10 +113,10 @@ export default function Register() {
 
       <div className="glass-form-card wide-card animate-fade-in">
         {/* Animated brand logo watermark */}
-        <div className="form-watermark">
+        <Link to="/" className="form-watermark hover:opacity-80 transition-opacity" style={{ textDecoration: 'none' }}>
           <span className="form-watermark-icon">🎙️</span>
           <span className="form-watermark-text">ARTICULATE AI</span>
-        </div>
+        </Link>
 
         <h1 className="glass-title">Create Account</h1>
         <p className="glass-subtitle">নিবন্ধন করুন এবং আপনার নিজস্ব লার্নিং জার্নি শুরু করুন।</p>

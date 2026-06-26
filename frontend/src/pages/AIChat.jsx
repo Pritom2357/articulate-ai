@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import useAuth from '../hooks/useAuth.js';
-import { Sparkles, Send, Mic, MicOff, AlertCircle } from 'lucide-react';
-import { generalChat } from '../api/progress.js';
+import { Sparkles, Send, Mic, MicOff, AlertCircle, Volume2 } from 'lucide-react';
+import { generalChat, textToSpeech } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articulate_female.jpeg';
 
@@ -12,6 +12,8 @@ export default function AIChat() {
   const [isTyping, setIsTyping] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState('');
+  const [playingIdx, setPlayingIdx] = useState(null);
+  const audioRef = useRef(null);
 
   const activeTutor = user?.guide_preference || 'MALE';
   const tutorAvatar = activeTutor === 'FEMALE' ? femaleAvatar : maleAvatar;
@@ -66,6 +68,48 @@ export default function AIChat() {
       setInput('');
       setIsListening(true);
       recognitionRef.current.start();
+    }
+  };
+
+  const handleReadAloud = async (text, msgIndex) => {
+    if (playingIdx === msgIndex && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      setPlayingIdx(null);
+      return;
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    try {
+      setPlayingIdx(msgIndex);
+      const voice = activeTutor === 'FEMALE' ? 'en-US-JennyNeural' : 'en-US-GuyNeural';
+      const audioBlob = await textToSpeech(text, voice);
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setPlayingIdx(null);
+        audioRef.current = null;
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      audio.onerror = () => {
+        setPlayingIdx(null);
+        audioRef.current = null;
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.error('Read aloud failed:', err);
+      setPlayingIdx(null);
+      audioRef.current = null;
     }
   };
 
@@ -134,9 +178,8 @@ export default function AIChat() {
           {messages.map((msg, i) => (
             <div
               key={i}
-              className={`flex gap-3 max-w-[80%] ${
-                msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''
-              }`}
+              className={`flex gap-3 max-w-[80%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''
+                }`}
             >
               {msg.role === 'assistant' && (
                 <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-white/10">
@@ -144,13 +187,26 @@ export default function AIChat() {
                 </div>
               )}
               <div
-                className={`p-3 rounded-2xl text-sm leading-relaxed ${
-                  msg.role === 'user'
+                className={`p-3 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
                     ? 'bg-indigo-600 text-white rounded-tr-none shadow-md'
                     : 'bg-slate-800 text-white rounded-tl-none border border-slate-700/50 shadow-sm'
-                }`}
+                  }`}
               >
                 {msg.content}
+                {msg.role === 'assistant' && (
+                  <button
+                    onClick={() => handleReadAloud(msg.content, i)}
+                    className={`mt-2 flex items-center gap-1 text-xs border-none cursor-pointer transition ${playingIdx === i
+                        ? 'text-cyan-400 animate-pulse'
+                        : 'text-slate-400 hover:text-indigo-300'
+                      }`}
+                    style={{ background: 'transparent', padding: '2px 0' }}
+                    title={playingIdx === i ? 'Stop reading' : 'Read aloud'}
+                  >
+                    <Volume2 size={14} />
+                    {playingIdx === i ? 'Playing...' : 'Read aloud'}
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -175,11 +231,10 @@ export default function AIChat() {
           <button
             type="button"
             onClick={toggleListening}
-            className={`w-10 h-10 rounded-full border-none flex items-center justify-center cursor-pointer transition ${
-              isListening
+            className={`w-10 h-10 rounded-full border-none flex items-center justify-center cursor-pointer transition ${isListening
                 ? 'bg-red-500 text-white animate-pulse'
                 : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/25'
-            }`}
+              }`}
             title="Speech-to-text"
           >
             {isListening ? <MicOff size={18} /> : <Mic size={18} />}

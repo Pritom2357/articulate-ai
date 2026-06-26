@@ -1,5 +1,11 @@
 const ProgressModel = require('../models/progress.model')
 const aiService = require('../services/aiService.js')
+const bus = require('../events/eventBus.js')
+const Events = require('../events/eventsNames.js')
+const banglaRiskPhonemes = require('../constants/banglaRiskPhonemes.js')
+
+const AUDIO_QUALITY_GATE = 50;
+const WEAK_PHONEME_THRESHOLD = 70;
 
 class AssessController {
     constructor() {
@@ -9,8 +15,8 @@ class AssessController {
     assessPronunciation = async (req, res) => {
         try {
             const userId = req.user.id;
-            const { referenceText, wordId, testId, questionId, attemptType, phraseId } = req.body || {};
-            
+            const { referenceText, wordId, phraseId } = req.body || {};
+
             if (!req.file) {
                 return res.status(400).json({ success: false, error: 'Audio file is required' });
             }
@@ -18,32 +24,85 @@ class AssessController {
                 return res.status(400).json({ success: false, error: 'referenceText is required' });
             }
 
-            const result = await aiService.assessPronunciation(req.file.buffer, referenceText);
+            console.log('[assessPronunciation controller] received', {
+                userId,
+                referenceText,
+                wordId,
+                mimeType: req.file.mimetype,
+                originalName: req.file.originalname,
+                sizeBytes: req.file.size
+            });
 
-            if (result.success) {
-                // If wordId is provided, update user SRS progress
-                if (wordId) {
+            const result = await aiService.assessPronunciation(req.file.buffer, referenceText, req.file.mimetype);
+
+            if (!result.success) {
+                return res.status(200).json(result);
+            }
+
+            // Audio quality gate — reject without writing anything if the recording itself is too poor to score fairly.
+            if (result.audio_quality_score != null && result.audio_quality_score < AUDIO_QUALITY_GATE) {
+                return res.status(200).json({ success: true, rejected: true, reason: 'poor_audio', ...result });
+            }
+
+            // If wordId is provided, update user SRS progress
+            if (wordId) {
+                try {
                     await this.progressModel.updateSrsCard(userId, parseInt(wordId), result.overall_score);
+                } catch (srsErr) {
+                    console.error('[assessPronunciation] SRS card update failed (non-fatal):', srsErr.message);
                 }
-                
-                // If testId and questionId are provided, log pronunciation attempt in DB
-                if (testId && questionId) {
-                    await this.progressModel.logPronunciationAttempt(userId, {
-                        testId: parseInt(testId),
-                        questionId: parseInt(questionId),
-                        attemptType: attemptType || 'WORD',
-                        wordId: wordId ? parseInt(wordId) : null,
-                        phraseId: phraseId ? parseInt(phraseId) : null,
-                        score: result.overall_score,
-                        feedback: result.feedback,
-                        isCorrect: result.overall_score >= 60
-                    });
+            }
+
+            // Phoneme-level scoring: history log + rolling summary + mastery XP + fail-streak RAG trigger
+            if (result.phonemes && result.phonemes.length > 0) {
+                try {
+                    const { ragTriggerPhonemes } = await this.progressModel.logPhonemeScores(
+                        userId,
+                        wordId ? parseInt(wordId) : null,
+                        phraseId ? parseInt(phraseId) : null,
+                        result.phonemes
+                    );
+
+                    for (const phoneme of ragTriggerPhonemes) {
+                        bus.asyncEmit(Events.RAG_TRIGGER, { userId, phoneme });
+                    }
+                } catch (phonemeErr) {
+                    console.error('[assessPronunciation] Phoneme scoring failed (non-fatal):', phonemeErr.message);
                 }
             }
 
             return res.status(200).json(result);
         } catch (error) {
             console.error('Pronunciation assessment controller error:', error);
+            return res.status(500).json({ success: false, error: error.message || 'Internal server error' });
+        }
+    }
+
+    /**
+     * Slow path, called separately so the score response above never waits on an LLM call.
+     * Enriches phonemes scoring below WEAK_PHONEME_THRESHOLD with Bangla risk-phoneme tips,
+     * then asks the LLM to synthesize one short actionable Bangla tip.
+     */
+    pronunciationFeedback = async (req, res) => {
+        try {
+            const { phonemeScores } = req.body || {};
+            if (!Array.isArray(phonemeScores)) {
+                return res.status(400).json({ success: false, error: 'phonemeScores array is required' });
+            }
+
+            const weakPhonemes = phonemeScores
+                .filter(p => p.score < WEAK_PHONEME_THRESHOLD)
+                .map(p => ({
+                    phoneme: p.phoneme,
+                    score: p.score,
+                    tipBn: banglaRiskPhonemes[p.phoneme] || null
+                }));
+
+            const tipBn = await aiService.getPronunciationFeedback(weakPhonemes);
+
+            return res.status(200).json({ success: true, tipBn });
+        } catch (error) {
+            console.error('Pronunciation feedback controller error:', error);
             return res.status(500).json({ success: false, error: error.message || 'Internal server error' });
         }
     }
@@ -104,19 +163,6 @@ class AssessController {
         }
     }
 
-    generalChat = async (req, res) => {
-        try {
-            const { messages } = req.body;
-            if (!messages || !Array.isArray(messages)) {
-                return res.status(400).json({ success: false, error: 'messages array is required' });
-            }
-            const response = await aiService.generateChatResponse(messages);
-            return res.status(200).json({ success: true, response });
-        } catch (error) {
-            console.error('AI general chat controller error:', error);
-            return res.status(500).json({ success: false, error: 'Internal server error' });
-        }
-    }
 
     submitTestAttempt = async (req, res) => {
         try {

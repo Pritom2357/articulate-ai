@@ -1,4 +1,4 @@
-import { request } from '../utils/apiClient.js';
+import { request, authorizedFetch } from '../utils/apiClient.js';
 
 export async function getDueFlashcards() {
   const response = await request('/progress/flashcards/due');
@@ -28,12 +28,8 @@ export async function getProgress() {
 }
 
 export async function assessPronunciation(formData) {
-  const token = localStorage.getItem('articulate_access_token');
-  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/assess/pronunciation/assess`, {
+  const response = await authorizedFetch('/assess/pronunciation/assess', {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
     body: formData,
   });
 
@@ -43,6 +39,13 @@ export async function assessPronunciation(formData) {
   }
 
   return response.json();
+}
+
+export async function getPronunciationFeedback(phonemeScores) {
+  return request('/assess/pronunciation/feedback', {
+    method: 'POST',
+    body: JSON.stringify({ phonemeScores }),
+  });
 }
 
 export async function assessConversation(payload) {
@@ -56,9 +59,31 @@ export async function getRagSession() {
   return request('/assess/rag-session');
 }
 
-export async function getNotifications() {
-  const response = await request('/notifications');
-  return response.notifications || [];
+export async function getNotifications({ limit = 30, offset = 0, filter = 'ALL' } = {}) {
+  const params = new URLSearchParams({ limit, offset, filter });
+  const response = await request(`/notifications?${params}`);
+  return response; // { notifications, unreadCount, pagination }
+}
+
+export async function getUnreadNotificationCount() {
+  const response = await request('/notifications/unread-count');
+  return response.count || 0;
+}
+
+export async function markNotificationRead(id) {
+  return request(`/notifications/${id}/read`, { method: 'PATCH' });
+}
+
+export async function markAllNotificationsRead() {
+  return request('/notifications/read-all', { method: 'PATCH' });
+}
+
+export async function deleteNotification(id) {
+  return request(`/notifications/${id}`, { method: 'DELETE' });
+}
+
+export async function deleteAllNotifications() {
+  return request('/notifications', { method: 'DELETE' });
 }
 
 export async function getXpLog(limit = 100) {
@@ -77,7 +102,7 @@ export async function getStreakCalendar(year, month) {
 }
 
 export async function generalChat(payload) {
-  return request('/assess/ai-chat', {
+  return request('/chatbot/chat', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
@@ -88,4 +113,19 @@ export async function submitTestAttempt(payload) {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export async function textToSpeech(text, voice = 'en-US-JennyNeural') {
+  const response = await authorizedFetch('/chatbot/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, voice }),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error || 'Text-to-speech failed');
+  }
+
+  return response.blob();
 }

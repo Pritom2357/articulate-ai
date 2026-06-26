@@ -1,37 +1,43 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getChapters } from '../api/curriculum.js';
-import { BookOpen, Sparkles, ShieldAlert } from 'lucide-react';
+import { getProgress } from '../api/progress.js';
+import { BookOpen, ShieldAlert } from 'lucide-react';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 export default function Curriculum() {
-<<<<<<< HEAD
-=======
   const { t, language } = useThemeLanguage();
->>>>>>> 766fa5f (updated Terms of Service)
   const [chapters, setChapters] = useState([]);
+  const [progress, setProgress] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchChapters() {
+    async function fetchChaptersAndProgress() {
       try {
         setLoading(true);
-        const chaptersData = await getChapters();
+        const [chaptersData, progressData] = await Promise.all([
+          getChapters(),
+          getProgress().catch(() => null)
+        ]);
         setChapters(chaptersData || []);
+        if (progressData) {
+          setProgress(progressData);
+        }
       } catch (err) {
-        setError(err.payload?.error || err.message || 'চ্যাপ্টার লোড করা যায়নি।');
+        setError(err.payload?.error || err.message || t('curr_loading_error') || 'চ্যাপ্টার লোড করা যায়নি।');
       } finally {
         setLoading(false);
       }
     }
-    fetchChapters();
-  }, []);
+    fetchChaptersAndProgress();
+  }, [t]);
 
   if (loading) {
     return (
       <div className="page-container text-center py-20">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-        <div className="text-slate-400 font-semibold">কারিকুলাম লোড হচ্ছে...</div>
+        <div className="text-slate-400 font-semibold">{t('curr_loading')}</div>
       </div>
     );
   }
@@ -44,10 +50,10 @@ export default function Curriculum() {
             <span className="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center">
               <BookOpen className="text-indigo-400" size={24} />
             </span>
-            লার্নিং কারিকুলাম (Curriculum)
+            {t('curr_title')}
           </h1>
           <p className="page-subtitle text-slate-400">
-            আপনার কাঙ্ক্ষিত চ্যাপ্টার নির্বাচন করুন এবং ইংরেজি ভোকাবুলারি ও স্পিকিং অনুশীলন শুরু করুন।
+            {t('curr_subtitle')}
           </p>
         </div>
       </div>
@@ -61,25 +67,6 @@ export default function Curriculum() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {chapters.length > 0 ? (
-<<<<<<< HEAD
-          chapters.map((chapter) => (
-            <Link
-              key={chapter.id}
-              to={`/chapters/${chapter.id}`}
-              className="card-link"
-            >
-              <div className="card-card h-full flex flex-col justify-between p-6 bg-slate-950/40 border border-white/10 hover:border-indigo-500/40 hover:scale-[1.02] hover:shadow-[0_15px_30px_rgba(99,102,241,0.05)] transition-all duration-300 relative group overflow-hidden">
-                <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/5 rounded-full filter blur-lg pointer-events-none group-hover:bg-indigo-500/10 transition-colors"></div>
-                
-                <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-full">
-                      Chapter {chapter.chapter_order || chapter.id}
-                    </span>
-                    <span className="text-xs text-slate-500 font-bold">
-                      {chapter.total_lessons || 5} Lessons
-                    </span>
-=======
           chapters.map((chapter) => {
             const chapProgress = progress?.chapters?.[chapter.id];
             const isCompleted = chapProgress?.status === 'COMPLETED';
@@ -135,28 +122,70 @@ export default function Curriculum() {
                   <div className="mt-6 flex items-center justify-between text-xs font-bold text-indigo-400 group-hover:text-indigo-300 transition-colors pt-4 border-t border-white/5">
                     <span>{t('curr_view_lessons')}</span>
                     <span>▶</span>
->>>>>>> 766fa5f (updated Terms of Service)
                   </div>
-                  <h2 className="text-xl font-extrabold text-white tracking-wide mb-2 group-hover:text-indigo-400 transition-colors">
-                    {chapter.title || `Chapter ${chapter.id}`}
-                  </h2>
-                  <p className="text-sm text-slate-400 leading-relaxed font-medium">
-                    {chapter.description || 'চ্যাপ্টারের লেসনগুলো সম্পন্ন করুন এবং আপনার ইংরেজি উচ্চারণ উন্নত করুন।'}
-                  </p>
                 </div>
+              </Link>
+            );
+          })
 
-                <div className="mt-6 flex items-center justify-between text-xs font-bold text-indigo-400 group-hover:text-indigo-300 transition-colors pt-4 border-t border-white/5">
-                  <span>লেসনগুলো দেখুন (View lessons)</span>
-                  <span>▶</span>
+            return (
+              <Link
+                key={chapter.id}
+                to={`/chapters/${chapter.id}`}
+                className="card-link"
+              >
+                <div className="card-card h-full flex flex-col justify-between p-6 bg-slate-950/40 border border-white/10 hover:border-indigo-500/40 hover:scale-[1.02] hover:shadow-[0_15px_30px_rgba(99,102,241,0.05)] transition-all duration-300 relative group overflow-hidden">
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/5 rounded-full filter blur-lg pointer-events-none group-hover:bg-indigo-500/10 transition-colors"></div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-full">
+                        {t('curr_chapter')} {chapter.order_num || chapter.id}
+                      </span>
+                      {chapProgress ? (
+                        <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${isCompleted ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
+                          {isCompleted ? t('curr_completed') : t('curr_in_progress')}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-500 font-bold">
+                          {totalLessons} {t('curr_lessons')}
+                        </span>
+                      )}
+                    </div>
+                    <h2 className="text-xl font-extrabold text-white tracking-wide mb-2 group-hover:text-indigo-400 transition-colors">
+                      {chapter.title || `${t('curr_chapter')} ${chapter.order_num || chapter.id}`}
+                    </h2>
+                    <p className="text-sm text-slate-400 leading-relaxed font-medium">
+                      {chapter.description || 'চ্যাপ্টারের লেসনগুলো সম্পন্ন করুন এবং আপনার ইংরেজি উচ্চারণ উন্নত করুন।'}
+                    </p>
+
+                    {/* Progress Bar */}
+                    {chapProgress && (
+                      <div className="mt-4 space-y-1.5">
+                        <div className="flex justify-between text-[10px] font-bold text-slate-400">
+                          <span>{completedLessons} / {totalLessons} {t('curr_lessons_completed')}</span>
+                          <span>{percentage}%</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-900/60 rounded-full overflow-hidden border border-white/5">
+                          <div className="h-full bg-gradient-to-r from-indigo-500 to-cyan-500 rounded-full transition-all duration-500" style={{ width: `${percentage}%` }}></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-6 flex items-center justify-between text-xs font-bold text-indigo-400 group-hover:text-indigo-300 transition-colors pt-4 border-t border-white/5">
+                    <span>{t('curr_view_lessons')}</span>
+                    <span>▶</span>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))
+              </Link>
+            );
+          })
         ) : (
           <div className="empty-state col-span-full py-16 border border-dashed border-white/10 bg-slate-950/20">
             <div className="text-4xl mb-3">📖</div>
-            <h3 className="font-extrabold text-white text-base">কোনো চ্যাপ্টার উপলব্ধ নেই</h3>
-            <p className="text-xs text-slate-500 mt-1">অনুগ্রহ করে পরবর্তীতে আবার ঘুরে আসুন।</p>
+            <h3 className="font-extrabold text-white text-base">{t('curr_empty')}</h3>
+            <p className="text-xs text-slate-500 mt-1">{t('curr_empty_sub')}</p>
           </div>
         )}
       </div>

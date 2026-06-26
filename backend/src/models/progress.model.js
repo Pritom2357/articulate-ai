@@ -10,7 +10,7 @@ const XP_WORD_PASS_CLEAN = 20
 const XP_WORD_PASS_FLAG = 10
 const XP_CHAPTER_COMPLETE = 200
 const XP_STREAK_BONUS = 30
-const XP_PHONEME_MASTERED = 100
+const XP_PHONEME_MASTERED = 20
 
 class ProgressModel {
     constructor() {
@@ -64,9 +64,18 @@ class ProgressModel {
 
     updateSrsCard = async (userId, wordId, pronunciationScore) => {
         try {
-            const current = await this.getCardById(userId, wordId)
+            let current = await this.getCardById(userId, wordId)
             if (!current) {
-                throw new Error(`Card not found for user ${userId} and word ${wordId}`)
+                // First time this user has attempted this word — provision a default SRS card
+                // (table defaults: familiarity NEW, streak 0, easiness 2.5, interval_days 1, next_review today).
+                await this.db_connection.query_executor(
+                    `INSERT INTO user_word_progress (user_id, word_id) VALUES ($1, $2) ON CONFLICT DO NOTHING;`,
+                    [userId, wordId]
+                )
+                current = await this.getCardById(userId, wordId)
+                if (!current) {
+                    throw new Error(`Card not found for user ${userId} and word ${wordId}`)
+                }
             }
 
             const updated = sm2(current, pronunciationScore)
@@ -385,7 +394,7 @@ class ProgressModel {
         try {
             const query = `
                 INSERT INTO user_lesson_progress
-                    (user_id, lesson_id, score, status, completed_at, started_at, attempts)
+                    (user_id, lesson_id, score, status, completed_at, started_at, attempts, completion_pct)
                 VALUES(
                     $1,
                     $2,
@@ -393,7 +402,8 @@ class ProgressModel {
                     'COMPLETED',
                     NOW(),
                     NOW(),
-                    1
+                    1,
+                    100
                 )
                 ON CONFLICT (user_id, lesson_id) DO UPDATE
                 SET
@@ -658,6 +668,65 @@ class ProgressModel {
             return result.rows || [];
         } catch (error) {
             throw new Error(`Failed to get user weak words: ${error.message}`);
+        }
+    }
+
+
+    /**
+     * Record per-phoneme scores from a pronunciation attempt, update the rolling
+     * per-(user, phoneme) summary, award XP on fresh mastery, and flag phonemes
+     * whose fail streak just hit 3 (caller emits the RAG_TRIGGER event for these).
+     * @param {number} userId
+     * @param {number|null} wordId
+     * @param {Array<{phoneme: string, score: number}>} phonemes
+     * @returns {Promise<{masteredPhonemes: string[], ragTriggerPhonemes: string[]}>}
+     */
+    logPhonemeScores = async (userId, wordId, phraseId, phonemes) => {
+        const masteredPhonemes = [];
+        const ragTriggerPhonemes = [];
+
+        try {
+            for (const { phoneme, score } of phonemes) {
+                await this.db_connection.query_executor(
+                    `INSERT INTO user_phoneme_scores (user_id, phoneme, score, word_id, phrase_id) VALUES ($1, $2, $3, $4, $5);`,
+                    [userId, phoneme, score, wordId, phraseId]
+                );
+
+                const upsertQuery = `
+                    INSERT INTO user_phoneme_summary (user_id, phoneme, avg_score, total_attempts, fail_streak, mastered)
+                    VALUES ($1, $2, $3, 1, $4, false)
+                    ON CONFLICT (user_id, phoneme) DO UPDATE SET
+                        avg_score = (user_phoneme_summary.avg_score * user_phoneme_summary.total_attempts + $3) / (user_phoneme_summary.total_attempts + 1),
+                        total_attempts = user_phoneme_summary.total_attempts + 1,
+                        fail_streak = CASE WHEN $3 >= 60 THEN 0 ELSE user_phoneme_summary.fail_streak + 1 END
+                    RETURNING *;
+                `;
+                const failStreakOnInsert = score >= 60 ? 0 : 1;
+                const { rows: [summary] } = await this.db_connection.query_executor(
+                    upsertQuery,
+                    [userId, phoneme, score, failStreakOnInsert]
+                );
+
+                if (!summary.mastered && summary.avg_score >= 90 && summary.total_attempts >= 10) {
+                    await this.db_connection.query_executor(
+                        `UPDATE user_phoneme_summary SET mastered = true WHERE user_id = $1 AND phoneme = $2;`,
+                        [userId, phoneme]
+                    );
+                    masteredPhonemes.push(phoneme);
+                }
+
+                if (summary.fail_streak === 3) {
+                    ragTriggerPhonemes.push(phoneme);
+                }
+            }
+
+            for (const phoneme of masteredPhonemes) {
+                await this.addXP(userId, XP_PHONEME_MASTERED, 'phoneme_mastered');
+            }
+
+            return { masteredPhonemes, ragTriggerPhonemes };
+        } catch (error) {
+            throw new Error(`Failed to log phoneme scores: ${error.message}`);
         }
     }
 
