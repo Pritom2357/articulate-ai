@@ -28,10 +28,10 @@ class NotificationService {
 
         const client = await this.listenerPool.connect(); // dedicated client connection from the new pool
 
-<<<<<<< HEAD
         client.on('error', (err) => {
             console.error('PG listener client error:', err.message);
-=======
+        });
+
         bus.on(Events.USER_PROFILE_UPDATED, ({ userId, changed }) => {
             if (this.enablePush) this.push?.pushToUser(userId, 'profile_updated', { changed });
         });
@@ -56,7 +56,6 @@ class NotificationService {
                     earned_at
                 });
             }
->>>>>>> Afrin
         });
 
         //  built-in event listener provided by the 'pg' library
