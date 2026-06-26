@@ -269,7 +269,7 @@ export default function Progress() {
                   return (
                     <div 
                       key={dateNum}
-                      onClick={() => handleCellClick(dateNum, dayXp, dayLogs)}
+                      onClick={() => {}}
                       className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold transition-all duration-300 cursor-pointer ${cellClass} ${isToday ? 'ring-2 ring-indigo-500' : ''}`}
                       title={dayXp > 0 ? `${dayXp} XP` : ''}
                     >
