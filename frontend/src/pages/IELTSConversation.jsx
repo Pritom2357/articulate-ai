@@ -6,7 +6,7 @@ import useAuth from '../hooks/useAuth.js';
 
 // Import tutor assets
 import maleAvatar from '../assets/articulate_male.jpeg';
-import femaleAvatar from '../assets/articucate_female.jpeg';
+import femaleAvatar from '../assets/articulate_female.jpeg';
 
 const TOPIC_QUESTIONS = {
   1: [

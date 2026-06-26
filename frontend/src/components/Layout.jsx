@@ -4,7 +4,7 @@ import useAuth from '../hooks/useAuth.js';
 import { updateProfile } from '../api/user.js';
 import { getUnreadNotificationCount } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
-import femaleAvatar from '../assets/articucate_female.jpeg';
+import femaleAvatar from '../assets/articulate_female.jpeg';
 import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key, Bookmark, Trophy, Search, X, Loader, Sun, Moon, Globe } from 'lucide-react';
 import { searchCurriculum } from '../api/curriculum.js';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
@@ -371,10 +371,14 @@ export default function Layout() {
               onClick={toggleLanguage} 
               className="top-bar-icon-btn font-extrabold text-xs" 
               title={language === 'bn' ? 'Switch to English' : 'বাংলায় পরিবর্তন করুন'}
-              style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '0 8px', width: 'auto', borderRadius: '1rem' }}
             >
-              <span className="text-[8px] uppercase tracking-wider text-indigo-400 flex items-center gap-0.5"><Globe size={8} /> {language === 'bn' ? 'EN' : 'BN'}</span>
-              <span>{language === 'bn' ? 'EN' : 'বাং'}</span>
+              <Globe size={14} className="text-indigo-400" />
+              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                <span className={language === 'bn' ? 'text-white drop-shadow-md' : 'text-slate-500 hover:text-slate-300 transition-colors'}>বাং</span>
+                <span className="text-white/20">|</span>
+                <span className={language === 'en' ? 'text-white drop-shadow-md' : 'text-slate-500 hover:text-slate-300 transition-colors'}>EN</span>
+              </div>
             </button>
 
             {/* Theme Switcher */}

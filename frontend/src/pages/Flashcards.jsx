@@ -6,7 +6,7 @@ import { playWordAudio } from '../utils/playWordAudio.js';
 
 // Import tutor assets for decoration/encouragement
 import maleAvatar from '../assets/articulate_male.jpeg';
-import femaleAvatar from '../assets/articucate_female.jpeg';
+import femaleAvatar from '../assets/articulate_female.jpeg';
 
 export default function Flashcards() {
   const { user } = useAuth();

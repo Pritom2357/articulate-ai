@@ -21,6 +21,10 @@ import AIChat from './pages/AIChat.jsx';
 import Tests from './pages/Tests.jsx';
 import Notifications from './pages/Notifications.jsx';
 import Vocabulary from './pages/Vocabulary.jsx';
+import TermsOfService from './pages/TermsOfService.jsx';
+import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
+import DataSafety from './pages/DataSafety.jsx';
+import CookiePreferences from './pages/CookiePreferences.jsx';
 import './App.css';
 
 function App() {
@@ -33,6 +37,10 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/data-safety" element={<DataSafety />} />
+          <Route path="/cookie-preferences" element={<CookiePreferences />} />
 
           {/* Protected App Routes (Wrapped in ProtectedRoute and Layout with sidebar) */}
           <Route

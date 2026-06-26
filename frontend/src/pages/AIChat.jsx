@@ -3,7 +3,7 @@ import useAuth from '../hooks/useAuth.js';
 import { Sparkles, Send, Mic, MicOff, AlertCircle, Volume2 } from 'lucide-react';
 import { generalChat, textToSpeech } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
-import femaleAvatar from '../assets/articucate_female.jpeg';
+import femaleAvatar from '../assets/articulate_female.jpeg';
 
 export default function AIChat() {
   const { user } = useAuth();

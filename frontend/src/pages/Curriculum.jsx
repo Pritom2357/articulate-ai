@@ -6,7 +6,7 @@ import { BookOpen, ShieldAlert } from 'lucide-react';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 export default function Curriculum() {
-  const { t } = useThemeLanguage();
+  const { t, language } = useThemeLanguage();
   const [chapters, setChapters] = useState([]);
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState('');
@@ -99,10 +99,10 @@ export default function Curriculum() {
                       )}
                     </div>
                     <h2 className="text-xl font-extrabold text-white tracking-wide mb-2 group-hover:text-indigo-400 transition-colors">
-                      {chapter.title || `${t('curr_chapter')} ${chapter.order_num || chapter.id}`}
+                      {(language === 'bn' ? chapter.title_bn : chapter.title) || chapter.title || `${t('curr_chapter')} ${chapter.order_num || chapter.id}`}
                     </h2>
                     <p className="text-sm text-slate-400 leading-relaxed font-medium">
-                      {chapter.description || 'চ্যাপ্টারের লেসনগুলো সম্পন্ন করুন এবং আপনার ইংরেজি উচ্চারণ উন্নত করুন।'}
+                      {(language === 'bn' ? chapter.description_bn : chapter.description) || chapter.description || t('curr_default_desc')}
                     </p>
 
                     {/* Progress Bar */}

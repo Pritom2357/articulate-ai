@@ -28,6 +28,10 @@ class NotificationService {
 
         const client = await this.listenerPool.connect(); // dedicated client connection from the new pool
 
+        client.on('error', (err) => {
+            console.error('PG listener client error:', err.message);
+        });
+
         //  built-in event listener provided by the 'pg' library
         // fires every time the PG sends any 'NOTIFY' event to this client
         client.on('notification', async (msg) => {
