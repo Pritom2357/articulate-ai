@@ -28,7 +28,7 @@ class EmailUtils {
     }
 
     static async sendVerificationEmail(username, email, token) {
-        const base = process.env.APP_BASE_URL || 'http://localhost:3000';
+        const base = process.env.APP_BASE_URL || 'http://localhost:5173';
         const link = `${base}/api/auth/verify-email?token=${token}`;
 
         console.log(`
@@ -66,7 +66,7 @@ class EmailUtils {
     }
 
     static async sendPasswordResetEmail(username, email, token) {
-        const base = process.env.APP_BASE_URL || 'http://localhost:3000';
+        const base = process.env.APP_BASE_URL || 'http://localhost:5173';
         const link = `${base}/reset-password?token=${token}`;
 
         console.log(`

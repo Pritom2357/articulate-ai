@@ -25,7 +25,6 @@ export default function Tests() {
 
   const fetchTests = async () => {
     try {
-      setLoading(true);
       setError('');
       const data = await getTests();
       setTests(data);

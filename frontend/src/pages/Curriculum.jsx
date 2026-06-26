@@ -99,10 +99,10 @@ export default function Curriculum() {
                       )}
                     </div>
                     <h2 className="text-xl font-extrabold text-white tracking-wide mb-2 group-hover:text-indigo-400 transition-colors">
-                      {language === 'bn' ? (chapter.title_bn || chapter.title) : chapter.title || `${t('curr_chapter')} ${chapter.order_num || chapter.id}`}
+                      {(language === 'bn' ? chapter.title_bn : chapter.title) || chapter.title || `${t('curr_chapter')} ${chapter.order_num || chapter.id}`}
                     </h2>
                     <p className="text-sm text-slate-400 leading-relaxed font-medium">
-                      {chapter.description || (language === 'bn' ? 'চ্যাপ্টারের লেসনগুলো সম্পন্ন করুন এবং আপনার ইংরেজি উচ্চারণ উন্নত করুন।' : 'Complete the lessons in this chapter to improve your English pronunciation.')}
+                      {(language === 'bn' ? chapter.description_bn : chapter.description) || chapter.description || t('curr_default_desc')}
                     </p>
 
                     {/* Progress Bar */}
@@ -127,6 +127,8 @@ export default function Curriculum() {
               </Link>
             );
           })
+
+
         ) : (
           <div className="empty-state col-span-full py-16 border border-dashed border-white/10 bg-slate-950/20">
             <div className="text-4xl mb-3">📖</div>
