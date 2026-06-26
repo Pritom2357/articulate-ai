@@ -5,6 +5,7 @@ import { Sparkles, Send, Mic, MicOff, AlertCircle, Volume2 } from 'lucide-react'
 import { generalChat, textToSpeech } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articucate_female.jpeg';
+import { speakText } from '../utils/tts.js';
 
 export default function AIChat() {
   const { user } = useAuth();
@@ -78,16 +79,26 @@ export default function AIChat() {
   };
 
   const handleReadAloud = async (text, msgIndex) => {
-    if (playingIdx === msgIndex && audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+    // 1. If currently playing this message, pause/stop it.
+    if (playingIdx === msgIndex) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (typeof window !== 'undefined') {
+        window.speechSynthesis?.cancel();
+      }
       setPlayingIdx(null);
       return;
     }
 
+    // 2. Stop any other audio/speech currently playing
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
+    }
+    if (typeof window !== 'undefined') {
+      window.speechSynthesis?.cancel();
     }
 
     try {
@@ -105,17 +116,31 @@ export default function AIChat() {
         URL.revokeObjectURL(audioUrl);
       };
 
-      audio.onerror = () => {
-        setPlayingIdx(null);
+      audio.onerror = (e) => {
+        console.warn('Audio element error, falling back to Web Speech API', e);
         audioRef.current = null;
         URL.revokeObjectURL(audioUrl);
+        playSpeechSynthesisFallback(text, msgIndex);
       };
 
       await audio.play();
     } catch (err) {
-      console.error('Read aloud failed:', err);
-      setPlayingIdx(null);
+      console.warn('Backend TTS failed, falling back to browser SpeechSynthesis:', err);
       audioRef.current = null;
+      playSpeechSynthesisFallback(text, msgIndex);
+    }
+  };
+
+  const playSpeechSynthesisFallback = (text, msgIndex) => {
+    try {
+      speakText(text, activeTutor, () => {
+        setPlayingIdx(msgIndex);
+      }, () => {
+        setPlayingIdx(null);
+      });
+    } catch (speechErr) {
+      console.error('Browser SpeechSynthesis failed:', speechErr);
+      setPlayingIdx(null);
     }
   };
 
