@@ -26,6 +26,10 @@ class DB_Connection {
 
         this.pool = new Pool(connectionConfig);
 
+        this.pool.on('error', (err, client) => {
+            console.error('Unexpected error on idle client', err);
+        });
+
         this.pool.query('SELECT NOW()')
             .then(() => console.log('✅ Database connected successfully'))
             .catch((err) => {
