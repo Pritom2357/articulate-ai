@@ -51,6 +51,26 @@ class AIService {
       console.error('Failed to load next session prompt file:', error.message)
       this.nextSessionPrompt = 'You are an AI English Tutor guiding a Bengali student. Generate a personalized next study session recommendation for the student. ' // fallback
     }
+
+    // Load exam generator prompt
+    try {
+      const examGenPath = path.join(__dirname, '../prompts/examGeneratePrompt.txt')
+      this.examGeneratePrompt = fs.readFileSync(examGenPath, 'utf8')
+    }
+    catch (error) {
+      console.error('Failed to load exam generate prompt file:', error.message)
+      this.examGeneratePrompt = '' 
+    }
+
+    // Load exam evaluation prompt
+    try {
+      const examEvalPath = path.join(__dirname, '../prompts/examEvaluatePrompt.txt')
+      this.examEvaluatePrompt = fs.readFileSync(examEvalPath, 'utf8')
+    }
+    catch (error) {
+      console.error('Failed to load exam evaluate prompt file:', error.message)
+      this.examEvaluatePrompt = '' 
+    }
   }
 
 
@@ -410,6 +430,59 @@ class AIService {
     }
   }
 
+  /**
+   * Generate dynamic exam questions using LLM
+   */
+  async generateExamQuestions(examType, contextDataStr) {
+    if (!this.openai) {
+      return { questions: [] }; // MOCK fallback if needed
+    }
+
+    try {
+      const prompt = this.examGeneratePrompt.replace('{{CONTEXT_DATA}}', contextDataStr);
+      
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1500,
+        temperature: 0.7,
+      });
+
+      const responseText = completion.choices[0].message.content.trim();
+      const cleanJson = responseText.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
+      return JSON.parse(cleanJson);
+    } catch (error) {
+      console.error('generateExamQuestions failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate exam summary feedback
+   */
+  async evaluateExamSummary(examData, scorePct) {
+    if (!this.openai) {
+      if (scorePct >= 80) return 'চমৎকার পরীক্ষা দিয়েছেন! আপনি খুব ভালো করছেন। (সিমুলেটেড)';
+      if (scorePct >= 50) return 'মোটামুটি ভালো হয়েছে। আরেকটু অনুশীলন করলে ভালো করবেন। (সিমুলেটেড)';
+      return 'আপনাকে আরও অনুশীলন করতে হবে। নিরাশ হবেন না! (সিমুলেটেড)';
+    }
+
+    try {
+      const prompt = this.examEvaluatePrompt.replace('{{SCORE_PCT}}', Math.round(scorePct).toString());
+      
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 150,
+        temperature: 0.6,
+      });
+
+      return completion.choices[0].message.content.trim();
+    } catch (error) {
+      console.error('evaluateExamSummary failed:', error.message);
+      return 'পরীক্ষা সম্পন্ন হয়েছে। (সিমুলেটেড)';
+    }
+  }
 
   /**
    * Convert text to speech using Azure Speech REST API

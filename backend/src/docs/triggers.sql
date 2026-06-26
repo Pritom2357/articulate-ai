@@ -64,6 +64,15 @@ BEGIN
             'উচ্চারণ পরীক্ষায় অংশ নিয়ে +' || NEW.amount || ' XP অর্জন করেছেন।',
             jsonb_build_object('xp', NEW.amount)
         );
+    ELSIF NEW.reason = 'exam_evaluated' THEN
+        INSERT INTO notifications (user_id, type, subject, description, metadata)
+        VALUES (
+            NEW.user_id,
+            'EXAM_EVALUATED',
+            'Exam Results Ready! 📝',
+            'আপনার পরীক্ষার ফলাফল প্রস্তুত! +' || NEW.amount || ' XP অর্জন করেছেন।',
+            jsonb_build_object('xp', NEW.amount)
+        );
     ELSE
         INSERT INTO notifications (user_id, type, subject, description, metadata)
         VALUES (

@@ -91,6 +91,19 @@ class NotificationService {
                 description: 'আপনার পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে।',
             });
         });
+
+        bus.on(Events.EXAM_EVALUATED, async ({ userId, examId, scorePct, title }) => {
+            try {
+                await this.model.create(userId, {
+                    type: 'EXAM_EVALUATED',
+                    subject: `Exam Results Ready! 📝 — ${title}`,
+                    description: `আপনার পরীক্ষার ফলাফল প্রস্তুত! আপনি ${Math.round(scorePct)}% স্কোর অর্জন করেছেন।`,
+                    metadata: { examId, scorePct }
+                });
+            } catch (err) {
+                console.error('EXAM_EVALUATED notification failed:', err);
+            }
+        });
     }
 }
 

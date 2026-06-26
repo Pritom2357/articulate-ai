@@ -95,7 +95,11 @@ SELECT
     (
         SELECT COUNT(*) FROM test_progress tp
         WHERE tp.user_id = up.user_id AND tp.score = 100
-    ) AS perfect_tests
+    ) AS perfect_tests,
+    (
+        SELECT COUNT(*) FROM exams e
+        WHERE e.user_id = up.user_id AND e.status = 'EVALUATED'
+    ) AS completed_exams
 FROM user_progress up;
 
 
@@ -127,19 +131,25 @@ JOIN words w ON w.id = uwp.word_id
 ORDER BY w.word ASC;
 
 
--- for montly streak calaender
+-- for monthly streak calendar
 CREATE OR REPLACE VIEW vw_user_activity_dates AS
 (
-  SELECT 
+  SELECT
     user_id,
     DATE(completed_at) AS active_date
   FROM user_lesson_progress
   WHERE status = 'COMPLETED'
     AND completed_at IS NOT NULL
 ) UNION (
-  SELECT 
+  SELECT
       user_id,
       DATE(completed_at) AS active_date
   FROM test_progress
   WHERE completed_at IS NOT NULL
+) UNION (
+  SELECT
+      user_id,
+      DATE(submitted_at) AS active_date
+  FROM exams
+  WHERE submitted_at IS NOT NULL
 );
