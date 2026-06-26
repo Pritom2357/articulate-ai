@@ -25,9 +25,14 @@ export async function playWordAudio(item, gender, onStart, onEnd) {
 
   const text = item?.word || item?.phrase_en || '';
 
-  if (item?.audio_url) {
+  const preferMale = gender === 'MALE';
+  const audioUrl = (preferMale && item?.audio_url_m && item.audio_url_m !== 'ERROR')
+    ? item.audio_url_m
+    : item?.audio_url;
+
+  if (audioUrl) {
     try {
-      const src = await fetchAndCacheAudio(item.audio_url);
+      const src = await fetchAndCacheAudio(audioUrl);
       const audio = new Audio(src);
       currentAudio = audio;
       onStart?.();
@@ -42,7 +47,7 @@ export async function playWordAudio(item, gender, onStart, onEnd) {
       currentAudio = null;
       return;
     } catch (err) {
-      console.warn('audio_url playback failed, falling back to TTS:', err);
+      console.warn('audio playback failed, falling back to TTS:', err);
       currentAudio = null;
     }
   }

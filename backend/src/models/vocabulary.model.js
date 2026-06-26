@@ -67,6 +67,7 @@ class VocabularyModel {
                     w.ipa,
                     w.syllables,
                     w.audio_url,
+                    w.audio_url_m,
                     wb.saved_at,
                     w.difficulty_level,
                     COALESCE(uwp.familiarity, 'NEW') AS familiarity,

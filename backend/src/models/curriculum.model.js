@@ -122,7 +122,8 @@ class CurriculumModel {
                     w.difficulty_level,
                     w.ipa,
                     w.syllables,
-                    w.audio_url
+                    w.audio_url,
+                    w.audio_url_m
                 FROM words w
                 JOIN lesson_words lw ON lw.word_id = w.id
                 WHERE lw.lesson_id = $1
@@ -150,7 +151,8 @@ class CurriculumModel {
                     difficulty_level,
                     ipa,
                     syllables,
-                    audio_url
+                    audio_url,
+                    audio_url_m
                 FROM words
                 WHERE id = $1;
             `
@@ -179,7 +181,8 @@ class CurriculumModel {
                     difficulty_level,
                     ipa,
                     syllables,
-                    audio_url
+                    audio_url,
+                    audio_url_m
                 FROM words
                 WHERE id = ANY($1)
                 ORDER BY frequency_rank ASC, word ASC;
