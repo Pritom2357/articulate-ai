@@ -4,9 +4,11 @@ import { getUserVocabulary, getBookmarks, addBookmark, removeBookmark } from '..
 import { Bookmark, Volume2, Search, Sparkles, ShieldAlert, Award, Eye } from 'lucide-react';
 import useAuth from '../hooks/useAuth.js';
 import { playWordAudio } from '../utils/playWordAudio.js';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 export default function Vocabulary() {
   const { user } = useAuth();
+  const { language } = useThemeLanguage();
   const activeTutor = user?.guide_preference || 'MALE';
 
   const [activeTab, setActiveTab] = useState('vocabulary'); // 'vocabulary' | 'bookmarks'
@@ -29,7 +31,7 @@ export default function Vocabulary() {
       setVocabulary(vocabData || []);
       setBookmarks(bookmarkData || []);
     } catch (err) {
-      setError(err.payload?.error || err.message || 'ভোকাবুলারি লোড করতে সমস্যা হয়েছে।');
+      setError(err.payload?.error || err.message || (language === 'bn' ? 'ভোকাবুলারি লোড করতে সমস্যা হয়েছে।' : 'Failed to load vocabulary.'));
     } finally {
       setLoading(false);
     }
@@ -84,7 +86,7 @@ export default function Vocabulary() {
       }
     } catch (err) {
       console.error('Failed to toggle bookmark:', err);
-      setError('বুকমার্ক পরিবর্তন করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।');
+      setError(language === 'bn' ? 'বুকমার্ক পরিবর্তন করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।' : 'Failed to modify bookmark. Please try again.');
     }
   };
 
@@ -121,10 +123,12 @@ export default function Vocabulary() {
             <span className="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center">
               <Bookmark className="text-indigo-400" size={24} />
             </span>
-            আমার শব্দভান্ডার (Vocabulary & Bookmarks)
+            {language === 'bn' ? 'আমার শব্দভান্ডার (Vocabulary & Bookmarks)' : 'My Vocabulary & Bookmarks'}
           </h1>
           <p className="page-subtitle text-slate-400">
-            আপনার শিখে যাওয়া ইংরেজি শব্দগুলোর পরিচিতি মাত্রা এবং আপনার বুকমার্ক করা গুরুত্বপূর্ণ শব্দসমূহ একনজরে দেখুন।
+            {language === 'bn' 
+              ? 'আপনার শিখে যাওয়া ইংরেজি শব্দগুলোর পরিচিতি মাত্রা এবং আপনার বুকমার্ক করা গুরুত্বপূর্ণ শব্দসমূহ একনজরে দেখুন।' 
+              : 'View the familiarity level of your learned English words and your bookmarked words at a glance.'}
           </p>
         </div>
       </div>
@@ -149,7 +153,7 @@ export default function Vocabulary() {
               : 'border-transparent text-slate-400 hover:text-white bg-transparent'
           }`}
         >
-          📚 আমার শব্দভান্ডার ({vocabulary.length})
+          {language === 'bn' ? `📚 আমার শব্দভান্ডার (${vocabulary.length})` : `📚 My Vocabulary (${vocabulary.length})`}
         </button>
         <button
           onClick={() => {
@@ -162,7 +166,7 @@ export default function Vocabulary() {
               : 'border-transparent text-slate-400 hover:text-white bg-transparent'
           }`}
         >
-          ⭐ বুকমার্ক করা শব্দ ({bookmarks.length})
+          {language === 'bn' ? `⭐ বুকমার্ক করা শব্দ (${bookmarks.length})` : `⭐ Bookmarks (${bookmarks.length})`}
         </button>
       </div>
 
@@ -171,11 +175,11 @@ export default function Vocabulary() {
         {activeTab === 'vocabulary' && (
           <div className="flex flex-wrap gap-1.5 p-1 rounded-2xl bg-slate-900/40 border border-white/5">
             {[
-              { id: 'all', label: 'সব শব্দ (All)' },
-              { id: 'new', label: 'নতুন (New)' },
-              { id: 'learning', label: 'শিখছি (Learning)' },
-              { id: 'familiar', label: 'পরিচিত (Familiar)' },
-              { id: 'mastered', label: 'আয়ত্ত (Mastered)' },
+              { id: 'all', label: language === 'bn' ? 'সব শব্দ (All)' : 'All' },
+              { id: 'new', label: language === 'bn' ? 'নতুন (New)' : 'New' },
+              { id: 'learning', label: language === 'bn' ? 'শিখছি (Learning)' : 'Learning' },
+              { id: 'familiar', label: language === 'bn' ? 'পরিচিত (Familiar)' : 'Familiar' },
+              { id: 'mastered', label: language === 'bn' ? 'আয়ত্ত (Mastered)' : 'Mastered' },
             ].map(f => (
               <button
                 key={f.id}
@@ -198,7 +202,9 @@ export default function Vocabulary() {
           </span>
           <input
             type="text"
-            placeholder={activeTab === 'vocabulary' ? 'শব্দভান্ডার খুঁজুন...' : 'বুকমার্ক করা শব্দ খুঁজুন...'}
+            placeholder={activeTab === 'vocabulary' 
+              ? (language === 'bn' ? 'শব্দভান্ডার খুঁজুন...' : 'Search vocabulary...') 
+              : (language === 'bn' ? 'বুকমার্ক করা শব্দ খুঁজুন...' : 'Search bookmarks...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="glass-input pl-10 py-2.5 rounded-xl text-sm w-full"
@@ -210,7 +216,7 @@ export default function Vocabulary() {
       {loading ? (
         <div className="text-center py-20">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-          <div className="text-slate-400 font-semibold">ভোকাবুলারি ডাটা লোড হচ্ছে...</div>
+          <div className="text-slate-400 font-semibold">{language === 'bn' ? 'ভোকাবুলারি ডাটা লোড হচ্ছে...' : 'Loading vocabulary data...'}</div>
         </div>
       ) : activeTab === 'vocabulary' ? (
         filteredVocabulary.length > 0 ? (
@@ -231,7 +237,9 @@ export default function Vocabulary() {
                             ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
                             : 'bg-white/5 border-white/5 text-slate-500 hover:text-slate-300'
                         }`}
-                        title={isBookmarked ? "সংরক্ষণ তালিকা থেকে বাদ দিন" : "সংরক্ষণ করুন"}
+                        title={isBookmarked 
+                          ? (language === 'bn' ? "সংরক্ষণ তালিকা থেকে বাদ দিন" : "Remove bookmark") 
+                          : (language === 'bn' ? "সংরক্ষণ করুন" : "Bookmark word")}
                       >
                         <Bookmark size={14} className={isBookmarked ? 'fill-cyan-400' : ''} />
                       </button>
@@ -241,16 +249,16 @@ export default function Vocabulary() {
                       {item.word}
                     </h2>
                     {item.ipa && <p className="text-xs text-slate-500 font-mono mt-0.5">[{item.ipa}]</p>}
-                    <p className="text-sm text-slate-300 mt-2 font-medium">অর্থ: {item.bangla_meaning}</p>
+                    <p className="text-sm text-slate-300 mt-2 font-medium">{language === 'bn' ? 'অর্থ:' : 'Meaning:'} {item.bangla_meaning}</p>
                   </div>
 
                   <div className="mt-5 pt-3 border-t border-white/5 flex items-center justify-between gap-2">
                     <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1.5">
-                      <span>সফলতা:</span>
-                      <span className="text-emerald-400 font-bold">{item.correct_count} বার</span>
+                      <span>{language === 'bn' ? 'সফলতা:' : 'Success:'}</span>
+                      <span className="text-emerald-400 font-bold">{item.correct_count} {language === 'bn' ? 'বার' : 'times'}</span>
                       <span className="text-slate-500">|</span>
-                      <span>ব্যর্থতা:</span>
-                      <span className="text-rose-400 font-bold">{item.wrong_count} বার</span>
+                      <span>{language === 'bn' ? 'ব্যর্থতা:' : 'Failure:'}</span>
+                      <span className="text-rose-400 font-bold">{item.wrong_count} {language === 'bn' ? 'বার' : 'times'}</span>
                     </div>
 
                     <div className="flex gap-1.5">
@@ -261,14 +269,14 @@ export default function Vocabulary() {
                             ? 'bg-red-500 text-white animate-pulse'
                             : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400'
                         }`}
-                        title="উচ্চারণ শুনুন"
+                        title={language === 'bn' ? "উচ্চারণ শুনুন" : "Listen pronunciation"}
                       >
                         <Volume2 size={14} />
                       </button>
                       <Link
                         to={`/words/${item.word_id}`}
                         className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition"
-                        title="বিস্তারিত দেখুন"
+                        title={language === 'bn' ? "বিস্তারিত দেখুন" : "View details"}
                       >
                         <Eye size={14} />
                       </Link>
@@ -281,9 +289,11 @@ export default function Vocabulary() {
         ) : (
           <div className="empty-state py-16 border border-dashed border-white/10 bg-slate-950/20 max-w-lg mx-auto">
             <div className="text-5xl mb-4 animate-bounce">📚</div>
-            <h3 className="font-extrabold text-white text-base">কোনো শব্দ পাওয়া যায়নি</h3>
+            <h3 className="font-extrabold text-white text-base">{language === 'bn' ? 'কোনো শব্দ পাওয়া যায়নি' : 'No words found'}</h3>
             <p className="text-xs text-slate-400 mt-2 max-w-xs mx-auto leading-relaxed">
-              {searchTerm ? 'অনুগ্রহ করে সার্চ কিওয়ার্ড পরিবর্তন করে দেখুন।' : 'আপনার কারিকুলাম সম্পন্ন করে এই ফিল্টারের অধীনে শব্দ যোগ করুন।'}
+              {searchTerm 
+                ? (language === 'bn' ? 'অনুগ্রহ করে সার্চ কিওয়ার্ড পরিবর্তন করে দেখুন।' : 'Please try changing your search keywords.') 
+                : (language === 'bn' ? 'আপনার কারিকুলাম সম্পন্ন করে এই ফিল্টারের অধীনে শব্দ যোগ করুন।' : 'Complete curriculum lessons to unlock and add words to your vocabulary.')}
             </p>
           </div>
         )
@@ -301,7 +311,7 @@ export default function Vocabulary() {
                       <button
                         onClick={() => handleToggleBookmark(item.word_id, true)}
                         className="w-8 h-8 rounded-lg border bg-cyan-500/10 border-cyan-500/20 text-cyan-400 flex items-center justify-center cursor-pointer hover:bg-cyan-500/20 transition-colors"
-                        title="সংরক্ষণ তালিকা থেকে বাদ দিন"
+                        title={language === 'bn' ? "সংরক্ষণ তালিকা থেকে বাদ দিন" : "Remove bookmark"}
                       >
                         <Bookmark size={14} className="fill-cyan-400" />
                       </button>
@@ -311,16 +321,16 @@ export default function Vocabulary() {
                       {item.word}
                     </h2>
                     {item.ipa && <p className="text-xs text-slate-500 font-mono mt-0.5">[{item.ipa}]</p>}
-                    <p className="text-sm text-slate-300 mt-2 font-medium">অর্থ: {item.bangla_meaning}</p>
+                    <p className="text-sm text-slate-300 mt-2 font-medium">{language === 'bn' ? 'অর্থ:' : 'Meaning:'} {item.bangla_meaning}</p>
                   </div>
 
                   <div className="mt-5 pt-3 border-t border-white/5 flex items-center justify-between gap-2">
                     <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1.5">
-                      <span>সফলতা:</span>
-                      <span className="text-emerald-400 font-bold">{item.correct_count} বার</span>
+                      <span>{language === 'bn' ? 'সফলতা:' : 'Success:'}</span>
+                      <span className="text-emerald-400 font-bold">{item.correct_count} {language === 'bn' ? 'বার' : 'times'}</span>
                       <span className="text-slate-500">|</span>
-                      <span>ব্যর্থতা:</span>
-                      <span className="text-rose-400 font-bold">{item.wrong_count} বার</span>
+                      <span>{language === 'bn' ? 'ব্যর্থতা:' : 'Failure:'}</span>
+                      <span className="text-rose-400 font-bold">{item.wrong_count} {language === 'bn' ? 'বার' : 'times'}</span>
                     </div>
 
                     <div className="flex gap-1.5">
@@ -331,14 +341,14 @@ export default function Vocabulary() {
                             ? 'bg-red-500 text-white animate-pulse'
                             : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400'
                         }`}
-                        title="উচ্চারণ শুনুন"
+                        title={language === 'bn' ? "উচ্চারণ শুনুন" : "Listen pronunciation"}
                       >
                         <Volume2 size={14} />
                       </button>
                       <Link
                         to={`/words/${item.word_id}`}
                         className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition"
-                        title="বিস্তারিত দেখুন"
+                        title={language === 'bn' ? "বিস্তারিত দেখুন" : "View details"}
                       >
                         <Eye size={14} />
                       </Link>
@@ -351,9 +361,11 @@ export default function Vocabulary() {
         ) : (
           <div className="empty-state py-16 border border-dashed border-white/10 bg-slate-950/20 max-w-lg mx-auto">
             <div className="text-5xl mb-4 animate-bounce">⭐</div>
-            <h3 className="font-extrabold text-white text-base">কোনো বুকমার্ক পাওয়া যায়নি</h3>
+            <h3 className="font-extrabold text-white text-base">{language === 'bn' ? 'কোনো বুকমার্ক পাওয়া যায়নি' : 'No bookmarks found'}</h3>
             <p className="text-xs text-slate-400 mt-2 max-w-xs mx-auto leading-relaxed">
-              {searchTerm ? 'অনুগ্রহ করে সার্চ কিওয়ার্ড পরিবর্তন করে দেখুন।' : 'লেসন বা ড্যাশবোর্ড থেকে ইংরেজি শব্দ বুকমার্ক করে রাখুন।'}
+              {searchTerm 
+                ? (language === 'bn' ? 'অনুগ্রহ করে সার্চ কিওয়ার্ড পরিবর্তন করে দেখুন।' : 'Please try changing your search keywords.') 
+                : (language === 'bn' ? 'লেসন বা ড্যাশবোর্ড থেকে ইংরেজি শব্দ বুকমার্ক করে রাখুন।' : 'Bookmark words from lessons or AI conversations to save them here.')}
             </p>
           </div>
         )

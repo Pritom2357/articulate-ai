@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getChapter } from '../api/curriculum.js';
 import { assessConversation, getRagSession } from '../api/progress.js';
 import useAuth from '../hooks/useAuth.js';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 // Import tutor assets
 import maleAvatar from '../assets/articulate_male.jpeg';
@@ -35,6 +36,7 @@ export default function IELTSConversation() {
   const { id } = useParams(); // chapter ID
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { language } = useThemeLanguage();
 
   const [chapter, setChapter] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -54,7 +56,9 @@ export default function IELTSConversation() {
 
   const activeTutor = user?.guide_preference || 'MALE';
   const tutorAvatar = activeTutor === 'FEMALE' ? femaleAvatar : maleAvatar;
-  const tutorName = activeTutor === 'FEMALE' ? 'Riya (রিয়া)' : 'Rohit (রোহিত)';
+  const tutorName = activeTutor === 'FEMALE'
+    ? (language === 'bn' ? 'Riya (রিয়া)' : 'Riya')
+    : (language === 'bn' ? 'Rohit (রোহিত)' : 'Rohit');
 
   const recognitionRef = useRef(null);
   const chatEndRef = useRef(null);
@@ -115,7 +119,7 @@ export default function IELTSConversation() {
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      alert('আপনার ব্রাউজারে স্পিচ রিকগনিশন সাপোর্ট করে না। ক্রোম ব্রাউজার ব্যবহার করুন।');
+      alert(language === 'bn' ? 'আপনার ব্রাউজারে স্পিচ রিকগনিশন সাপোর্ট করে না। ক্রোম ব্রাউজার ব্যবহার করুন।' : 'Your browser does not support Speech Recognition. Please use Google Chrome.');
       return;
     }
 
@@ -174,7 +178,7 @@ export default function IELTSConversation() {
       setRagSessionData(ragResponse.recommendation);
     } catch (err) {
       console.error(err);
-      setError('কথোপকথন মূল্যায়ন ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
+      setError(language === 'bn' ? 'কথোপকথন মূল্যায়ন ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।' : 'Conversation assessment failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -192,7 +196,7 @@ export default function IELTSConversation() {
         <div>
           <h1 className="page-title text-indigo-400">IELTS Speaking Test</h1>
           <p className="page-subtitle text-slate-400">
-            Chapter {chapter?.order_num}: {chapter?.title} ({chapter?.title_bn})
+            Chapter {chapter?.order_num}: {language === 'bn' ? (chapter?.title_bn || chapter?.title) : chapter?.title}
           </p>
         </div>
       </div>
@@ -272,7 +276,7 @@ export default function IELTSConversation() {
               </button>
               <input
                 className="flex-grow p-3 rounded-xl bg-slate-950/60 border border-white/10 text-white outline-none text-sm focus:border-indigo-500 transition placeholder-slate-500"
-                placeholder={isListening ? 'কথা বলুন...' : 'উত্তর লিখুন বা মাইক আইকন ক্লিক করে বলুন...'}
+                placeholder={isListening ? (language === 'bn' ? 'কথা বলুন...' : 'Listening...') : (language === 'bn' ? 'উত্তর লিখুন বা মাইক আইকন ক্লিক করে বলুন...' : 'Type your answer or click mic to speak...')}
                 value={currentInput}
                 onChange={(e) => setCurrentInput(e.target.value)}
                 disabled={isTutorTyping}
@@ -288,7 +292,7 @@ export default function IELTSConversation() {
           ) : (
             <div className="p-4 bg-slate-900/80 border-t border-white/5 text-center space-y-3">
               <div className="text-xs text-slate-400 font-semibold">
-                কথোপকথন সম্পন্ন হয়েছে! এবার মূল্যায়নের সময়।
+                {language === 'bn' ? 'কথোপকথন সম্পন্ন হয়েছে! এবার মূল্যায়নের সময়।' : 'Conversation completed! Time for assessment.'}
               </div>
               <button
                 onClick={handleAssessConversation}
@@ -301,10 +305,10 @@ export default function IELTSConversation() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                     </svg>
-                    AI আপনার উত্তর মূল্যায়ন করছে...
+                    {language === 'bn' ? 'AI আপনার উত্তর মূল্যায়ন করছে...' : 'AI is assessing your answers...'}
                   </>
                 ) : (
-                  'Generate IELTS Scorecard & Study Guide (ফলাফল দেখুন)'
+                  language === 'bn' ? 'Generate IELTS Scorecard & Study Guide (ফলাফল দেখুন)' : 'Generate IELTS Scorecard & Study Guide'
                 )}
               </button>
             </div>
@@ -352,7 +356,9 @@ export default function IELTSConversation() {
             {/* Key Points Details */}
             <div className="space-y-4 mb-6">
               <div>
-                <div className="text-xs uppercase font-bold text-slate-400 mb-2">আপনি যেসব বিষয় নিয়ে কথা বলেছেন (Key Points Hit):</div>
+                <div className="text-xs uppercase font-bold text-slate-400 mb-2">
+                  {language === 'bn' ? 'আপনি যেসব বিষয় নিয়ে কথা বলেছেন (Key Points Hit):' : 'Key Points Hit:'}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {assessment.key_points_found?.map((kp, i) => (
                     <span key={i} className="px-2.5 py-1 rounded-md text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
@@ -360,13 +366,17 @@ export default function IELTSConversation() {
                     </span>
                   ))}
                   {assessment.key_points_found?.length === 0 && (
-                    <span className="text-slate-500 text-xs italic">কোনো বিষয় পাওয়া যায়নি।</span>
+                    <span className="text-slate-500 text-xs italic">
+                      {language === 'bn' ? 'কোনো বিষয় পাওয়া যায়নি।' : 'No key points hit.'}
+                    </span>
                   )}
                 </div>
               </div>
 
               <div>
-                <div className="text-xs uppercase font-bold text-slate-400 mb-2">যেসব বিষয়ে কথা বলেননি (Key Points Missed):</div>
+                <div className="text-xs uppercase font-bold text-slate-400 mb-2">
+                  {language === 'bn' ? 'যেসব বিষয়ে কথা বলেননি (Key Points Missed):' : 'Key Points Missed:'}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {assessment.key_points_missing?.map((kp, i) => (
                     <span key={i} className="px-2.5 py-1 rounded-md text-xs bg-red-500/10 text-red-400 border border-red-500/20 font-semibold">
@@ -374,15 +384,19 @@ export default function IELTSConversation() {
                     </span>
                   ))}
                   {assessment.key_points_missing?.length === 0 && (
-                    <span className="text-slate-500 text-xs italic">সবগুলো বিষয় সুন্দরভাবে কভার করেছেন!</span>
+                    <span className="text-slate-500 text-xs italic">
+                      {language === 'bn' ? 'সবগুলো বিষয় সুন্দরভাবে কভার করেছেন!' : 'Covered all key points beautifully!'}
+                    </span>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Bangla Feedback */}
+            {/* Bangla/English Feedback */}
             <div className="bg-slate-950/40 p-4 rounded-xl border border-white/5 text-slate-300 text-sm leading-relaxed">
-              <div className="font-bold text-white mb-1">✍🏼 Examiner Feedback (রিপোর্ট):</div>
+              <div className="font-bold text-white mb-1">
+                {language === 'bn' ? '✍🏼 Examiner Feedback (রিপোর্ট):' : '✍🏼 Examiner Feedback (Report):'}
+              </div>
               <div>{assessment.feedback_bn}</div>
             </div>
           </div>
@@ -391,7 +405,7 @@ export default function IELTSConversation() {
           {ragSessionData && (
             <div className="card-card p-6 bg-slate-900/60 border border-white/10 shadow-xl">
               <h3 className="card-title text-indigo-400 mb-4 flex items-center gap-2 border-b border-white/5 pb-2">
-                <span>📚</span> Next Session Guide (RAG-ভিত্তিক কাস্টম স্টাডি প্ল্যান)
+                <span>📚</span> {language === 'bn' ? 'Next Session Guide (RAG-ভিত্তিক কাস্টম স্টাডি প্ল্যান)' : 'Next Session Guide (RAG-based Custom Study Plan)'}
               </h3>
               
               {/* Custom formatted AI instructions */}

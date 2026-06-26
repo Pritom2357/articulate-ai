@@ -5,9 +5,11 @@ import { getBookmarks, addBookmark, removeBookmark } from '../api/vocabulary.js'
 import { Bookmark, Volume2, ChevronLeft } from 'lucide-react';
 import useAuth from '../hooks/useAuth.js';
 import { playWordAudio } from '../utils/playWordAudio.js';
+import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 export default function WordDetails() {
     const { user } = useAuth();
+    const { language } = useThemeLanguage();
     const activeTutor = user?.guide_preference || 'MALE';
 
     const { id } = useParams();
@@ -87,7 +89,7 @@ export default function WordDetails() {
                         <div className="flex justify-between items-start gap-4">
                             <div>
                                 <h2 className="text-3xl font-extrabold text-white tracking-wide">{word.word || `Word ${id}`}</h2>
-                                <p className="text-lg text-indigo-300 font-semibold mt-1">অর্থ: {word.bangla_meaning || 'N/A'}</p>
+                                <p className="text-lg text-indigo-300 font-semibold mt-1">{language === 'bn' ? 'অর্থ:' : 'Meaning:'} {word.bangla_meaning || 'N/A'}</p>
                             </div>
                             
                             <button
