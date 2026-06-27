@@ -18,6 +18,11 @@ All notable changes made during AI-assisted development sessions are recorded he
 - `frontend/src/pages/Curriculum.jsx` — Full rewrite: localStorage cache (`articulate_curriculum_${userId}`, 5-min TTL) with stale-while-revalidate; hard Refresh button; sequential chapter locking based on `placement_chapter` and completion state (skipped/active/completed/locked states with distinct icons and styles — `Lock`, `CheckCircle2`, `SkipForward`, `PlayCircle`); subtitle updated to explain sequential order; emojis removed.
 - `frontend/src/pages/ChapterDetails.jsx` — Full rewrite: localStorage cache (`articulate_chapter_${id}`, 5-min TTL); lessons now displayed in a **3-column grid** (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`) with compact vertical cards; lesson type icons (`BookOpen`, `Mic`, `ClipboardList`, `RotateCcw` for LEARN/PRACTICE/TEST/REVIEW); chapter progress bar in header; emojis removed.
 
+## 2026-06-26 (session 8)
+
+### LessonDetails — fix missing saveScoreToHistory and PronSparkline
+- `frontend/src/pages/LessonDetails.jsx` — Added `saveScoreToHistory(wordKey, score)` which persists the last 10 pronunciation attempts per word to localStorage (`articulate_pron_${wordKey}`). Added `PronSparkline` component which reads that history and renders an inline SVG sparkline (green dots ≥60%, red dots <60%, trend label). Both were referenced in the file but never defined, causing a `ReferenceError` crash during speech assessment and a render crash in step 3.
+
 ## 2026-06-26 (session 7)
 
 ### Vocabulary page — remove emojis + localStorage cache + hard refresh

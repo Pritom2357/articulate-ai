@@ -12,6 +12,64 @@ import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articulate_female.jpeg';
 
+// ── Pronunciation history helpers ────────────────────────────────────────────
+function getPronHistory(wordKey) {
+  try {
+    return JSON.parse(localStorage.getItem(`articulate_pron_${wordKey}`) || '[]');
+  } catch { return []; }
+}
+
+function saveScoreToHistory(wordKey, score) {
+  try {
+    const history = getPronHistory(wordKey);
+    history.push({ score, timestamp: Date.now() });
+    if (history.length > 10) history.shift();
+    localStorage.setItem(`articulate_pron_${wordKey}`, JSON.stringify(history));
+  } catch { /* quota exceeded */ }
+}
+
+// ── Sparkline component — shows last N pronunciation attempts for a word ─────
+function PronSparkline({ wordId, language }) {
+  const history = getPronHistory(wordId);
+  if (history.length < 2) return null;
+
+  const scores = history.map(h => h.score);
+  const W = 200;
+  const H = 36;
+  const pts = scores.map((s, i) => {
+    const x = (i / (scores.length - 1)) * W;
+    const y = H - (s / 100) * H;
+    return `${x},${y}`;
+  }).join(' ');
+  const trend = scores[scores.length - 1] - scores[0];
+
+  return (
+    <div className="mt-3 pt-3 border-t border-white/5 text-left">
+      <div className="text-[10px] text-slate-500 font-bold mb-1.5 uppercase tracking-wider flex items-center justify-between">
+        <span className="flex items-center gap-1">
+          <TrendingUp size={10} />
+          {language === 'bn' ? 'আপনার অগ্রগতি' : 'Your progress'}
+        </span>
+        <span className={trend >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+          {trend >= 0 ? '+' : ''}{Math.round(trend)}%
+        </span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-8" preserveAspectRatio="none">
+        <polyline points={pts} fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {scores.map((s, i) => {
+          const x = (i / (scores.length - 1)) * W;
+          const y = H - (s / 100) * H;
+          return <circle key={i} cx={x} cy={y} r="2.5" fill={s >= 60 ? '#22c55e' : '#ef4444'} />;
+        })}
+      </svg>
+      <div className="flex justify-between text-[9px] text-slate-600 font-mono mt-0.5">
+        <span>{language === 'bn' ? 'পুরনো' : 'earliest'}</span>
+        <span>{language === 'bn' ? 'সাম্প্রতিক' : 'latest'}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function LessonDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
