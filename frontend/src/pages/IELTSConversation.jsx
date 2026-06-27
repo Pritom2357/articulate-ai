@@ -1,434 +1,685 @@
-import { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { getChapter } from '../api/curriculum.js';
-import { assessConversation, getRagSession } from '../api/progress.js';
+import { startConversationSession, submitConversationTurn, endConversationSession } from '../api/conversation.js';
 import useAuth from '../hooks/useAuth.js';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
+import { Mic, MicOff, Volume2, Loader2, ChevronLeft, BarChart2, Star, AlertCircle, CheckCircle2, BookOpen, Lightbulb, MessageSquare, Play, Pause } from 'lucide-react';
 
-// Import tutor assets
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articulate_female.jpeg';
 
-const TOPIC_QUESTIONS = {
-  1: [
-    "Hello! Welcome to the IELTS Speaking test. Let's start with Chapter 1 topic: Everyday Communication. Can you describe your hometown? Where do you live and what is it like?",
-    "Interesting. What do you like most about your home or the place you live in?",
-    "Great. Who do you live with, and what is your favorite room in your house?"
-  ],
-  2: [
-    "Hello! Let's start the speaking test for Chapter 2: Daily Life. Can you describe your typical morning routine? What time do you wake up and what do you do?",
-    "Nice. Do you prefer a busy work schedule or a relaxed routine?",
-    "I see. How do you usually spend your weekends to relax after a long week?"
-  ],
-  3: [
-    "Hello! Welcome to the speaking test for Chapter 3: Describe and Express. Can you describe a close friend or family member who has influenced you? What kind of person are they?",
-    "Thank you. Why do you believe kind and honest people are important in our society?",
-    "Excellent. Can you share a happy childhood memory that you will never forget?"
-  ],
-  4: [
-    "Hello! Let's start the final speaking test for Chapter 4: Connect and Discuss. In your opinion, what are the main advantages and disadvantages of technology in modern life?",
-    "Good point. Do you think mobile phones are causing too much distraction in our daily lives?",
-    "Indeed. How do you think the internet will change the way we work and study in the future?"
-  ]
-};
+// ---------- helpers ----------
+
+function scoreColor(score) {
+  if (score == null) return 'text-slate-400';
+  if (score >= 80) return 'text-emerald-400';
+  if (score >= 60) return 'text-yellow-400';
+  return 'text-red-400';
+}
+
+function scoreBg(score) {
+  if (score == null) return 'bg-slate-700/60 border-slate-600/40';
+  if (score >= 80) return 'bg-emerald-900/40 border-emerald-500/30';
+  if (score >= 60) return 'bg-yellow-900/40 border-yellow-500/30';
+  return 'bg-red-900/40 border-red-500/30';
+}
+
+function bandColor(band) {
+  if (band >= 7) return 'text-emerald-400';
+  if (band >= 5.5) return 'text-yellow-400';
+  return 'text-red-400';
+}
+
+function PronScoreBadge({ pronScore, fluencyScore }) {
+  if (pronScore == null && fluencyScore == null) return null;
+  return (
+    <div className="flex gap-1.5 mt-1.5 flex-wrap">
+      {pronScore != null && (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${scoreBg(pronScore)} ${scoreColor(pronScore)}`}>
+          Pron {pronScore}
+        </span>
+      )}
+      {fluencyScore != null && (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${scoreBg(fluencyScore)} ${scoreColor(fluencyScore)}`}>
+          Fluency {fluencyScore}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function WordBreakdown({ words }) {
+  if (!words || words.length === 0) return null;
+  const weak = words.filter(w => w.accuracy_score < 70);
+  if (weak.length === 0) return null;
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1">
+      {weak.map((w, i) => (
+        <span key={i} className="px-1.5 py-0.5 bg-red-900/30 border border-red-500/20 rounded text-[10px] text-red-300">
+          {w.word} <span className="text-red-400/60">{w.accuracy_score}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// ---------- audio player for recordings ----------
+
+function AudioPlayer({ src }) {
+  const audioRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const toggle = () => {
+    if (!audioRef.current) return;
+    if (playing) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().catch(() => {});
+    }
+    setPlaying(p => !p);
+  };
+
+  return (
+    <div className="flex items-center gap-2 mt-1.5">
+      <audio
+        ref={audioRef}
+        src={src}
+        onEnded={() => { setPlaying(false); setProgress(0); }}
+        onTimeUpdate={() => {
+          const el = audioRef.current;
+          if (el && el.duration) setProgress(el.currentTime / el.duration);
+        }}
+      />
+      <button
+        onClick={toggle}
+        className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-900/40 hover:bg-indigo-900/60 border border-indigo-500/25 rounded-lg text-indigo-300 text-[10px] font-semibold transition-colors"
+      >
+        {playing ? <Pause size={10} /> : <Play size={10} />}
+        {playing ? 'Pause' : 'Play recording'}
+      </button>
+      <div className="grow h-1 bg-slate-700 rounded-full overflow-hidden max-w-30">
+        <div className="h-full bg-indigo-400 transition-all" style={{ width: `${progress * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+
+// ---------- score circle for report ----------
+
+function ScoreCircle({ label, value, max = 100 }) {
+  const pct = value != null ? Math.min(value / max, 1) : 0;
+  const r = 28;
+  const circ = 2 * Math.PI * r;
+  const dash = pct * circ;
+  const color = value >= 80 ? '#34d399' : value >= 60 ? '#fbbf24' : '#f87171';
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width="72" height="72" viewBox="0 0 72 72">
+        <circle cx="36" cy="36" r={r} fill="none" stroke="#334155" strokeWidth="5" />
+        <circle
+          cx="36" cy="36" r={r} fill="none"
+          stroke={color} strokeWidth="5"
+          strokeDasharray={`${dash} ${circ}`}
+          strokeLinecap="round"
+          transform="rotate(-90 36 36)"
+        />
+        <text x="36" y="41" textAnchor="middle" fill={color} fontSize="14" fontWeight="bold">
+          {value ?? '—'}
+        </text>
+      </svg>
+      <span className="text-xs text-slate-400">{label}</span>
+    </div>
+  );
+}
+
+// ---------- main component ----------
 
 export default function IELTSConversation() {
-  const { id } = useParams(); // chapter ID
-  const navigate = useNavigate();
+  const { id } = useParams();
   const { user } = useAuth();
   const { language } = useThemeLanguage();
-
-  const [chapter, setChapter] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  
-  // Chat state
-  const [messages, setMessages] = useState([]);
-  const [currentInput, setCurrentInput] = useState('');
-  const [questionIndex, setQuestionIndex] = useState(0);
-  const [isTutorTyping, setIsTutorTyping] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-
-  // Assessment results
-  const [assessment, setAssessment] = useState(null);
-  const [ragSessionData, setRagSessionData] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeTutor = user?.guide_preference || 'MALE';
   const tutorAvatar = activeTutor === 'FEMALE' ? femaleAvatar : maleAvatar;
   const tutorName = activeTutor === 'FEMALE'
-    ? (language === 'bn' ? 'Riya (রিয়া)' : 'Riya')
+    ? (language === 'bn' ? 'Riya (রিয়া)' : 'Riya')
     : (language === 'bn' ? 'Rohit (রোহিত)' : 'Rohit');
 
-  const recognitionRef = useRef(null);
+  // page load
+  const [chapter, setChapter] = useState(null);
+  const [loadingChapter, setLoadingChapter] = useState(true);
+
+  // conversation state machine
+  // phase: idle | starting | active | ending | report
+  // turnPhase: ai_speaking | user_ready | recording | processing
+  const [phase, setPhase] = useState('idle');
+  const [turnPhase, setTurnPhase] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
+  const [topic, setTopic] = useState('');
+  const [turns, setTurns] = useState([]); // { role: 'ai'|'user', text, pronScore, fluencyScore, words }
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState('');
+
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
   const chatEndRef = useRef(null);
+  const currentAudioRef = useRef(null);
+  const recordingUrlsRef = useRef([]); // tracks blob URLs for cleanup on unmount
 
+  // revoke all blob URLs when the page unmounts to free memory
   useEffect(() => {
-    async function loadChapter() {
-      try {
-        setLoading(true);
-        const result = await getChapter(id);
-        setChapter(result.chapter);
-
-        // Initialize chat with tutor first question
-        const chId = parseInt(id);
-        const questions = TOPIC_QUESTIONS[chId] || TOPIC_QUESTIONS[1];
-        
-        setMessages([
-          { role: 'assistant', content: questions[0] }
-        ]);
-      } catch (err) {
-        setError('Chapter details could not be loaded.');
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadChapter();
-  }, [id]);
-
-  // Speech Recognition setup (for transcribing user spoken answers)
-  useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const rec = new SpeechRecognition();
-      rec.continuous = false;
-      rec.interimResults = false;
-      rec.lang = 'en-US';
-
-      rec.onresult = (event) => {
-        const text = event.results[0][0].transcript;
-        setCurrentInput(text);
-      };
-
-      rec.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-      };
-
-      rec.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current = rec;
-    }
+    return () => { recordingUrlsRef.current.forEach(u => URL.revokeObjectURL(u)); };
   }, []);
 
-  // Scroll to bottom on new messages
+  // load chapter on mount
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await getChapter(id);
+        setChapter(res.chapter);
+      } catch {
+        setError('Failed to load chapter.');
+      } finally {
+        setLoadingChapter(false);
+      }
+    }
+    load();
+  }, [id]);
+
+  // scroll to bottom on new turns
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTutorTyping]);
+  }, [turns, turnPhase]);
 
-  const toggleListening = () => {
-    if (!recognitionRef.current) {
-      alert(language === 'bn' ? 'আপনার ব্রাউজারে স্পিচ রিকগনিশন সাপোর্ট করে না। ক্রোম ব্রাউজার ব্যবহার করুন।' : 'Your browser does not support Speech Recognition. Please use Google Chrome.');
-      return;
-    }
+  // play AI audio (base64 mp3), returns promise that resolves when done
+  const playAudio = useCallback((base64) => {
+    return new Promise((resolve) => {
+      if (!base64) { resolve(); return; }
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      }
+      const audio = new Audio(`data:audio/mp3;base64,${base64}`);
+      currentAudioRef.current = audio;
+      audio.onended = () => { currentAudioRef.current = null; resolve(); };
+      audio.onerror = () => { currentAudioRef.current = null; resolve(); };
+      audio.play().catch(() => resolve());
+    });
+  }, []);
 
-    if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    } else {
-      setCurrentInput('');
-      setIsListening(true);
-      recognitionRef.current.start();
-    }
-  };
-
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (!currentInput.trim()) return;
-
-    const newMessages = [...messages, { role: 'user', content: currentInput.trim() }];
-    setMessages(newMessages);
-    setCurrentInput('');
-
-    // Advance to next question or assessment
-    const nextQIndex = questionIndex + 1;
-    const chId = parseInt(id);
-    const questions = TOPIC_QUESTIONS[chId] || TOPIC_QUESTIONS[1];
-
-    if (nextQIndex < questions.length) {
-      setIsTutorTyping(true);
-      setTimeout(() => {
-        setMessages(prev => [...prev, { role: 'assistant', content: questions[nextQIndex] }]);
-        setQuestionIndex(nextQIndex);
-        setIsTutorTyping(false);
-      }, 1500);
-    } else {
-      setIsTutorTyping(true);
-      setTimeout(() => {
-        setMessages(prev => [...prev, { role: 'assistant', content: "Thank you. We have completed our open conversation test. Click the button below to generate your IELTS scorecard." }]);
-        setQuestionIndex(nextQIndex);
-        setIsTutorTyping(false);
-      }, 1500);
-    }
-  };
-
-  const handleAssessConversation = async () => {
-    setIsSubmitting(true);
+  // ---------- start conversation ----------
+  const handleStart = async () => {
+    setPhase('starting');
+    setError('');
     try {
-      // Send conversation to backend
-      const response = await assessConversation({
-        chatMessages: messages,
-        chapterId: parseInt(id)
-      });
-      setAssessment(response.assessment);
-
-      // Load next session RAG guide
-      const ragResponse = await getRagSession();
-      setRagSessionData(ragResponse.recommendation);
-    } catch (err) {
-      console.error(err);
-      setError(language === 'bn' ? 'কথোপকথন মূল্যায়ন ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।' : 'Conversation assessment failed. Please try again.');
-    } finally {
-      setIsSubmitting(false);
+      const res = await startConversationSession(parseInt(id, 10));
+      setSessionId(res.sessionId);
+      setTopic(res.topic || chapter?.title || '');
+      setTurns([{ role: 'ai', text: res.aiText }]);
+      setPhase('active');
+      setTurnPhase('ai_speaking');
+      await playAudio(res.aiAudio);
+      setTurnPhase('user_ready');
+    } catch (e) {
+      setError(e.message || 'Failed to start conversation.');
+      setPhase('idle');
     }
   };
 
-  if (loading) {
-    return <div className="page-container text-center py-20 text-slate-500">IELTS Speaking Conversation Loading...</div>;
+  // ---------- recording ----------
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+        ? 'audio/ogg;codecs=opus'
+        : 'audio/mp4';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      chunksRef.current = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      recorder.start(250);
+      mediaRecorderRef.current = recorder;
+      setTurnPhase('recording');
+    } catch (e) {
+      setError('Microphone access denied. Please allow microphone permissions.');
+    }
+  };
+
+  const stopRecordingAndSubmit = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+    recorder.onstop = async () => {
+      const mimeType = recorder.mimeType;
+      const blob = new Blob(chunksRef.current, { type: mimeType });
+      recorder.stream.getTracks().forEach(t => t.stop());
+      mediaRecorderRef.current = null;
+
+      // Create a blob URL so the user can replay this recording in the report
+      const audioUrl = URL.createObjectURL(blob);
+      recordingUrlsRef.current.push(audioUrl);
+
+      setTurnPhase('processing');
+      try {
+        const res = await submitConversationTurn(sessionId, blob, mimeType);
+        setTurns(prev => [
+          ...prev,
+          {
+            role: 'user',
+            text: res.transcript || '(could not recognize speech)',
+            pronScore: res.pron_score,
+            fluencyScore: res.fluency_score,
+            words: res.words || [],
+            audioUrl
+          },
+          { role: 'ai', text: res.aiText }
+        ]);
+        setTurnPhase('ai_speaking');
+        await playAudio(res.aiAudio);
+        setTurnPhase('user_ready');
+      } catch (e) {
+        setError(e.message || 'Failed to process turn.');
+        setTurnPhase('user_ready');
+      }
+    };
+    recorder.stop();
+  };
+
+  // ---------- end conversation ----------
+  const handleEnd = async () => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop());
+      mediaRecorderRef.current = null;
+    }
+    setPhase('ending');
+    try {
+      const res = await endConversationSession(sessionId);
+      setReport(res.report);
+      setPhase('report');
+    } catch (e) {
+      setError(e.message || 'Failed to generate report.');
+      setPhase('active');
+      setTurnPhase('user_ready');
+    }
+  };
+
+  // ---------- render helpers ----------
+
+  if (loadingChapter) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin text-cyan-400" size={32} />
+      </div>
+    );
+  }
+
+  if (phase === 'report' && report) {
+    return <ReportScreen report={report} chapter={chapter} topic={topic} turns={turns} onBack={() => window.history.back()} />;
   }
 
   return (
-    <div className="page-container" style={{ maxWidth: '800px' }}>
-      
-      {/* Chapter header info */}
-      <div className="page-header border-b border-white/10 pb-4 mb-6">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+      {/* header */}
+      <div className="border-b border-white/8 px-4 py-3 flex items-center gap-3 bg-slate-950/80 backdrop-blur sticky top-0 z-10">
+        <Link to={`/chapters/${id}`} className="p-1.5 rounded-lg hover:bg-white/8 transition-colors text-slate-400 hover:text-white">
+          <ChevronLeft size={20} />
+        </Link>
+        <img src={tutorAvatar} alt={tutorName} className="w-8 h-8 rounded-full object-cover ring-2 ring-cyan-500/40" />
         <div>
-          <h1 className="page-title text-indigo-400">IELTS Speaking Test</h1>
-          <p className="page-subtitle text-slate-400">
-            Chapter {chapter?.order_num}: {language === 'bn' ? (chapter?.title_bn || chapter?.title) : chapter?.title}
-          </p>
+          <p className="text-sm font-bold text-slate-100">{tutorName}</p>
+          <p className="text-[10px] text-slate-400">IELTS Speaking Practice</p>
+        </div>
+        {phase === 'active' && (
+          <button
+            onClick={handleEnd}
+            className="ml-auto px-3 py-1.5 bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/25 rounded-lg text-xs font-bold transition-colors"
+          >
+            End Conversation
+          </button>
+        )}
+      </div>
+
+      {/* topic strip */}
+      {topic && (
+        <div className="px-4 py-2 bg-indigo-900/20 border-b border-indigo-500/15 text-xs text-indigo-300">
+          <span className="font-semibold text-indigo-200">Topic:</span> {topic}
+        </div>
+      )}
+
+      {/* error */}
+      {error && (
+        <div className="mx-4 mt-3 p-3 bg-red-900/30 border border-red-500/25 rounded-lg text-sm text-red-300 flex items-center gap-2">
+          <AlertCircle size={14} /> {error}
+          <button onClick={() => setError('')} className="ml-auto text-red-400 hover:text-red-200 text-xs underline">dismiss</button>
+        </div>
+      )}
+
+      {/* chat messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        {phase === 'idle' && (
+          <IdleScreen chapter={chapter} tutorAvatar={tutorAvatar} tutorName={tutorName} onStart={handleStart} />
+        )}
+
+        {phase === 'starting' && (
+          <div className="flex justify-center items-center py-20">
+            <div className="text-center">
+              <Loader2 className="animate-spin text-cyan-400 mx-auto mb-3" size={32} />
+              <p className="text-slate-400 text-sm">Starting conversation…</p>
+            </div>
+          </div>
+        )}
+
+        {(phase === 'active' || phase === 'ending') && turns.map((turn, i) => (
+          <ChatBubble
+            key={i}
+            turn={turn}
+            tutorAvatar={tutorAvatar}
+            tutorName={tutorName}
+            isLast={i === turns.length - 1 && turn.role === 'ai' && turnPhase === 'ai_speaking'}
+          />
+        ))}
+
+        {phase === 'active' && turnPhase === 'processing' && (
+          <div className="flex items-center gap-2 text-slate-400 text-sm pl-10">
+            <Loader2 className="animate-spin" size={14} />
+            Processing your response…
+          </div>
+        )}
+
+        {phase === 'ending' && (
+          <div className="flex justify-center items-center py-8">
+            <div className="text-center">
+              <Loader2 className="animate-spin text-indigo-400 mx-auto mb-3" size={28} />
+              <p className="text-slate-400 text-sm">Generating your report…</p>
+            </div>
+          </div>
+        )}
+
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* bottom controls */}
+      {phase === 'active' && (
+        <div className="border-t border-white/8 px-4 py-4 bg-slate-950/80 backdrop-blur">
+          {turnPhase === 'ai_speaking' && (
+            <div className="flex items-center justify-center gap-2 text-cyan-400 text-sm py-1">
+              <Volume2 size={16} className="animate-pulse" />
+              {tutorName} is speaking…
+            </div>
+          )}
+
+          {turnPhase === 'user_ready' && (
+            <button
+              onClick={startRecording}
+              className="w-full py-3 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"
+            >
+              <Mic size={18} /> Start Talking
+            </button>
+          )}
+
+          {turnPhase === 'recording' && (
+            <button
+              onClick={stopRecordingAndSubmit}
+              className="w-full py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/35 text-red-300 font-bold rounded-xl flex items-center justify-center gap-2 transition-colors animate-pulse"
+            >
+              <MicOff size={18} /> Stop Talking
+            </button>
+          )}
+
+          {turnPhase === 'processing' && (
+            <div className="w-full py-3 bg-slate-800/50 border border-white/8 text-slate-400 font-bold rounded-xl flex items-center justify-center gap-2">
+              <Loader2 size={16} className="animate-spin" /> Processing…
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- idle screen ----------
+
+function IdleScreen({ chapter, tutorAvatar, tutorName, onStart }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-6 py-8">
+      <img src={tutorAvatar} alt={tutorName} className="w-20 h-20 rounded-full object-cover ring-4 ring-cyan-500/30 shadow-xl" />
+      <div>
+        <h2 className="text-xl font-extrabold text-slate-100">{tutorName}</h2>
+        <p className="text-sm text-slate-400 mt-1">IELTS Speaking Practice Partner</p>
+      </div>
+      {chapter && (
+        <div className="bg-slate-900/60 border border-white/8 rounded-2xl px-6 py-4 max-w-sm w-full text-left">
+          <p className="text-xs font-semibold text-indigo-300 mb-1">Chapter</p>
+          <p className="font-bold text-slate-200">{chapter.title}</p>
+          {chapter.description && (
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">{chapter.description}</p>
+          )}
+        </div>
+      )}
+      <div className="max-w-sm text-xs text-slate-500 leading-relaxed">
+        Your tutor will start the conversation. Speak naturally when prompted.
+        Your pronunciation and fluency are assessed in real time.
+      </div>
+      <button
+        onClick={onStart}
+        className="px-8 py-3.5 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/35 text-cyan-300 font-extrabold rounded-2xl flex items-center gap-2.5 transition-colors text-sm"
+      >
+        <MessageSquare size={16} /> Start Conversation
+      </button>
+    </div>
+  );
+}
+
+// ---------- chat bubble ----------
+
+function ChatBubble({ turn, tutorAvatar, tutorName, isLast }) {
+  const isAI = turn.role === 'ai';
+  return (
+    <div className={`flex gap-3 ${isAI ? '' : 'flex-row-reverse'}`}>
+      {isAI ? (
+        <img src={tutorAvatar} alt={tutorName} className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5 ring-1 ring-cyan-500/30" />
+      ) : (
+        <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/25 shrink-0 mt-0.5 flex items-center justify-center text-indigo-300 text-xs font-bold">
+          You
+        </div>
+      )}
+      <div className={`max-w-[75%] ${isAI ? '' : 'items-end flex flex-col'}`}>
+        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+          isAI
+            ? 'bg-slate-800/80 border border-white/8 text-slate-200 rounded-tl-sm'
+            : 'bg-indigo-900/50 border border-indigo-500/20 text-slate-200 rounded-tr-sm'
+        }`}>
+          {turn.text}
+          {isLast && (
+            <span className="ml-1.5 inline-flex items-center gap-0.5 text-cyan-400/60 text-xs">
+              <Volume2 size={10} className="animate-pulse" /> speaking
+            </span>
+          )}
+        </div>
+        {!isAI && (
+          <>
+            <PronScoreBadge pronScore={turn.pronScore} fluencyScore={turn.fluencyScore} />
+            <WordBreakdown words={turn.words} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------- report screen ----------
+
+function ReportScreen({ report, chapter, topic, turns = [], onBack }) {
+  const userTurns = turns.filter(t => t.role === 'user');
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 pb-10">
+      {/* header */}
+      <div className="border-b border-white/8 px-4 py-3 flex items-center gap-3 bg-slate-950/80 backdrop-blur sticky top-0 z-10">
+        <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-white/8 transition-colors text-slate-400 hover:text-white">
+          <ChevronLeft size={20} />
+        </button>
+        <div>
+          <p className="text-sm font-bold text-slate-100">Conversation Report</p>
+          {topic && <p className="text-[10px] text-slate-400">{topic}</p>}
         </div>
       </div>
 
-      {error && <div className="glass-alert glass-alert-error mb-4">{error}</div>}
-
-      {!assessment ? (
-        /* CHAT INTERFACE */
-        <div className="card-card p-0 overflow-hidden flex flex-col h-[550px] bg-slate-950/40 border border-white/10 shadow-xl">
-          {/* Active Tutor Header */}
-          <div className="bg-indigo-950/80 text-white p-4 flex items-center gap-3 border-b border-white/5">
-            <div className="w-10 h-10 rounded-full overflow-hidden border border-white/20">
-              <img src={tutorAvatar} alt="Tutor" className="w-full h-full object-cover" />
+      <div className="max-w-2xl mx-auto px-4 pt-6 space-y-5">
+        {/* band + scores */}
+        <div className="bg-slate-900/60 border border-white/8 rounded-2xl p-5">
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="text-center">
+              <p className="text-xs font-semibold text-slate-400 mb-1">IELTS Band</p>
+              <p className={`text-5xl font-extrabold ${bandColor(report.ielts_band)}`}>
+                {report.ielts_band?.toFixed?.(1) ?? '—'}
+              </p>
             </div>
-            <div>
-              <div className="font-bold text-sm">{tutorName}</div>
-              <div className="text-xs text-indigo-300">IELTS Speaking Examiner</div>
+            <div className="flex gap-5">
+              <ScoreCircle label="Pronunciation" value={report.pron_avg} />
+              <ScoreCircle label="Fluency" value={report.fluency_avg} />
             </div>
           </div>
+          {report.summary_bn && (
+            <p className="mt-4 text-sm text-slate-300 border-t border-white/8 pt-4">{report.summary_bn}</p>
+          )}
+        </div>
 
-          {/* Messages Log */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex gap-3 max-w-[80%] ${
-                  msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''
-                }`}
-              >
-                {msg.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-white/10">
-                    <img src={tutorAvatar} alt="Tutor" className="w-full h-full object-cover" />
+        {/* your recordings */}
+        {userTurns.some(t => t.audioUrl) && (
+          <div className="bg-slate-900/60 border border-white/8 rounded-2xl p-4">
+            <h3 className="flex items-center gap-2 text-xs font-bold text-slate-300 mb-3">
+              <Mic size={13} /> Your Recordings
+            </h3>
+            <div className="space-y-3">
+              {userTurns.map((t, i) => (
+                <div key={i} className="bg-slate-800/50 rounded-xl px-3 py-2.5">
+                  <div className="flex items-start gap-2 mb-1">
+                    <span className="text-[10px] font-bold text-slate-500 shrink-0 pt-0.5 w-12">Turn {i + 1}</span>
+                    <p className="text-xs text-slate-300 leading-relaxed grow">{t.text}</p>
                   </div>
-                )}
-                <div
-                  className={`p-3 rounded-2xl text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-indigo-600 text-white rounded-tr-none shadow-md'
-                      : 'bg-slate-800 text-white rounded-tl-none border border-slate-700/50 shadow-sm'
-                  }`}
-                >
-                  {msg.content}
+                  <div className="pl-14 flex items-center gap-3">
+                    {t.audioUrl && <AudioPlayer src={t.audioUrl} />}
+                    <PronScoreBadge pronScore={t.pronScore} fluencyScore={t.fluencyScore} />
+                  </div>
                 </div>
-              </div>
-            ))}
-
-            {isTutorTyping && (
-              <div className="flex gap-3 max-w-[80%]">
-                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-white/10">
-                  <img src={tutorAvatar} alt="Tutor" className="w-full h-full object-cover" />
-                </div>
-                <div className="bg-slate-800 border border-slate-700/50 p-3 rounded-2xl rounded-tl-none text-slate-400 text-xs shadow-sm flex items-center gap-1.5 font-bold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce"></span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0.15s' }}></span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0.3s' }}></span>
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* Chat Input or End Assessment Trigger */}
-          {questionIndex < 3 ? (
-            <form onSubmit={handleSendMessage} className="p-3 bg-slate-900/60 border-t border-white/5 flex gap-2 items-center">
-              <button
-                type="button"
-                onClick={toggleListening}
-                className={`w-10 h-10 rounded-full border-none flex items-center justify-center cursor-pointer transition ${
-                  isListening
-                    ? 'bg-red-500 text-white animate-pulse'
-                    : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/25'
-                }`}
-                style={{ fontSize: '1.2rem' }}
-                title="Speak to type"
-              >
-                🎙️
-              </button>
-              <input
-                className="flex-grow p-3 rounded-xl bg-slate-950/60 border border-white/10 text-white outline-none text-sm focus:border-indigo-500 transition placeholder-slate-500"
-                placeholder={isListening ? (language === 'bn' ? 'কথা বলুন...' : 'Listening...') : (language === 'bn' ? 'উত্তর লিখুন বা মাইক আইকন ক্লিক করে বলুন...' : 'Type your answer or click mic to speak...')}
-                value={currentInput}
-                onChange={(e) => setCurrentInput(e.target.value)}
-                disabled={isTutorTyping}
-              />
-              <button
-                type="submit"
-                className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl border-none cursor-pointer text-sm shadow-md transition"
-                disabled={isTutorTyping || !currentInput.trim()}
-              >
-                Send
-              </button>
-            </form>
-          ) : (
-            <div className="p-4 bg-slate-900/80 border-t border-white/5 text-center space-y-3">
-              <div className="text-xs text-slate-400 font-semibold">
-                {language === 'bn' ? 'কথোপকথন সম্পন্ন হয়েছে! এবার মূল্যায়নের সময়।' : 'Conversation completed! Time for assessment.'}
-              </div>
-              <button
-                onClick={handleAssessConversation}
-                disabled={isSubmitting}
-                className="glass-button w-full bg-gradient-to-r from-indigo-600 to-cyan-500 text-white border-none py-3"
-              >
-                {isSubmitting ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24" fill="none" style={{ display: 'inline-block' }}>
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                    </svg>
-                    {language === 'bn' ? 'AI আপনার উত্তর মূল্যায়ন করছে...' : 'AI is assessing your answers...'}
-                  </>
-                ) : (
-                  language === 'bn' ? 'Generate IELTS Scorecard & Study Guide (ফলাফল দেখুন)' : 'Generate IELTS Scorecard & Study Guide'
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-      ) : (
-        /* IELTS SCORECARD & RAG PLAN */
-        <div className="space-y-6 animate-fade-in">
-          
-          {/* IELTS Scorecard */}
-          <div className="card-card p-6 bg-slate-900/60 text-white border border-white/10 shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl"></div>
-            
-            <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400 mb-6">
-              IELTS Speaking Scorecard
-            </h2>
-
-            <div className="grid grid-cols-[140px_1fr] gap-6 items-center border-b border-white/5 pb-6 mb-6">
-              {/* Band Circle */}
-              <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-indigo-600 to-cyan-400 flex flex-col items-center justify-center border-4 border-slate-800 shadow-lg">
-                <div className="text-xs uppercase tracking-widest text-indigo-100 font-bold">IELTS Band</div>
-                <div className="text-4xl font-black">{assessment.ielts_band}</div>
-                <div className="text-[10px] text-indigo-200">Out of 9.0</div>
-              </div>
-              
-              {/* Scoring breakdown */}
-              <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-400">Fluency & Coherence:</span>
-                  <span className="font-bold text-cyan-400">Band {assessment.ielts_band}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-400">Lexical Resource:</span>
-                  <span className="font-bold text-indigo-400">{assessment.accuracy_score}% Accuracy</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-400">Key Points Target Hit:</span>
-                  <span className="font-bold text-emerald-400">
-                    {assessment.key_points_found?.length || 0} / {assessment.key_points_found?.length + assessment.key_points_missing?.length}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Key Points Details */}
-            <div className="space-y-4 mb-6">
-              <div>
-                <div className="text-xs uppercase font-bold text-slate-400 mb-2">
-                  {language === 'bn' ? 'আপনি যেসব বিষয় নিয়ে কথা বলেছেন (Key Points Hit):' : 'Key Points Hit:'}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {assessment.key_points_found?.map((kp, i) => (
-                    <span key={i} className="px-2.5 py-1 rounded-md text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-                      ✓ {kp}
-                    </span>
-                  ))}
-                  {assessment.key_points_found?.length === 0 && (
-                    <span className="text-slate-500 text-xs italic">
-                      {language === 'bn' ? 'কোনো বিষয় পাওয়া যায়নি।' : 'No key points hit.'}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <div className="text-xs uppercase font-bold text-slate-400 mb-2">
-                  {language === 'bn' ? 'যেসব বিষয়ে কথা বলেননি (Key Points Missed):' : 'Key Points Missed:'}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {assessment.key_points_missing?.map((kp, i) => (
-                    <span key={i} className="px-2.5 py-1 rounded-md text-xs bg-red-500/10 text-red-400 border border-red-500/20 font-semibold">
-                      ✗ {kp}
-                    </span>
-                  ))}
-                  {assessment.key_points_missing?.length === 0 && (
-                    <span className="text-slate-500 text-xs italic">
-                      {language === 'bn' ? 'সবগুলো বিষয় সুন্দরভাবে কভার করেছেন!' : 'Covered all key points beautifully!'}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Bangla/English Feedback */}
-            <div className="bg-slate-950/40 p-4 rounded-xl border border-white/5 text-slate-300 text-sm leading-relaxed">
-              <div className="font-bold text-white mb-1">
-                {language === 'bn' ? '✍🏼 Examiner Feedback (রিপোর্ট):' : '✍🏼 Examiner Feedback (Report):'}
-              </div>
-              <div>{assessment.feedback_bn}</div>
+              ))}
             </div>
           </div>
+        )}
 
-          {/* RAG Next Session STUDY PLAN */}
-          {ragSessionData && (
-            <div className="card-card p-6 bg-slate-900/60 border border-white/10 shadow-xl">
-              <h3 className="card-title text-indigo-400 mb-4 flex items-center gap-2 border-b border-white/5 pb-2">
-                <span>📚</span> {language === 'bn' ? 'Next Session Guide (RAG-ভিত্তিক কাস্টম স্টাডি প্ল্যান)' : 'Next Session Guide (RAG-based Custom Study Plan)'}
+        {/* strengths + weaknesses */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {report.strengths?.length > 0 && (
+            <div className="bg-emerald-900/20 border border-emerald-500/20 rounded-xl p-4">
+              <h3 className="flex items-center gap-2 text-xs font-bold text-emerald-300 mb-3">
+                <CheckCircle2 size={13} /> Strengths
               </h3>
-              
-              {/* Custom formatted AI instructions */}
-              <div
-                className="prose prose-indigo max-w-none text-sm text-slate-300 leading-relaxed space-y-4"
-                style={{ whiteSpace: 'pre-line' }}
-              >
-                {ragSessionData}
-              </div>
+              <ul className="space-y-1.5">
+                {report.strengths.map((s, i) => (
+                  <li key={i} className="text-xs text-emerald-200 flex items-start gap-1.5">
+                    <span className="text-emerald-400 mt-0.5 shrink-0">•</span> {s}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
-
-          <div className="flex gap-4 justify-center">
-            <button onClick={() => navigate('/curriculum')} className="glass-button" style={{ width: 'auto' }}>
-              Return to Curriculum
-            </button>
-            <button onClick={() => navigate('/progress')} className="secondary-button" style={{ width: 'auto', padding: '0.85rem 1.25rem', borderRadius: '0.75rem' }}>
-              View My Badges & XP 📈
-            </button>
-          </div>
-
+          {report.weaknesses?.length > 0 && (
+            <div className="bg-red-900/20 border border-red-500/20 rounded-xl p-4">
+              <h3 className="flex items-center gap-2 text-xs font-bold text-red-300 mb-3">
+                <AlertCircle size={13} /> Weaknesses
+              </h3>
+              <ul className="space-y-1.5">
+                {report.weaknesses.map((w, i) => (
+                  <li key={i} className="text-xs text-red-200 flex items-start gap-1.5">
+                    <span className="text-red-400 mt-0.5 shrink-0">•</span> {w}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* mispronounced words */}
+        {report.mispronounced_words?.length > 0 && (
+          <div className="bg-slate-900/60 border border-white/8 rounded-2xl p-4">
+            <h3 className="flex items-center gap-2 text-xs font-bold text-slate-300 mb-3">
+              <BookOpen size={13} /> Mispronounced Words
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {report.mispronounced_words.map((w, i) => (
+                <div key={i} className="bg-orange-900/30 border border-orange-500/20 rounded-lg px-2.5 py-1.5 text-xs">
+                  <span className="font-bold text-orange-300">{w.word}</span>
+                  {w.suggestion && <span className="text-slate-400 ml-1.5">→ {w.suggestion}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* fluency issues */}
+        {report.fluency_issues?.length > 0 && (
+          <div className="bg-slate-900/60 border border-white/8 rounded-2xl p-4">
+            <h3 className="flex items-center gap-2 text-xs font-bold text-slate-300 mb-3">
+              <BarChart2 size={13} /> Fluency Issues
+            </h3>
+            <ul className="space-y-1.5">
+              {report.fluency_issues.map((fi, i) => (
+                <li key={i} className="text-xs text-slate-300 flex items-start gap-1.5">
+                  <span className="text-yellow-400 mt-0.5 shrink-0">•</span> {fi.description}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* improvement tips */}
+        {report.improvement_tips?.length > 0 && (
+          <div className="bg-indigo-900/20 border border-indigo-500/20 rounded-2xl p-4">
+            <h3 className="flex items-center gap-2 text-xs font-bold text-indigo-300 mb-3">
+              <Lightbulb size={13} /> Improvement Tips
+            </h3>
+            <ol className="space-y-1.5 list-decimal list-inside">
+              {report.improvement_tips.map((tip, i) => (
+                <li key={i} className="text-xs text-indigo-200">{tip}</li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        {/* turn breakdown */}
+        {report.turn_breakdown?.length > 0 && (
+          <div className="bg-slate-900/60 border border-white/8 rounded-2xl p-4">
+            <h3 className="flex items-center gap-2 text-xs font-bold text-slate-300 mb-3">
+              <Star size={13} /> Turn-by-Turn Breakdown
+            </h3>
+            <div className="space-y-2">
+              {report.turn_breakdown.map((t, i) => (
+                <div key={i} className="flex items-center gap-3 bg-slate-800/50 rounded-lg px-3 py-2">
+                  <span className="text-xs font-bold text-slate-500 w-12 shrink-0">Turn {t.turn}</span>
+                  {t.pron_score != null && (
+                    <span className={`text-xs font-bold ${scoreColor(t.pron_score)}`}>{t.pron_score}</span>
+                  )}
+                  <span className="text-xs text-slate-400 grow">{t.note}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* back button */}
+        <button
+          onClick={onBack}
+          className="w-full py-3 bg-slate-800/60 hover:bg-slate-700/60 border border-white/8 text-slate-300 font-bold rounded-xl text-sm transition-colors"
+        >
+          Back to Chapter
+        </button>
+      </div>
     </div>
   );
 }

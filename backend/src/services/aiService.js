@@ -629,6 +629,217 @@ Return ONLY the JSON — no preamble.`
 
 
   /**
+   * Two-pass free-speech assessment: STT to get transcript, then pron assessment with that transcript as reference.
+   * @param {Buffer} audioBuffer
+   * @param {string|null} audioMimeType
+   * @returns {Promise<object>} { success, transcript, pron_score, fluency_score, accuracy_score, words, phonemes }
+   */
+  async assessFreeSpeech(audioBuffer, audioMimeType = null) {
+    if (!this.azureKey) {
+      return { success: true, transcript: '[mock transcript]', pron_score: 78, fluency_score: 75, accuracy_score: 80, words: [], phonemes: [] };
+    }
+
+    let processedBuffer = audioBuffer;
+    let processedMimeType = audioMimeType;
+    try {
+      processedBuffer = await denoiserClient.denoise(audioBuffer, audioMimeType);
+      processedMimeType = 'audio/wav';
+    } catch {
+      try {
+        const audioConverter = require('./audioConverter');
+        processedBuffer = await audioConverter.convertToWav(audioBuffer);
+        processedMimeType = 'audio/wav';
+      } catch { /* use raw */ }
+    }
+
+    const contentType = this._mapToAzureContentType(processedMimeType);
+    const sttUrl = `https://${this.azureRegion}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=en-US&format=detailed`;
+
+    // Pass 1: plain STT — get recognized text
+    let transcript = null;
+    try {
+      const sttRes = await fetch(sttUrl, {
+        method: 'POST',
+        headers: { 'Ocp-Apim-Subscription-Key': this.azureKey, 'Content-type': contentType, Accept: 'application/json' },
+        body: processedBuffer
+      });
+      const sttData = await sttRes.json();
+      if (sttData.RecognitionStatus === 'Success') {
+        transcript = sttData.NBest?.[0]?.Display || sttData.DisplayText || null;
+      }
+    } catch (e) {
+      console.warn('[assessFreeSpeech] STT pass 1 failed:', e.message);
+    }
+
+    if (!transcript?.trim()) {
+      return { success: false, error: 'Could not recognize speech', transcript: null, pron_score: null, fluency_score: null, accuracy_score: null, words: [], phonemes: [] };
+    }
+
+    // Pass 2: pronunciation assessment using the transcript as reference
+    try {
+      const params = Buffer.from(JSON.stringify({
+        ReferenceText: transcript,
+        GradingSystem: 'HundredMark',
+        Granularity: 'Phoneme',
+        Dimension: 'Comprehensive',
+        EnableMiscue: false,
+        PhonemeAlphabet: 'IPA'
+      })).toString('base64');
+
+      const pronRes = await fetch(sttUrl, {
+        method: 'POST',
+        headers: { 'Ocp-Apim-Subscription-Key': this.azureKey, 'Content-type': contentType, 'Pronunciation-Assessment': params, Accept: 'application/json' },
+        body: processedBuffer
+      });
+      const pronData = await pronRes.json();
+
+      if (pronData.RecognitionStatus !== 'Success' || !pronData.NBest?.[0]) {
+        return { success: true, transcript, pron_score: null, fluency_score: null, accuracy_score: null, words: [], phonemes: [] };
+      }
+
+      const best = pronData.NBest[0];
+      const words = (best.Words || []).map(w => ({ word: w.Word, accuracy_score: Math.round(w.AccuracyScore || 0), error_type: w.ErrorType || 'None' }));
+      const phonemes = [];
+      for (const w of best.Words || []) {
+        for (const p of w.Phonemes || []) {
+          phonemes.push({ phoneme: p.Phoneme, score: Math.round(p.AccuracyScore || 0), word: w.Word });
+        }
+      }
+      return {
+        success: true,
+        transcript,
+        pron_score: Math.round(best.PronScore || 0),
+        accuracy_score: Math.round(best.AccuracyScore || 0),
+        fluency_score: Math.round(best.FluencyScore || 0),
+        words,
+        phonemes
+      };
+    } catch (e) {
+      console.warn('[assessFreeSpeech] pron pass 2 failed:', e.message);
+      return { success: true, transcript, pron_score: null, fluency_score: null, accuracy_score: null, words: [], phonemes: [] };
+    }
+  }
+
+  /**
+   * Generate a short IELTS examiner response based on conversation history.
+   * @param {Array<{role:'user'|'assistant', content:string}>} history
+   * @param {string} topic
+   * @param {Array<string>} keyPoints
+   * @returns {Promise<string>}
+   */
+  async generateConversationResponse(history, topic, keyPoints = []) {
+    if (!this.openai) return "That's an interesting point! Could you tell me more about that?";
+    try {
+      // Strip curriculum labels like "Part I (A1)" from the title to get a clean domain name
+      const cleanTopic = topic.replace(/\s*part\s+(I{1,3}|[1-3])\s*/gi, '').replace(/\(.*?\)/g, '').trim();
+
+      const system = `You are an IELTS Speaking examiner conducting a real practice test board.
+
+The broad topic area is: "${cleanTopic}"
+
+Your job is to hold a NATURAL, FRIENDLY conversation like a real IELTS examiner would — asking about the student's own life, opinions, habits, and experiences.
+
+STRICT RULES:
+- NEVER ask about vocabulary, word meanings, language learning, or chapter content.
+- Ask about REAL LIFE: personal experiences, preferences, opinions, daily routines, comparisons, memories, plans, feelings.
+- Each turn: respond to what the student just said in 1 sentence, then ask ONE clear follow-up question.
+- Questions must feel spontaneous and human — like a real conversation, not a quiz.
+- Vary question types: "Tell me about…", "What do you think of…", "How do you usually…", "Can you describe…", "Why do you…", "Have you ever…"
+- NEVER repeat a question already asked.
+- Be warm, patient, and encouraging — never critical or formal.
+- Do NOT mention IELTS, band scores, assessment, or evaluation at any point.
+- Keep your total response under 40 words.
+
+Examples of GOOD questions (for any topic):
+- "Can you describe your typical morning routine?"
+- "What kind of activities do you enjoy most on weekends?"
+- "Have you ever visited a place that really surprised you? Tell me about it."
+- "Do you prefer spending time alone or with others? Why?"
+- "What's something you're looking forward to in the near future?"`;
+
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'system', content: system }, ...history],
+        max_tokens: 100,
+        temperature: 0.9
+      });
+      return completion.choices[0].message.content.trim();
+    } catch (e) {
+      console.error('generateConversationResponse failed:', e.message);
+      return "Thank you for sharing that. Can you tell me a bit more about your experience?";
+    }
+  }
+
+  /**
+   * Generate a full post-conversation IELTS report in structured JSON.
+   * @param {Array<{transcript:string, pron_score:number|null, fluency_score:number|null, words:Array}>} userTurns
+   * @param {string} topic
+   * @param {Array<string>} keyPoints
+   * @returns {Promise<object>}
+   */
+  async generateConversationReport(userTurns, topic, keyPoints = []) {
+    const fallback = {
+      ielts_band: 5.5, pron_avg: 70, fluency_avg: 70,
+      strengths: ['Attempted all questions', 'Used relevant vocabulary'],
+      weaknesses: ['Pronunciation could be clearer', 'Some hesitations noted'],
+      mispronounced_words: [], fluency_issues: [],
+      improvement_tips: ['Practice shadowing native speakers', 'Record and compare your speech'],
+      turn_breakdown: userTurns.map((t, i) => ({ turn: i + 1, pron_score: t.pron_score, note: 'Keep practicing!' })),
+      summary_bn: 'আপনি ভালো চেষ্টা করেছেন। আরও অনুশীলন করলে আরও উন্নতি হবে।'
+    };
+
+    if (!this.openai || userTurns.length === 0) return fallback;
+
+    const pronAvg = userTurns.filter(t => t.pron_score != null).map(t => t.pron_score);
+    const flAvg = userTurns.filter(t => t.fluency_score != null).map(t => t.fluency_score);
+    const avgPron = pronAvg.length ? Math.round(pronAvg.reduce((a, b) => a + b, 0) / pronAvg.length) : null;
+    const avgFlu = flAvg.length ? Math.round(flAvg.reduce((a, b) => a + b, 0) / flAvg.length) : null;
+
+    const turnsText = userTurns.map((t, i) => {
+      const lowWords = (t.words || []).filter(w => w.accuracy_score < 60).map(w => w.word).join(', ');
+      return `Turn ${i + 1}: "${t.transcript}" | PronScore=${t.pron_score ?? 'N/A'} | FluencyScore=${t.fluency_score ?? 'N/A'}${lowWords ? ` | WeakWords=[${lowWords}]` : ''}`;
+    }).join('\n');
+
+    try {
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an IELTS speaking examiner writing a post-session report.
+Return ONLY valid JSON — no markdown, no preamble.
+Schema:
+{
+  "ielts_band": number (4.0-9.0, step 0.5),
+  "pron_avg": number (0-100),
+  "fluency_avg": number (0-100),
+  "strengths": [string, ...],
+  "weaknesses": [string, ...],
+  "mispronounced_words": [{"word": string, "suggestion": string}, ...],
+  "fluency_issues": [{"description": string}, ...],
+  "improvement_tips": [string, ...],
+  "turn_breakdown": [{"turn": number, "pron_score": number|null, "note": string}, ...],
+  "summary_bn": "one Bangla sentence summarizing overall performance"
+}`
+          },
+          {
+            role: 'user',
+            content: `Topic: "${topic}"\nKey points: ${keyPoints.join(', ')}\n\nTurns:\n${turnsText}\n\nOverall pron avg: ${avgPron}, fluency avg: ${avgFlu}`
+          }
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 800,
+        temperature: 0.3
+      });
+      const parsed = JSON.parse(completion.choices[0].message.content);
+      return { ...fallback, ...parsed };
+    } catch (e) {
+      console.error('generateConversationReport failed:', e.message);
+      return { ...fallback, pron_avg: avgPron ?? 70, fluency_avg: avgFlu ?? 70 };
+    }
+  }
+
+  /**
    * Azure's short-audio REST endpoint needs the Content-Type to truthfully describe the
    * audio container/codec it's receiving, or it silently mis-decodes the buffer instead of
    * erroring (producing garbage/near-zero scores rather than an obvious failure).

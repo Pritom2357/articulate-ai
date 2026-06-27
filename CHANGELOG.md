@@ -2,6 +2,47 @@
 
 All notable changes made during AI-assisted development sessions are recorded here, grouped by date/session. Each entry lists the files touched and a short summary of what changed and why.
 
+## 2026-06-27 (session 6)
+
+### IELTS Open Conversation — full voice-based AI conversation test
+
+**Backend:**
+- `backend/src/docs/tables.sql` — Added `conversation_sessions` and `conversation_turns` table definitions.
+- `backend/src/database/migrateConversation.js` — One-shot migration script; run to create both tables + index. Tables are now live in Neon DB.
+- `backend/src/services/aiService.js` — Added three new methods:
+  - `assessFreeSpeech(buffer, mimeType)`: 2-pass Azure STT + pron assessment (no pre-known reference text needed — STT transcript used as reference).
+  - `generateConversationResponse(history, topic, keyPoints)`: OpenAI IELTS examiner partner (short + follow-up question per turn).
+  - `generateConversationReport(userTurns, topic, keyPoints)`: OpenAI structured JSON report with band, avg scores, mispronounced words, fluency issues, tips, turn breakdown.
+- `backend/src/models/conversation.model.js` — New model: `createSession`, `addTurn`, `getSessionWithTurns`, `getTurnCount`, `endSession`, `getChapterTopic`.
+- `backend/src/controllers/conversation.controller.js` — New controller: `startSession` (AI opening + TTS), `submitTurn` (audio → assessFreeSpeech → AI response → TTS), `endSession` (report + 75 XP award).
+- `backend/src/routes/conversation.routes.js` — New router: `POST /start`, `POST /:id/turn`, `POST /:id/end`.
+- `backend/src/index.js` — Registered `conversationRouter` at `/api/conversation`.
+
+**Frontend:**
+- `frontend/src/api/conversation.js` — New API file: `startConversationSession`, `submitConversationTurn`, `endConversationSession`.
+- `frontend/src/pages/IELTSConversation.jsx` — Complete rewrite:
+  - Phase state machine: idle → starting → active → ending → report.
+  - Turn sub-phases: ai_speaking | user_ready | recording | processing.
+  - MediaRecorder for user audio capture (webm/ogg/mp4).
+  - Azure TTS playback via `new Audio(data:audio/mp3;base64,…)`.
+  - Per-turn pronunciation score badges + weak word chips on user messages.
+  - "Start Talking" / "Stop Talking" button pair.
+  - Sticky "End Conversation" button while session is active.
+  - Separate full-page report screen with IELTS band, pronunciation/fluency circles, strengths/weaknesses, mispronounced word chips, fluency issue list, improvement tips, turn-by-turn breakdown.
+
+## 2026-06-27 (session 6 — patch 2)
+
+### IELTS Conversation — listen to your own recordings in the report
+
+- `frontend/src/pages/IELTSConversation.jsx` — After the user stops recording, a blob URL is created via `URL.createObjectURL` and stored on the user turn object. A `recordingUrlsRef` accumulates all URLs; a cleanup `useEffect` revokes them all on unmount to free memory. The `turns` array (with `audioUrl` fields) is now passed to `ReportScreen`. Added a "Your Recordings" section in the report that shows each user turn's transcript, pronunciation/fluency score badges, and a custom `AudioPlayer` component (play/pause button + progress bar). The player uses a hidden `<audio>` element backed by the blob URL.
+
+## 2026-06-27 (session 6 — patch)
+
+### IELTS Conversation — voice fix + authentic IELTS question style
+
+- `backend/src/controllers/conversation.controller.js` — Added `pickVoice(guidePreference)` helper mapping `FEMALE→en-US-JennyNeural`, `MALE→en-US-GuyNeural`; reads `req.user.guide_preference` (set by auth middleware) so TTS in both `startSession` and `submitTurn` uses the correct voice without any frontend changes.
+- `backend/src/services/aiService.js` — Rewrote `generateConversationResponse` system prompt: strips curriculum labels from topic title (e.g. "Part I (A1)"), instructs the AI to ask authentic IELTS-board-style personal questions (experiences, habits, opinions, comparisons) instead of probing chapter vocabulary. Added explicit "NEVER ask about language learning" rule. Capped response at 40 words + 100 tokens for snappier examiner turns.
+
 ## 2026-06-26 (session 5)
 
 ### Curriculum overhaul — sequential locking, placement start, caching, 3-col lessons, no emojis
