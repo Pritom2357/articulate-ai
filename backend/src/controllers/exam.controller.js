@@ -8,7 +8,7 @@ const curriculumModel = new CurriculumModel();
 const progressModel = new ProgressModel();
 
 // ─── Helper: build rich context string for the LLM ───────────────────────────
-async function buildContextText(examType, lessonId, chapterId, userId, db) {
+async function buildContextText(examType, lessonId, chapterId, userId) {
   try {
     if (examType === 'LESSON' && lessonId) {
       const lessonData = await curriculumModel.getLessonById(lessonId);
@@ -95,27 +95,19 @@ class ExamController {
         return res.status(400).json({ success: false, message: `examType must be one of: ${validTypes.join(', ')}` });
       }
 
-      const db = examModel.db;
-
       // ── Prerequisite checks ──
       if (examType === 'LESSON') {
         if (!lessonId) return res.status(400).json({ success: false, message: 'lessonId is required for LESSON exam' });
-        const check = await db.query_executor(
-          `SELECT status FROM user_lesson_progress WHERE user_id = $1 AND lesson_id = $2`,
-          [userId, lessonId]
-        );
-        if (check.rows[0]?.status !== 'COMPLETED') {
+        const isCompleted = await examModel.checkLessonCompleted(userId, lessonId);
+        if (!isCompleted) {
           return res.status(403).json({ success: false, message: 'Complete the lesson first before taking a lesson exam.' });
         }
       }
 
       if (examType === 'CHAPTER') {
         if (!chapterId) return res.status(400).json({ success: false, message: 'chapterId is required for CHAPTER exam' });
-        const check = await db.query_executor(
-          `SELECT status FROM vw_user_chapter_progress WHERE user_id = $1 AND chapter_id = $2`,
-          [userId, chapterId]
-        );
-        if (check.rows[0]?.status !== 'COMPLETED') {
+        const isCompleted = await examModel.checkChapterCompleted(userId, chapterId);
+        if (!isCompleted) {
           return res.status(403).json({ success: false, message: 'Complete all lessons in this chapter first.' });
         }
       }
@@ -134,7 +126,7 @@ class ExamController {
       });
 
       // ── Gather curriculum context for LLM ──
-      const contextText = await buildContextText(examType, lessonId || contextData?.lesson_id, chapterId || contextData?.chapter_id, userId, db);
+      const contextText = await buildContextText(examType, lessonId || contextData?.lesson_id, chapterId || contextData?.chapter_id, userId);
       const isIelts     = examType === 'IELTS';
 
       // ── Generate questions via LLM ──
@@ -155,24 +147,16 @@ class ExamController {
       await examModel.insertQuestions(exam.id, questionsWithAudio);
 
       // ── Mark exam as READY with correct total_marks ──
-      await db.query_executor(
-        `UPDATE exams SET status = 'READY', total_marks = $1 WHERE id = $2`,
-        [totalMarks, exam.id]
-      );
+      await examModel.markExamReady(exam.id, totalMarks);
 
       // ── Fetch the final exam row to return to client ──
-      const finalExamRes = await db.query_executor(`SELECT * FROM exams WHERE id = $1`, [exam.id]);
-      const finalQuestionsRes = await db.query_executor(
-        `SELECT id, exam_id, section, item_type, order_num, text_en, text_bn, audio_url, ipa, marks, difficulty, word_id, phrase_id
-         FROM exam_questions WHERE exam_id = $1 ORDER BY order_num ASC`,
-        [exam.id]
-      );
+      const finalExamData = await examModel.getExamById(exam.id);
 
       return res.status(200).json({
         success:   true,
         examId:    exam.id,
-        exam:      finalExamRes.rows[0],
-        questions: finalQuestionsRes.rows,
+        exam:      finalExamData.exam,
+        questions: finalExamData.questions,
         message:   'Exam generated successfully',
       });
 
@@ -372,20 +356,15 @@ class ExamController {
       const { answerId } = req.params;
       const userId = req.user.id;
       
-      const db = require('../database/db').getInstance();
-      const answer = await db.query_executor(
-        `SELECT audio_buffer FROM exam_answers 
-         WHERE id = $1 AND exam_id IN (SELECT id FROM exams WHERE user_id = $2)`,
-        [answerId, userId]
-      );
+      const audioBuffer = await examModel.getAnswerAudioBuffer(answerId, userId);
       
-      if (!answer.rows[0] || !answer.rows[0].audio_buffer) {
+      if (!audioBuffer) {
         return res.status(404).json({ success: false, message: 'Audio not found' });
       }
       
       // Serve the raw audio buffer (browser will auto-detect MIME usually, but webm is a safe default for MediaRecorder)
       res.set('Content-Type', 'audio/webm');
-      res.send(answer.rows[0].audio_buffer);
+      res.send(audioBuffer);
     } catch (err) {
       console.error('getAnswerAudio error:', err);
       res.status(500).json({ success: false, message: 'Internal server error' });

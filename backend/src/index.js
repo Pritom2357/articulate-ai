@@ -29,7 +29,7 @@ const { notificationsRouter } = require('./routes/notifications.routes.js');
 const { vocabularyRouter } = require('./routes/vocabulary.routes.js');
 const { chatbotRouter } = require('./routes/chatbot.routes.js');
 const { conversationRouter } = require('./routes/conversation.routes.js');
-const examRouter = require('./routes/exam.routes.js');
+const { examRouter } = require('./routes/exam.routes.js');
 
 
 

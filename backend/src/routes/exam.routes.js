@@ -1,11 +1,10 @@
 const express = require('express');
-const router = express.Router();
-const examController = require('../controllers/exam.controller');
+const examController = require('../controllers/exam.controller.js');
 const AuthenticateToken = require('../middlewares/authenticateToken.js');
 const multer = require('multer');
 
-const auth = new AuthenticateToken();
-const verifyToken = auth.authenticateToken;
+const examRouter = express.Router();
+const authenticateToken = new AuthenticateToken();
 
 // Configure multer for audio uploads (memory storage)
 const upload = multer({
@@ -14,15 +13,15 @@ const upload = multer({
 });
 
 // All exam routes require auth
-router.use(verifyToken);
+examRouter.use(authenticateToken.authenticateToken);
 
 // Order matters: /history before /:id so it doesn't get caught as an ID
-router.get('/history', examController.getExamHistory);
-router.post('/generate', examController.generateExam);
-router.get('/:id', examController.getExamById);
-router.get('/:id/results', examController.getExamResults);
-router.post('/:id/submit', upload.any(), examController.submitExam);
-router.post('/:id/retake', examController.retakeExam);
-router.get('/answer/:answerId/audio', examController.getAnswerAudio);
+examRouter.get('/history', examController.getExamHistory);
+examRouter.post('/generate', examController.generateExam);
+examRouter.get('/:id', examController.getExamById);
+examRouter.get('/:id/results', examController.getExamResults);
+examRouter.post('/:id/submit', upload.any(), examController.submitExam);
+examRouter.post('/:id/retake', examController.retakeExam);
+examRouter.get('/answer/:answerId/audio', examController.getAnswerAudio);
 
-module.exports = router;
+module.exports = { examRouter };

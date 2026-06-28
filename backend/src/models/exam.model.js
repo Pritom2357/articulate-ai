@@ -5,6 +5,38 @@ class ExamModel {
         this.db = DB_Connection.getInstance();
     }
 
+    checkLessonCompleted = async (userId, lessonId) => {
+        const check = await this.db.query_executor(
+            `SELECT status FROM user_lesson_progress WHERE user_id = $1 AND lesson_id = $2`,
+            [userId, lessonId]
+        );
+        return check.rows[0]?.status === 'COMPLETED';
+    }
+
+    checkChapterCompleted = async (userId, chapterId) => {
+        const check = await this.db.query_executor(
+            `SELECT status FROM vw_user_chapter_progress WHERE user_id = $1 AND chapter_id = $2`,
+            [userId, chapterId]
+        );
+        return check.rows[0]?.status === 'COMPLETED';
+    }
+
+    markExamReady = async (examId, totalMarks) => {
+        await this.db.query_executor(
+            `UPDATE exams SET status = 'READY', total_marks = $1 WHERE id = $2`,
+            [totalMarks, examId]
+        );
+    }
+
+    getAnswerAudioBuffer = async (answerId, userId) => {
+        const answer = await this.db.query_executor(
+            `SELECT audio_buffer FROM exam_answers 
+             WHERE id = $1 AND exam_id IN (SELECT id FROM exams WHERE user_id = $2)`,
+            [answerId, userId]
+        );
+        return answer.rows[0]?.audio_buffer || null;
+    }
+
     createExam = async (userId, examType, contextData) => {
         try {
             const query = `
