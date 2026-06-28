@@ -839,6 +839,71 @@ Schema:
     }
   }
 
+  async generateExamQuestions(contextText, isIelts = false) {
+    if (!this.openai) {
+      return [
+        { section: 'LISTENING', item_type: 'WORD', text_en: 'hello', text_bn: 'হ্যালো', ipa: '/həˈloʊ/', marks: 2, difficulty: 1 },
+        { section: 'LISTENING', item_type: 'WORD', text_en: 'world', text_bn: 'বিশ্ব', ipa: '/wɜrld/', marks: 2, difficulty: 1 },
+        { section: 'LISTENING', item_type: 'WORD', text_en: 'good', text_bn: 'ভালো', ipa: '/gʊd/', marks: 2, difficulty: 1 },
+        { section: 'LISTENING', item_type: 'PHRASE', text_en: 'good morning', text_bn: 'শুভ সকাল', ipa: '/gʊd ˈmɔrnɪŋ/', marks: 3, difficulty: 1 },
+        { section: 'LISTENING', item_type: 'PHRASE', text_en: 'how are you', text_bn: 'আপনি কেমন আছেন', ipa: '/haʊ ɑr ju/', marks: 3, difficulty: 1 },
+        { section: 'SPEAKING', item_type: 'WORD', text_en: 'apple', text_bn: 'আপেল', ipa: '/ˈæpəl/', marks: 3, difficulty: 1 },
+        { section: 'SPEAKING', item_type: 'WORD', text_en: 'banana', text_bn: 'কলা', ipa: '/bəˈnænə/', marks: 3, difficulty: 1 },
+        { section: 'SPEAKING', item_type: 'WORD', text_en: 'cat', text_bn: 'বিড়াল', ipa: '/kæt/', marks: 3, difficulty: 1 },
+        { section: 'SPEAKING', item_type: 'PHRASE', text_en: 'i like apples', text_bn: 'আমি আপেল পছন্দ করি', ipa: '/aɪ laɪk ˈæpəlz/', marks: 4, difficulty: 1 },
+        { section: 'SPEAKING', item_type: 'PHRASE', text_en: 'the cat is small', text_bn: 'বিড়ালটি ছোট', ipa: '/ðə kæt ɪz smɔl/', marks: 4, difficulty: 1 }
+      ];
+    }
+    
+    try {
+      const promptPath = path.join(__dirname, '../prompts/examGeneratePrompt.txt');
+      let promptText = fs.readFileSync(promptPath, 'utf8');
+      
+      promptText = promptText.replace('{{CONTEXT}}', contextText || 'General English vocabulary.');
+      promptText = promptText.replace('{{IELTS_INSTRUCTION}}', isIelts ? 'This is an IELTS exam. Use more advanced vocabulary.' : '');
+
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'system', content: promptText }],
+        response_format: { type: 'json_object' },
+        max_tokens: 1500,
+        temperature: 0.7,
+      });
+      
+      const data = JSON.parse(completion.choices[0].message.content);
+      return data.questions || [];
+    } catch (err) {
+      console.error('generateExamQuestions failed:', err.message);
+      return [];
+    }
+  }
+
+  async evaluateExamSummary(scorePct, examDataText) {
+    if (!this.openai) {
+      return 'আপনার পরীক্ষার ফলাফল ভালো হয়েছে। আরও অনুশীলন করুন। (Mock)';
+    }
+
+    try {
+      const promptPath = path.join(__dirname, '../prompts/examEvaluatePrompt.txt');
+      let promptText = fs.readFileSync(promptPath, 'utf8');
+      
+      promptText = promptText.replace('{{SCORE_PCT}}', scorePct);
+      promptText = promptText.replace('{{EXAM_DATA}}', examDataText);
+
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'system', content: promptText }],
+        max_tokens: 200,
+        temperature: 0.7,
+      });
+
+      return completion.choices[0].message.content.trim();
+    } catch (err) {
+      console.error('evaluateExamSummary failed:', err.message);
+      return 'পরীক্ষা সম্পন্ন হয়েছে।';
+    }
+  }
+
   /**
    * Azure's short-audio REST endpoint needs the Content-Type to truthfully describe the
    * audio container/codec it's receiving, or it silently mis-decodes the buffer instead of

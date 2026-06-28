@@ -1,8 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Play, ArrowLeft, Mic, Award, CheckCircle, XCircle, Headphones, Loader2 } from 'lucide-react';
-import { generateExam, submitExamAnswers, getExamResults } from '../api/exam.js';
+import { generateExam, submitExamAnswers, getExamResults, getAnswerAudioBlobUrl } from '../api/exam.js';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
+
+const AuthAudioPlayer = ({ answerId }) => {
+  const [audioSrc, setAudioSrc] = useState(null);
+  useEffect(() => {
+    let url = null;
+    getAnswerAudioBlobUrl(answerId)
+      .then(src => {
+        url = src;
+        setAudioSrc(src);
+      })
+      .catch(console.error);
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [answerId]);
+  
+  if (!audioSrc) return <Loader2 size={14} className="animate-spin text-slate-400" />;
+  return <audio controls src={audioSrc} className="h-8 w-full max-w-[200px]" />;
+};
 
 export default function Tests() {
   const navigate = useNavigate();
@@ -10,7 +29,7 @@ export default function Tests() {
   
   // STATES
   const [view, setView] = useState('HUB'); // 'HUB' | 'ACTIVE' | 'EVALUATING' | 'RESULT'
-  const [loading, setLoading] = useState(false);
+  const [loadingType, setLoadingType] = useState(null);
   const [error, setError] = useState('');
   
   const [exam, setExam] = useState(null);
@@ -62,9 +81,9 @@ export default function Tests() {
 
   const handleStartExam = async (examType) => {
     try {
-      setLoading(true);
+      setLoadingType(examType);
       setError('');
-      // Generate exam
+      // Generate exam — backend now returns { success, examId, exam, questions }
       const data = await generateExam({ examType });
       if (data.success && data.exam && data.questions) {
         setExam(data.exam);
@@ -73,13 +92,13 @@ export default function Tests() {
         setCurrentQuestionIndex(0);
         setView('ACTIVE');
       } else {
-        setError('Failed to generate exam.');
+        setError(data.message || 'Failed to generate exam.');
       }
     } catch (err) {
       console.error(err);
-      setError(err.error || 'Failed to start exam.');
+      setError(err.message || err.error || 'Failed to start exam.');
     } finally {
-      setLoading(false);
+      setLoadingType(null);
     }
   };
 
@@ -168,9 +187,9 @@ export default function Tests() {
         if (!ans) return;
         
         if (q.section === 'LISTENING' && ans.typedAnswer) {
-          answersList.push({ questionId: q.id, typedAnswer: ans.typedAnswer });
+          answersList.push({ question_id: q.id, typed_answer: ans.typedAnswer });
         } else if (q.section === 'SPEAKING' && ans.audioBlob) {
-          answersList.push({ questionId: q.id });
+          answersList.push({ question_id: q.id });
           formData.append(`audio_${q.id}`, ans.audioBlob, `q_${q.id}.wav`);
         }
       });
@@ -190,21 +209,25 @@ export default function Tests() {
   const startPollingResults = () => {
     pollIntervalRef.current = setInterval(async () => {
       try {
+        // Results endpoint returns { success, data: { exam, questions, answers } }
+        // or { success, status, message } while still evaluating
         const res = await getExamResults(exam.id);
-        if (res.success && res.exam.status === 'EVALUATED') {
+        const examStatus = res.data?.exam?.status || res.status;
+        if (res.success && examStatus === 'EVALUATED') {
           clearInterval(pollIntervalRef.current);
-          setResults(res);
+          // Flatten data into results so result view can destructure it directly
+          setResults(res.data);
           setView('RESULT');
-        } else if (res.success && res.exam.status === 'FAILED') {
+        } else if (res.success && examStatus === 'FAILED') {
           clearInterval(pollIntervalRef.current);
-          setError('Exam evaluation failed.');
+          setError('Exam evaluation failed. Please try again.');
           setView('HUB');
         }
+        // Otherwise keep polling (SUBMITTED / EVALUATING)
       } catch (e) {
-        // Just ignore polling errors and keep trying
         console.error('Polling error', e);
       }
-    }, 2000); // Poll every 2 seconds
+    }, 2500); // Poll every 2.5 seconds
   };
 
   // --- RENDERERS ---
@@ -236,25 +259,26 @@ export default function Tests() {
             </div>
             <button
               onClick={() => handleStartExam('PROGRESS')}
-              disabled={loading}
+              disabled={loadingType !== null}
               className="primary-button flex items-center justify-center gap-2"
             >
-              {loading ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />} 
+              {loadingType === 'PROGRESS' ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />} 
               Start Exam
             </button>
           </div>
           
-          <div className="card-card p-5 border border-amber-500/20 hover:border-amber-500/60 transition bg-amber-950/20 flex flex-col justify-between">
-            <div>
-              <h3 className="text-lg font-bold text-white mb-2">IELTS Mock</h3>
-              <p className="text-sm text-slate-400 mb-4">Band 4-6 style everyday topics. High XP reward.</p>
-            </div>
+          <div className="card-card p-5 bg-slate-900/50 border border-white/5 flex flex-col items-start text-left hover:bg-slate-800/50 transition relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition duration-500"></div>
+            <h3 className="font-bold text-white text-lg mb-2 z-10">IELTS Mock</h3>
+            <p className="text-slate-400 text-sm mb-6 flex-1 z-10">
+              Band 4-6 style everyday topics. High XP reward.
+            </p>
             <button
               onClick={() => handleStartExam('IELTS')}
-              disabled={loading}
-              className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2"
+              disabled={!!loadingType}
+              className="w-full bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2 z-10"
             >
-              {loading ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />} 
+              {loadingType === 'IELTS' ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
               Start IELTS
             </button>
           </div>
@@ -266,10 +290,10 @@ export default function Tests() {
             </div>
             <button
               onClick={() => handleStartExam('PRACTICE')}
-              disabled={loading}
+              disabled={loadingType !== null}
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2"
             >
-              {loading ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />} 
+              {loadingType === 'PRACTICE' ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />} 
               Start Practice
             </button>
           </div>
@@ -429,34 +453,53 @@ export default function Tests() {
           <div className="space-y-4">
             {resQuestions.map((q) => {
               const a = resAnswers.find(ans => ans.question_id === q.id);
-              if (!a) return null;
               
               return (
                 <div key={q.id} className="p-3 bg-white/5 rounded-xl border border-white/5 flex justify-between items-start gap-4 hover:bg-white/10 transition">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
                       <span className="text-[10px] uppercase font-bold text-slate-400 bg-black/30 px-2 py-0.5 rounded">{q.section}</span>
-                      <span className="text-xs text-white font-semibold">"{q.text_en}"</span>
+                      <span className="text-sm text-white font-semibold">"{q.text_en}"</span>
                     </div>
-                    {q.section === 'LISTENING' && (
-                      <div className="text-xs text-slate-400 mt-1">
-                        You typed: <span className="text-white italic">"{a.typed_answer}"</span>
+                    {q.section === 'LISTENING' && q.audio_url && (
+                      <div className="mb-2">
+                        <div className="text-[10px] text-slate-400 mb-1 uppercase tracking-wider font-semibold">Original Audio:</div>
+                        <audio controls src={q.audio_url} className="h-8 w-full max-w-[200px]" />
                       </div>
                     )}
-                    {q.section === 'SPEAKING' && a.feedback && (
-                      <div className="text-xs text-slate-400 mt-1">
-                        AI Feedback: <span className="text-white">{a.feedback}</span>
+                    {a ? (
+                      <>
+                        {q.section === 'SPEAKING' && (
+                          <div className="mb-2">
+                            <div className="text-[10px] text-slate-400 mb-1 uppercase tracking-wider font-semibold">Your Recording:</div>
+                            <AuthAudioPlayer answerId={a.id} />
+                          </div>
+                        )}
+                        {q.section === 'LISTENING' && (
+                          <div className="text-xs text-slate-400 mt-1">
+                            You typed: <span className="text-white font-medium">"{a.typed_answer}"</span>
+                          </div>
+                        )}
+                        {a.feedback && (
+                          <div className="text-xs text-slate-400 mt-2 bg-black/20 p-2 rounded-lg border border-white/5">
+                            <span className="font-semibold text-slate-300">AI Feedback:</span> <span className="text-white">{a.feedback}</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-xs text-red-400 mt-1 italic">
+                        Not answered
                       </div>
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1 font-bold text-sm min-w-[60px] text-right">
                     <div className="flex items-center gap-1.5">
-                      {a.is_correct ? <CheckCircle size={14} className="text-green-400" /> : <XCircle size={14} className="text-red-400" />}
-                      <span className={a.is_correct ? 'text-green-400' : 'text-red-400'}>
-                        {a.marks_awarded} / {q.marks}
+                      {a?.is_correct ? <CheckCircle size={14} className="text-green-400" /> : <XCircle size={14} className="text-red-400" />}
+                      <span className={a?.is_correct ? 'text-green-400' : 'text-red-400'}>
+                        {a?.marks_awarded || 0} / {q.marks}
                       </span>
                     </div>
-                    {q.section === 'SPEAKING' && a.accuracy_score && (
+                    {q.section === 'SPEAKING' && a?.accuracy_score !== undefined && a?.accuracy_score !== null && (
                       <div className="text-[10px] text-slate-500 font-medium whitespace-nowrap">
                         Acc: {Math.round(a.accuracy_score)}%
                       </div>
