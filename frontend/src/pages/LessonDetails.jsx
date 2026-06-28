@@ -305,10 +305,10 @@ export default function LessonDetails() {
 
       if (response.overall_score !== undefined && response.overall_score !== null) {
         if (isWordTest) {
-          setWordScores(prev => ({...prev, [testWordIndex]: Math.max(prev[testWordIndex] || 0, response.overall_score)}));
+          setWordScores(prev => ({ ...prev, [testWordIndex]: Math.max(prev[testWordIndex] || 0, response.overall_score) }));
           saveScoreToHistory(`word_${words[testWordIndex].id}`, response.overall_score);
         } else {
-          setPhraseScores(prev => ({...prev, [testPhraseIndex]: Math.max(prev[testPhraseIndex] || 0, response.overall_score)}));
+          setPhraseScores(prev => ({ ...prev, [testPhraseIndex]: Math.max(prev[testPhraseIndex] || 0, response.overall_score) }));
         }
       }
 
@@ -462,8 +462,8 @@ export default function LessonDetails() {
         <div className="flex-1">
           <div className="font-bold text-indigo-400 text-sm">{tutorName} ({t('lesson_tutor')})</div>
           <div className="text-sm text-slate-200 leading-relaxed mt-1.5 font-medium italic">
-            {wizardStep === 1 && (language === 'bn' 
-              ? `"স্বাগতম! আজকে আমরা নতুন শব্দ শিখব। প্রতিটি শব্দ শুনুন এবং তা বাংলা অর্থের সাথে মুখস্থ করুন।"` 
+            {wizardStep === 1 && (language === 'bn'
+              ? `"স্বাগতম! আজকে আমরা নতুন শব্দ শিখব। প্রতিটি শব্দ শুনুন এবং তা বাংলা অর্থের সাথে মুখস্থ করুন।"`
               : `"Welcome! Today we will learn new vocabulary. Listen to each word and memorize it along with its meaning."`)}
             {wizardStep === 2 && (language === 'bn'
               ? `"এবার ফ্ল্যাশ-কার্ড দিয়ে প্র্যাকটিস করার পালা। কার্ডগুলো উল্টে তার বাংলা অর্থ মেলাবার চেষ্টা করুন।"`
