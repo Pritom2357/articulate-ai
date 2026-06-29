@@ -303,20 +303,20 @@ export default function Tests() {
 
         {error && <div className="glass-alert glass-alert-error mb-4">{error}</div>}
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-6">
           {/* Progress Exam */}
-          <div className="card-card p-5 border border-indigo-500/20 hover:border-indigo-500/60 transition bg-indigo-950/20 flex flex-col justify-between">
+          <div className="md:col-span-3 card-card p-5 border border-indigo-500/20 hover:border-indigo-500/60 transition bg-indigo-950/20 flex flex-col justify-between">
             <div>
               <h3 className="text-lg font-bold text-white mb-2">Progress Exam</h3>
               <p className="text-sm text-slate-400 mb-4">Based on your weak words and recent progress. Awards XP.</p>
             </div>
-            <button onClick={() => handleStartExam('PROGRESS')} disabled={loadingType !== null} className="primary-button flex items-center justify-center gap-2">
+            <button onClick={() => handleStartExam('PROGRESS')} disabled={loadingType !== null} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
               {loadingType === 'PROGRESS' ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />} Start Exam
             </button>
           </div>
 
           {/* IELTS Mock */}
-          <div className="card-card p-5 bg-slate-900/50 border border-white/5 flex flex-col items-start text-left hover:bg-slate-800/50 transition relative overflow-hidden group">
+          <div className="md:col-span-3 card-card p-5 bg-slate-900/50 border border-white/5 flex flex-col items-start text-left hover:bg-slate-800/50 transition relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition duration-500"></div>
             <h3 className="font-bold text-white text-lg mb-2 z-10">IELTS Mock</h3>
             <p className="text-slate-400 text-sm mb-6 flex-1 z-10">Band 4-6 style everyday topics. High XP reward.</p>
@@ -326,7 +326,7 @@ export default function Tests() {
           </div>
 
           {/* Lesson Exam */}
-          <div className="card-card p-5 border border-violet-500/20 hover:border-violet-500/60 transition bg-violet-950/20 flex flex-col justify-between">
+          <div className="md:col-span-2 card-card p-5 border border-violet-500/20 hover:border-violet-500/60 transition bg-violet-950/20 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 mb-2"><BookOpen size={16} className="text-violet-400" /><h3 className="text-lg font-bold text-white">Lesson Exam</h3></div>
               <p className="text-sm text-slate-400 mb-4">Test a specific lesson's words & phrases. Awards XP.</p>
@@ -337,7 +337,7 @@ export default function Tests() {
           </div>
 
           {/* Chapter Exam */}
-          <div className="card-card p-5 border border-amber-500/20 hover:border-amber-500/60 transition bg-amber-950/20 flex flex-col justify-between">
+          <div className="md:col-span-2 card-card p-5 border border-amber-500/20 hover:border-amber-500/60 transition bg-amber-950/20 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 mb-2"><Layers size={16} className="text-amber-400" /><h3 className="text-lg font-bold text-white">Chapter Exam</h3></div>
               <p className="text-sm text-slate-400 mb-4">Test an entire chapter across all its lessons. Awards XP.</p>
@@ -348,7 +348,7 @@ export default function Tests() {
           </div>
 
           {/* Practice Exam */}
-          <div className="card-card p-5 border border-emerald-500/20 hover:border-emerald-500/60 transition bg-emerald-950/20 flex flex-col justify-between">
+          <div className="md:col-span-2 card-card p-5 border border-emerald-500/20 hover:border-emerald-500/60 transition bg-emerald-950/20 flex flex-col justify-between">
             <div>
               <h3 className="text-lg font-bold text-white mb-2">Practice Exam</h3>
               <p className="text-sm text-slate-400 mb-4">Casual practice to keep your streak alive. No XP awarded.</p>

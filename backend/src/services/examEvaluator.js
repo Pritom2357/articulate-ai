@@ -216,7 +216,10 @@ class ExamEvaluator {
       // 8. Update streak (always — even for PRACTICE)
       await progressModel.updateStreak(exam.user_id);
 
-      // 9. Emit event → NotificationService picks this up and pushes via Socket.IO
+      // 9. Check and award badges
+      await progressModel.checkAndAwardBadges(exam.user_id);
+
+      // 10. Emit event → NotificationService picks this up and pushes via Socket.IO
       bus.emit(Events.EXAM_EVALUATED, {
         userId:        exam.user_id,
         examId:        exam.id,

@@ -1,4 +1,5 @@
-﻿import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { getProgress, getXpLog, getStreakCalendar } from '../api/progress.js';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Award, Clock, Flame, ShieldAlert, Sparkles, TrendingUp, CalendarDays, ChevronLeft, ChevronRight, Shield, Target, RefreshCw } from 'lucide-react';
@@ -320,24 +321,35 @@ export default function Progress() {
 
   return (
     <div className="page-container animate-fade-in">
-      <div className="page-header border-b border-white/10 pb-4 mb-6">
-        <div>
-          <h1 className="page-title text-white flex items-center gap-3">
-            <span className="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center">
-              <TrendingUp className="text-indigo-400" size={24} />
-            </span>
-            {t('prog_title')}
-          </h1>
-          <p className="page-subtitle text-slate-400">{t('prog_subtitle')}</p>
+      <div className="page-header border-b border-white/10 pb-4 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-indigo-500/50 flex-shrink-0">
+            {user?.profile_photo ? (
+              <img src={user.profile_photo} alt={user?.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-indigo-500 flex items-center justify-center text-2xl font-bold text-white">
+                {user?.name?.charAt(0).toUpperCase()}
+              </div>
+            )}
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white leading-tight">{user?.name}</h1>
+            <p className="text-sm text-slate-400">{user?.email}</p>
+          </div>
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          title="Refresh progress"
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/8 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0 self-start mt-1">
-          <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
-          {refreshing ? 'Refreshing…' : 'Refresh'}
-        </button>
+        <div className="flex items-center gap-3">
+          <Link to="/profile" className="secondary-button text-sm px-4 py-2">
+            {language === 'bn' ? 'প্রোফাইল এডিট' : 'Edit Profile'}
+          </Link>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title="Refresh progress"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/8 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0">
+            <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -349,27 +361,7 @@ export default function Progress() {
 
       {progress && (
         <div className="space-y-6">
-          {/* Daily Goal + Streak Shield Row */}
-          {(() => {
-            const todayKey = (() => {
-              const d = new Date();
-              return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-            })();
-            const screenTimeData = JSON.parse(localStorage.getItem('articulate_screen_time') || '{}');
-            const todayXp = xpLogs
-              .filter(log => {
-                const d = new Date(log.created_at);
-                const logKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                return logKey === todayKey;
-              })
-              .reduce((sum, log) => sum + log.amount, 0);
-            return (
-              <div className="grid gap-4 md:grid-cols-2">
-                <DailyGoalWidget todayXp={todayXp} language={language} />
-                <StreakShieldWidget streakDays={progress.streak_days ?? 0} language={language} />
-              </div>
-            );
-          })()}
+          {/* Spacer replaced by calendar layout later */}
 
           {/* Key Stats Cards Grid */}
           <div className="grid gap-4 sm:grid-cols-3">
@@ -450,148 +442,174 @@ export default function Progress() {
             </div>
           )}
 
-          {/* Streak Calendar Banner */}
-          <div className="card-card p-6 bg-slate-950/40 border border-white/10 relative overflow-hidden">
-            <div className="max-w-md mx-auto">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="card-title text-white flex items-center gap-2 mb-1">
-                    <CalendarDays size={18} className="text-rose-400" />
-                    {t('cal_title')}
-                  </h3>
-                  <p className="text-xs text-slate-400">{t('cal_subtitle')}</p>
-                </div>
-                <div className="flex items-center gap-3 bg-slate-900/50 rounded-lg p-1 border border-white/5">
-                  <button 
-                    onClick={() => {
-                      if (calMonth === 1) { setCalMonth(12); setCalYear(calYear - 1); }
-                      else { setCalMonth(calMonth - 1); }
-                      setSelectedDayDetails(null);
-                    }}
-                    className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <span className="text-sm font-bold text-white min-w-[100px] text-center">
-                    {new Date(calYear, calMonth - 1).toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US', { month: 'long', year: 'numeric' })}
-                  </span>
-                  <button 
-                    onClick={() => {
-                      if (calMonth === 12) { setCalMonth(1); setCalYear(calYear + 1); }
-                      else { setCalMonth(calMonth + 1); }
-                      setSelectedDayDetails(null);
-                    }}
-                    className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Streak Calendar grid */}
-              <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center">
-                {(language === 'bn' 
-                  ? ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহ', 'শুক্র', 'শনি'] 
-                  : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                ).map(day => (
-                  <div key={day} className="text-[10px] font-bold text-slate-500 uppercase py-1">{day}</div>
-                ))}
-                {Array.from({ length: new Date(calYear, calMonth - 1, 1).getDay() }).map((_, i) => (
-                  <div key={`empty-${i}`} className="aspect-square"></div>
-                ))}
-                {Array.from({ length: new Date(calYear, calMonth, 0).getDate() }).map((_, i) => {
-                  const dateNum = i + 1;
-                  const isActive = calendarActiveDates.includes(dateNum);
-                  
-                  // Get logs and XP for this day
-                  const dayLogs = xpLogs.filter(log => {
-                    const logDate = new Date(log.created_at);
-                    return logDate.getDate() === dateNum && 
-                           logDate.getMonth() + 1 === calMonth && 
-                           logDate.getFullYear() === calYear;
-                  });
-                  const dayXp = dayLogs.reduce((sum, log) => sum + log.amount, 0);
-
-                  const isToday = new Date().getDate() === dateNum && new Date().getMonth() + 1 === calMonth && new Date().getFullYear() === calYear;
-                  
-                  // Heatmap logic colors
-                  let cellClass = "";
-                  if (dayXp >= 100) {
-                    cellClass = "bg-rose-600 text-white border border-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.3)] hover:scale-108";
-                  } else if (dayXp >= 50) {
-                    cellClass = "bg-rose-500/40 text-rose-200 border border-rose-500/30 shadow-[0_0_8px_rgba(244,63,94,0.15)] hover:scale-108";
-                  } else if (dayXp > 0 || isActive) {
-                    cellClass = "bg-rose-500/15 text-rose-300 border border-rose-500/20 hover:scale-108";
-                  } else {
-                    cellClass = "bg-slate-900/40 text-slate-500 border border-white/5 hover:bg-slate-900/70 hover:text-slate-300";
-                  }
-                  
-                  return (
-                    <div 
-                      key={dateNum}
-                      onClick={() => {}}
-                      className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold transition-all duration-300 cursor-pointer ${cellClass} ${isToday ? 'ring-2 ring-indigo-500' : ''}`}
-                      title={dayXp > 0 ? `${dayXp} XP` : ''}
-                    >
-                      {dateNum}
+          {/* Streak Calendar & Widgets Row */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <div className="card-card p-6 bg-slate-950/40 border border-white/10 relative overflow-hidden h-full">
+                <div className="max-w-xl mx-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="card-title text-white flex items-center gap-2 mb-1">
+                        <CalendarDays size={18} className="text-rose-400" />
+                        {t('cal_title')}
+                      </h3>
+                      <p className="text-xs text-slate-400">{t('cal_subtitle')}</p>
                     </div>
-                  );
-                })}
-              </div>
-
-              {/* Legend */}
-              <div className="flex flex-wrap items-center justify-between mt-4 pt-4 border-t border-white/5 text-xs text-slate-400 gap-2">
-                <div className="flex items-center gap-1.5">
-                  <span>{t('cal_legend')}</span>
-                  <div className="flex gap-1 items-center ml-1">
-                    <span className="w-3 h-3 rounded bg-slate-900/40 border border-white/5" title={t('cal_legend_none')}></span>
-                    <span className="w-3 h-3 rounded bg-rose-500/15 border border-rose-500/20" title={t('cal_legend_low')}></span>
-                    <span className="w-3 h-3 rounded bg-rose-500/40 border border-rose-500/30" title={t('cal_legend_mid')}></span>
-                    <span className="w-3 h-3 rounded bg-rose-600" title={t('cal_legend_high')}></span>
-                  </div>
-                </div>
-                <div className="font-bold text-slate-300">
-                  {language === 'bn' ? `ধারাবাহিকতা: ${progress.streak_days} দিন` : `Streak: ${progress.streak_days} Days`}
-                </div>
-              </div>
-
-              {/* Day Specific details panel */}
-              {selectedDayDetails && (
-                <div className="mt-5 p-4 rounded-2xl bg-indigo-950/20 border border-indigo-500/15 animate-fade-in text-left">
-                  <div className="flex justify-between items-center border-b border-indigo-500/10 pb-2 mb-3">
-                    <h4 className="text-xs font-black text-indigo-300 flex items-center gap-1.5">
-                      <span>📅</span> {t('cal_selected_details')}: {selectedDayDetails.day} {new Date(calYear, calMonth - 1).toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US', { month: 'long', year: 'numeric' })}
-                    </h4>
-                    <button 
-                      onClick={() => setSelectedDayDetails(null)} 
-                      className="text-[10px] uppercase font-bold tracking-wider text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
-                    >
-                      {language === 'bn' ? 'বন্ধ করুন' : 'Close'}
-                    </button>
-                  </div>
-                  <div className="text-xs text-slate-300">
-                    <div className="mb-2 font-semibold">
-                      {t('prog_xp_earned')}: <span className="text-sm font-black text-indigo-400">+{selectedDayDetails.xp} XP</span>
+                    <div className="flex items-center gap-3 bg-slate-900/50 rounded-lg p-1 border border-white/5">
+                      <button 
+                        onClick={() => {
+                          if (calMonth === 1) { setCalMonth(12); setCalYear(calYear - 1); }
+                          else { setCalMonth(calMonth - 1); }
+                          setSelectedDayDetails(null);
+                        }}
+                        className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <span className="text-sm font-bold text-white min-w-[100px] text-center">
+                        {new Date(calYear, calMonth - 1).toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US', { month: 'long', year: 'numeric' })}
+                      </span>
+                      <button 
+                        onClick={() => {
+                          if (calMonth === 12) { setCalMonth(1); setCalYear(calYear + 1); }
+                          else { setCalMonth(calMonth + 1); }
+                          setSelectedDayDetails(null);
+                        }}
+                        className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
                     </div>
-                    {selectedDayDetails.logs.length > 0 ? (
-                      <div className="space-y-1.5 mt-2">
-                        <div className="font-bold text-slate-400 mb-1">{t('cal_activity_logs')}</div>
-                        {selectedDayDetails.logs.map((log) => (
-                          <div key={log.log_id} className="flex items-center gap-2 p-1.5 rounded-lg bg-white/3 border border-white/5">
-                            <span className="text-indigo-400 font-bold flex-shrink-0">+{log.amount} XP</span>
-                            <span className="text-slate-200 capitalize font-medium">{log.reason ? log.reason.replace('_', ' ') : 'Learning Activity'}</span>
-                            <span className="text-[10px] text-slate-500 font-mono ml-auto">
-                              {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                        ))}
+                  </div>
+
+                  {/* Streak Calendar grid */}
+                  <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center">
+                    {(language === 'bn' 
+                      ? ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহ', 'শুক্র', 'শনি'] 
+                      : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                    ).map(day => (
+                      <div key={day} className="text-[10px] font-bold text-slate-500 uppercase py-1">{day}</div>
+                    ))}
+                    {Array.from({ length: new Date(calYear, calMonth - 1, 1).getDay() }).map((_, i) => (
+                      <div key={`empty-${i}`} className="aspect-square"></div>
+                    ))}
+                    {Array.from({ length: new Date(calYear, calMonth, 0).getDate() }).map((_, i) => {
+                      const dateNum = i + 1;
+                      const isActive = calendarActiveDates.includes(dateNum);
+                      
+                      // Get logs and XP for this day
+                      const dayLogs = xpLogs.filter(log => {
+                        const logDate = new Date(log.created_at);
+                        return logDate.getDate() === dateNum && 
+                               logDate.getMonth() + 1 === calMonth && 
+                               logDate.getFullYear() === calYear;
+                      });
+                      const dayXp = dayLogs.reduce((sum, log) => sum + log.amount, 0);
+
+                      const isToday = new Date().getDate() === dateNum && new Date().getMonth() + 1 === calMonth && new Date().getFullYear() === calYear;
+                      
+                      // Heatmap logic colors
+                      let cellClass = "";
+                      if (dayXp >= 100) {
+                        cellClass = "bg-rose-600 text-white border border-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.3)] hover:scale-108";
+                      } else if (dayXp >= 50) {
+                        cellClass = "bg-rose-500/40 text-rose-200 border border-rose-500/30 shadow-[0_0_8px_rgba(244,63,94,0.15)] hover:scale-108";
+                      } else if (dayXp > 0 || isActive) {
+                        cellClass = "bg-rose-500/15 text-rose-300 border border-rose-500/20 hover:scale-108";
+                      } else {
+                        cellClass = "bg-slate-900/40 text-slate-500 border border-white/5 hover:bg-slate-900/70 hover:text-slate-300";
+                      }
+                      
+                      return (
+                        <div 
+                          key={dateNum}
+                          onClick={() => {}}
+                          className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold transition-all duration-300 cursor-pointer ${cellClass} ${isToday ? 'ring-2 ring-indigo-500' : ''}`}
+                          title={dayXp > 0 ? `${dayXp} XP` : ''}
+                        >
+                          {dateNum}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Legend */}
+                  <div className="flex flex-wrap items-center justify-between mt-4 pt-4 border-t border-white/5 text-xs text-slate-400 gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <span>{t('cal_legend')}</span>
+                      <div className="flex gap-1 items-center ml-1">
+                        <span className="w-3 h-3 rounded bg-slate-900/40 border border-white/5" title={t('cal_legend_none')}></span>
+                        <span className="w-3 h-3 rounded bg-rose-500/15 border border-rose-500/20" title={t('cal_legend_low')}></span>
+                        <span className="w-3 h-3 rounded bg-rose-500/40 border border-rose-500/30" title={t('cal_legend_mid')}></span>
+                        <span className="w-3 h-3 rounded bg-rose-600" title={t('cal_legend_high')}></span>
                       </div>
-                    ) : (
-                      <div className="text-slate-500 italic text-center py-2">{t('cal_no_activity')}</div>
-                    )}
+                    </div>
+                    <div className="font-bold text-slate-300">
+                      {language === 'bn' ? `ধারাবাহিকতা: ${progress.streak_days} দিন` : `Streak: ${progress.streak_days} Days`}
+                    </div>
                   </div>
+
+                  {/* Day Specific details panel */}
+                  {selectedDayDetails && (
+                    <div className="mt-5 p-4 rounded-2xl bg-indigo-950/20 border border-indigo-500/15 animate-fade-in text-left">
+                      <div className="flex justify-between items-center border-b border-indigo-500/10 pb-2 mb-3">
+                        <h4 className="text-xs font-black text-indigo-300 flex items-center gap-1.5">
+                          <span>📅</span> {t('cal_selected_details')}: {selectedDayDetails.day} {new Date(calYear, calMonth - 1).toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US', { month: 'long', year: 'numeric' })}
+                        </h4>
+                        <button 
+                          onClick={() => setSelectedDayDetails(null)} 
+                          className="text-[10px] uppercase font-bold tracking-wider text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
+                        >
+                          {language === 'bn' ? 'বন্ধ করুন' : 'Close'}
+                        </button>
+                      </div>
+                      <div className="text-xs text-slate-300">
+                        <div className="mb-2 font-semibold">
+                          {t('prog_xp_earned')}: <span className="text-sm font-black text-indigo-400">+{selectedDayDetails.xp} XP</span>
+                        </div>
+                        {selectedDayDetails.logs.length > 0 ? (
+                          <div className="space-y-1.5 mt-2">
+                            <div className="font-bold text-slate-400 mb-1">{t('cal_activity_logs')}</div>
+                            {selectedDayDetails.logs.map((log) => (
+                              <div key={log.log_id} className="flex items-center gap-2 p-1.5 rounded-lg bg-white/3 border border-white/5">
+                                <span className="text-indigo-400 font-bold flex-shrink-0">+{log.amount} XP</span>
+                                <span className="text-slate-200 capitalize font-medium">{log.reason ? log.reason.replace('_', ' ') : 'Learning Activity'}</span>
+                                <span className="text-[10px] text-slate-500 font-mono ml-auto">
+                                  {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-slate-500 italic text-center py-2">{t('cal_no_activity')}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+            </div>
+            
+            <div className="flex flex-col gap-6">
+              {(() => {
+                const todayKey = (() => {
+                  const d = new Date();
+                  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                })();
+                const todayXp = xpLogs
+                  .filter(log => {
+                    const d = new Date(log.created_at);
+                    const logKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                    return logKey === todayKey;
+                  })
+                  .reduce((sum, log) => sum + log.amount, 0);
+                return (
+                  <>
+                    <DailyGoalWidget todayXp={todayXp} language={language} />
+                    <StreakShieldWidget streakDays={progress.streak_days ?? 0} language={language} />
+                  </>
+                );
+              })()}
             </div>
           </div>
 

@@ -57,7 +57,7 @@ body {
   font-size: clamp(2rem, 2.5vw, 2.5rem);
   line-height: 1.05;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--text-title);
 }
 
 .page-subtitle {
@@ -169,7 +169,7 @@ body {
 .form-label {
   display: block;
   font-weight: 700;
-  color: #f1f5f9;
+  color: var(--text-title);
   margin-bottom: 0.5rem;
 }
 
@@ -178,11 +178,11 @@ body {
   width: 100%;
   display: block;
   border-radius: 0.95rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
   padding: 0.95rem 1rem;
   margin-top: 0.5rem;
-  background: rgba(255, 255, 255, 0.03);
-  color: #ffffff;
+  background: var(--input-bg);
+  color: var(--text-main);
   outline: none;
   transition: all 0.25s ease;
   box-sizing: border-box;
@@ -222,9 +222,9 @@ body {
 }
 
 .secondary-button {
-  background: rgba(255, 255, 255, 0.03);
-  color: #f1f5f9;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--input-bg);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
 }
 
 .secondary-button:hover {
@@ -372,17 +372,17 @@ body {
 }
 
 .top-bar-left {
-  flex: 1;
+  display: none;
 }
 
 .top-bar-center {
-  flex: 2;
+  flex: 1;
   display: flex;
   justify-content: center;
 }
 
 .top-bar-actions {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: flex-end;

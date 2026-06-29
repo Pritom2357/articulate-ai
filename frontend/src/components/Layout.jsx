@@ -318,37 +318,41 @@ export default function Layout() {
 
 
         <nav className="sidebar-nav">
-          <div className="nav-section-label">{language === 'bn' ? 'শিখুন' : 'Learn'}</div>
+          {user && (
+            <>
+              <div className="nav-section-label">{language === 'bn' ? 'এআই অ্যাসিস্ট্যান্ট' : 'AI Assistant'}</div>
+              <NavLink to="/ai-chat" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+                <span className="nav-icon"><Sparkles size={16} /></span> {t('nav_ai_chat')}
+              </NavLink>
+            </>
+          )}
+
+          <div className="nav-section-label" style={{ marginTop: user ? '0.5rem' : '0' }}>{language === 'bn' ? 'শিখুন' : 'Learn'}</div>
           <NavLink to="/curriculum" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
             <span className="nav-icon"><BookOpen size={16} /></span> {t('nav_curriculum')}
-          </NavLink>
-          <NavLink to="/flashcards" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon"><Layers size={16} /></span> {t('nav_flashcards')}
           </NavLink>
           <NavLink to="/progress" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
             <span className="nav-icon"><BarChart2 size={16} /></span> {t('nav_progress')}
           </NavLink>
+          {user && (
+            <>
+              <NavLink to="/tests" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+                <span className="nav-icon"><ClipboardList size={16} /></span> {t('nav_tests')}
+              </NavLink>
+              <NavLink to="/onboarding" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+                <span className="nav-icon"><ClipboardList size={16} /></span> {t('nav_placement')}
+              </NavLink>
+            </>
+          )}
           <NavLink to="/leaderboard" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
             <span className="nav-icon"><Trophy size={16} /></span> {t('nav_leaderboard')}
+          </NavLink>
+          <NavLink to="/flashcards" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <span className="nav-icon"><Layers size={16} /></span> {t('nav_flashcards')}
           </NavLink>
           <NavLink to="/vocabulary" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
             <span className="nav-icon"><Bookmark size={16} /></span> {t('nav_vocabulary')}
           </NavLink>
-          <NavLink to="/onboarding" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-icon"><ClipboardList size={16} /></span> {t('nav_placement')}
-          </NavLink>
-
-          {user && (
-            <>
-              <div className="nav-section-label" style={{ marginTop: '0.5rem' }}>{language === 'bn' ? 'এআই অ্যাসিস্ট্যান্ট' : 'AI Assistant'}</div>
-              <NavLink to="/ai-chat" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="nav-icon"><Sparkles size={16} /></span> {t('nav_ai_chat')}
-              </NavLink>
-              <NavLink to="/tests" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="nav-icon"><ClipboardList size={16} /></span> {t('nav_tests')}
-              </NavLink>
-            </>
-          )}
         </nav>
 
         <div className="sidebar-footer">
@@ -413,7 +417,7 @@ export default function Layout() {
 
             {/* Profile Avatar */}
             {user ? (
-              <Link to="/profile" className="top-bar-profile" title="Profile">
+              <Link to="/progress" className="top-bar-profile" title="Profile">
                 {user.profile_photo ? (
                   <img src={user.profile_photo} alt={user.name} className="top-bar-avatar" />
                 ) : (
