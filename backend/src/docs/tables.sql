@@ -302,6 +302,7 @@ CREATE TABLE IF NOT EXISTS conversation_sessions (
   ended_at    TIMESTAMPTZ
 );
 
+
 CREATE TABLE IF NOT EXISTS conversation_turns (
   id            SERIAL PRIMARY KEY,
   session_id    INTEGER NOT NULL REFERENCES conversation_sessions(id) ON DELETE CASCADE,
@@ -318,6 +319,26 @@ CREATE TABLE IF NOT EXISTS conversation_turns (
 CREATE INDEX IF NOT EXISTS idx_conv_turns_session ON conversation_turns(session_id, turn_index);
 
 
+CREATE TABLE "chat_messages" (
+	"id" serial PRIMARY KEY,
+	"session_id" integer NOT NULL,
+	"user_id" integer NOT NULL,
+	"role" text NOT NULL,
+	"content" text,
+	"metadata" jsonb,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "chat_messages_role_check" CHECK ((role = ANY (ARRAY['user'::text, 'assistant'::text])))
+);
+
+
+CREATE TABLE "chat_sessions" (
+	"id" serial PRIMARY KEY,
+	"user_id" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
 ---------- phonemes (added from addPhonemeTables.js) ----------
 CREATE TABLE IF NOT EXISTS user_phoneme_scores (
   id SERIAL PRIMARY KEY,
@@ -327,7 +348,7 @@ CREATE TABLE IF NOT EXISTS user_phoneme_scores (
   word_id INTEGER REFERENCES words(id) ON DELETE SET NULL,
   recorded_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
-alter table user_phoneme_scores add column phrase_id INTEGER REFERENCES phrases(id) ON DELETE SET NULL
+alter table user_phoneme_scores add column phrase_id INTEGER REFERENCES phrases(id) ON DELETE SET NULL;
 
 
 CREATE TABLE IF NOT EXISTS user_phoneme_summary (
@@ -339,3 +360,113 @@ CREATE TABLE IF NOT EXISTS user_phoneme_summary (
   mastered BOOLEAN NOT NULL DEFAULT FALSE,
   PRIMARY KEY (user_id, phoneme)
 );
+
+
+--------------- exam system ---------------------
+
+CREATE SCHEMA "public";
+CREATE TYPE "exam_type" AS ENUM('LESSON', 'CHAPTER', 'PROGRESS', 'IELTS', 'PRACTICE');
+CREATE TYPE "exam_status" AS ENUM('GENERATING', 'READY', 'IN_PROGRESS', 'SUBMITTED', 'EVALUATING', 'EVALUATED', 'FAILED');
+CREATE TYPE "question_section" AS ENUM('LISTENING', 'SPEAKING');
+CREATE TYPE "question_item_type" AS ENUM('WORD', 'PHRASE');
+
+CREATE TABLE "exams" (
+	"id" serial PRIMARY KEY,
+	"user_id" integer NOT NULL,
+	"exam_type" exam_type NOT NULL,
+	"status" exam_status DEFAULT 'GENERATING' NOT NULL,
+	"lesson_id" integer,
+	"chapter_id" integer,
+	"title" varchar(255) NOT NULL,
+	"title_bn" varchar(255),
+	"total_marks" integer DEFAULT 0 NOT NULL,
+	"time_limit_seconds" integer DEFAULT 1200,
+	"difficulty_level" integer DEFAULT 3,
+	"obtained_marks" numeric(6, 2),
+	"score_pct" numeric(5, 2),
+	"listening_score" numeric(5, 2),
+	"speaking_score" numeric(5, 2),
+	"feedback_bn" text,
+	"awards_xp" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"started_at" timestamp,
+	"submitted_at" timestamp,
+	"evaluated_at" timestamp,
+	CONSTRAINT "exams_difficulty_level_check" CHECK (((difficulty_level >= 1) AND (difficulty_level <= 5)))
+);
+
+ALTER TABLE "exams" ADD CONSTRAINT "exams_chapter_id_fkey" FOREIGN KEY ("chapter_id") REFERENCES "chapters"("id") ON DELETE SET NULL;
+ALTER TABLE "exams" ADD CONSTRAINT "exams_lesson_id_fkey" FOREIGN KEY ("lesson_id") REFERENCES "lessons"("id") ON DELETE SET NULL;
+ALTER TABLE "exams" ADD CONSTRAINT "exams_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;
+
+
+CREATE TABLE "exam_questions" (
+	"id" serial PRIMARY KEY,
+	"exam_id" integer NOT NULL UNIQUE,
+	"section" question_section NOT NULL,
+	"item_type" question_item_type NOT NULL,
+	"order_num" integer NOT NULL UNIQUE,
+	"text_en" varchar(500) NOT NULL,
+	"text_bn" varchar(500),
+	"audio_url" text,
+	"ipa" varchar(200),
+	"marks" integer DEFAULT 1 NOT NULL,
+	"difficulty" integer DEFAULT 3,
+	"word_id" integer,
+	"phrase_id" integer,
+	CONSTRAINT "exam_questions_exam_id_order_num_key" UNIQUE("exam_id","order_num"),
+	CONSTRAINT "exam_questions_difficulty_check" CHECK (((difficulty >= 1) AND (difficulty <= 5)))
+);
+
+ALTER TABLE "exam_questions" ADD CONSTRAINT "exam_questions_exam_id_fkey" FOREIGN KEY ("exam_id") REFERENCES "exams"("id") ON DELETE CASCADE;
+ALTER TABLE "exam_questions" ADD CONSTRAINT "exam_questions_phrase_id_fkey" FOREIGN KEY ("phrase_id") REFERENCES "phrases"("id") ON DELETE SET NULL;
+ALTER TABLE "exam_questions" ADD CONSTRAINT "exam_questions_word_id_fkey" FOREIGN KEY ("word_id") REFERENCES "words"("id") ON DELETE SET NULL;
+
+
+CREATE TABLE "exam_answers" (
+	"id" serial PRIMARY KEY,
+	"exam_id" integer NOT NULL UNIQUE,
+	"question_id" integer NOT NULL UNIQUE,
+	"typed_answer" text,
+	"audio_url" text,
+	"audio_buffer" bytea,
+	"is_correct" boolean,
+	"marks_awarded" numeric(4, 2) DEFAULT '0',
+	"accuracy_score" numeric(5, 2),
+	"feedback" text,
+	"submitted_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "exam_answers_exam_id_question_id_key" UNIQUE("exam_id","question_id")
+);
+
+ALTER TABLE "exam_answers" ADD CONSTRAINT "exam_answers_exam_id_fkey" FOREIGN KEY ("exam_id") REFERENCES "exams"("id") ON DELETE CASCADE;
+ALTER TABLE "exam_answers" ADD CONSTRAINT "exam_answers_question_id_fkey" FOREIGN KEY ("question_id") REFERENCES "exam_questions"("id") ON DELETE CASCADE;
+
+
+
+----------------- indexes -----------------
+
+CREATE INDEX "idx_chat_messages_session" ON "chat_messages" ("session_id","created_at");
+CREATE INDEX "idx_conv_turns_session" ON "conversation_turns" ("session_id","turn_index");
+CREATE UNIQUE INDEX "exam_answers_exam_id_question_id_key" ON "exam_answers" ("exam_id","question_id");
+CREATE UNIQUE INDEX "exam_questions_exam_id_order_num_key" ON "exam_questions" ("exam_id","order_num");
+CREATE INDEX "idx_exams_type" ON "exams" ("exam_type");
+CREATE INDEX "idx_exams_user_status" ON "exams" ("user_id","status");
+CREATE UNIQUE INDEX "lesson_phrases_lesson_id_phrase_id_key" ON "lesson_phrases" ("lesson_id","phrase_id");
+CREATE UNIQUE INDEX "lesson_words_word_id_lesson_id_key" ON "lesson_words" ("word_id","lesson_id");
+CREATE UNIQUE INDEX "lessons_chapter_id_order_num_key" ON "lessons" ("chapter_id","order_num");
+CREATE INDEX "idx_notif_multicast" ON "notifications" ("multicast");
+CREATE UNIQUE INDEX "phrases_phrase_en_key" ON "phrases" ("phrase_en");
+CREATE UNIQUE INDEX "test_attempts_attempt_id_question_id_key" ON "test_attempts" ("attempt_id","question_id");
+CREATE UNIQUE INDEX "test_questions_test_id_order_num_key" ON "test_questions" ("test_id","order_num");
+CREATE UNIQUE INDEX "user_lesson_progress_user_id_lesson_id_key" ON "user_lesson_progress" ("user_id","lesson_id");
+CREATE INDEX "idx_user_
+ALTER TABLE "chat_messages" ADD CONSTRAINT "chat_messages_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "chat_sessions"("id") ON DELETE CASCADE;
+ALTER TABLE "chat_messages" ADD CONSTRAINT "chat_messages_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;
+ALTER TABLE "chat_sessions" ADD CONSTRAINT "chat_sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;
+ALTER TABLE "conversation_sessions" ADD CONSTRAINT "conversation_sessions_chapter_id_fkey" FOREIGN KEY ("chapter_id") REFERENCES "chapters"("id") ON DELETE CASCADE;
+ALTER TABLE "conversation_sessions" ADD CONSTRAINT "conversation_sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;
+ALTER TABLE "conversation_turns" ADD CONSTRAINT "conversation_turns_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "conversation_sessions"("id") ON DELETE CASCADE;phoneme_scores_user" ON "user_phoneme_scores" ("user_id");
+CREATE UNIQUE INDEX "user_word_progress_user_id_word_id_key" ON "user_word_progress" ("user_id","word_id");
+CREATE UNIQUE INDEX "users_email_key" ON "users" ("email");
+CREATE UNIQUE INDEX "users_phone_key" ON "users" ("phone");
+CREATE UNIQUE INDEX "words_word_key" ON "words" ("word");

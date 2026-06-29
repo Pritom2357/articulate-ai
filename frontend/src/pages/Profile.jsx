@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
 import { updateProfile, uploadAvatar, deactivateAccount, deleteAccount } from '../api/user.js';
-import { AlertTriangle, Trash2, PowerOff } from 'lucide-react';
-import AvatarUploader from '../components/AvatarUploader.jsx';
+import { AlertTriangle, Trash2, PowerOff, Camera, Loader2 } from 'lucide-react';
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articulate_female.jpeg';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
@@ -18,6 +17,7 @@ export default function Profile() {
   const [guidePref, setGuidePref] = useState('MALE');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,7 +25,9 @@ export default function Profile() {
       setName(user.name || '');
       setPhone(user.phone || '');
       setGender(user.gender || '');
-      setDob(user.date_of_birth || '');
+      // Ensure date is formatted as YYYY-MM-DD for the HTML date input
+      const formattedDob = user.date_of_birth ? user.date_of_birth.split('T')[0] : '';
+      setDob(formattedDob);
       setGuidePref(user.guide_preference || 'MALE');
     }
   }, [user]);
@@ -49,13 +51,18 @@ export default function Profile() {
     }
   }
 
-  async function handleAvatar(file) {
+  async function handleAvatarChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
     try {
+      setAvatarUploading(true);
       await uploadAvatar(user.id, file);
-      setMessage('Avatar uploaded.');
+      setMessage('Avatar uploaded successfully.');
       refreshUser();
     } catch (err) {
       setError(err.payload?.error || err.message || 'Avatar upload failed');
+    } finally {
+      setAvatarUploading(false);
     }
   }
 
@@ -91,23 +98,60 @@ export default function Profile() {
     <div className="page-container">
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <div className="profile-card">
-          <div className="profile-avatar">
-            {user.profile_photo ? (
-              <img src={user.profile_photo} alt="Profile" className="rounded-full" />
-            ) : (
-              <div className="avatar-placeholder">{user.name?.charAt(0).toUpperCase() || 'U'}</div>
+          <div className="relative w-[120px] h-[120px] mx-auto">
+            <div className="profile-avatar relative w-full h-full overflow-hidden shadow-xl border-4" style={{ borderColor: 'var(--card-bg)' }}>
+              {avatarUploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+                  <Loader2 className="animate-spin text-white" size={32} />
+                </div>
+              )}
+              {user.profile_photo ? (
+                <img src={user.profile_photo} alt="Profile" className="rounded-full w-full h-full object-cover" />
+              ) : (
+                <div className="avatar-placeholder w-full h-full flex items-center justify-center">
+                  {user.name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+              )}
+            </div>
+            <label 
+              className="absolute bottom-0 right-0 bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-full cursor-pointer shadow-lg border-4 transition-transform hover:scale-110 z-20 flex items-center justify-center"
+              style={{ borderColor: 'var(--card-bg)' }}
+              title="Change Profile Photo"
+            >
+              <Camera size={16} />
+              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={avatarUploading} />
+            </label>
+          </div>
+          
+          <h2 className="text-2xl font-bold mt-2 text-center" style={{ color: 'var(--text-title)' }}>{user.name}</h2>
+          <p className="text-sm text-center mb-2" style={{ color: 'var(--text-subtitle)' }}>{user.email}</p>
+          
+          <div className="w-full space-y-4 pt-6 mt-2 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div className="flex justify-between items-center text-sm">
+              <span className="font-semibold" style={{ color: 'var(--text-subtitle)' }}>Role</span>
+              <span className="font-bold px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20">{user.role || 'Student'}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="font-semibold" style={{ color: 'var(--text-subtitle)' }}>Status</span>
+              <span className="font-bold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20">{user.is_active ? 'Active' : 'Inactive'}</span>
+            </div>
+            {user.phone && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="font-semibold" style={{ color: 'var(--text-subtitle)' }}>Phone</span>
+                <span className="font-medium" style={{ color: 'var(--text-title)' }}>{user.phone}</span>
+              </div>
+            )}
+            {user.gender && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="font-semibold" style={{ color: 'var(--text-subtitle)' }}>Gender</span>
+                <span className="font-medium capitalize" style={{ color: 'var(--text-title)' }}>{user.gender.toLowerCase()}</span>
+              </div>
             )}
           </div>
-          <h2 className="text-2xl font-semibold">{user.name}</h2>
-          <p className="text-sm text-slate-500">{user.email}</p>
-          <div className="mt-4 space-y-2 text-sm text-slate-600">
-            <p><strong>Role:</strong> {user.role || 'Student'}</p>
-            <p><strong>Status:</strong> {user.is_active ? 'Active' : 'Inactive'}</p>
-          </div>
-          <Link to="/profile/change-password" className="secondary-button mt-6 block text-center">
+          
+          <Link to="/profile/change-password" className="secondary-button mt-6 w-full text-center flex justify-center">
             Change password
           </Link>
-          <AvatarUploader userId={user.id} onUpload={handleAvatar} />
         </div>
 
         <div className="form-card">
@@ -147,7 +191,7 @@ export default function Profile() {
                     <img src={maleAvatar} alt="Rohit" className="w-full h-full object-cover" />
                   </div>
                   <div>
-                    <div className="font-bold text-xs text-white">{language === 'bn' ? 'Rohit (রোহিত)' : 'Rohit'}</div>
+                    <div className="font-bold text-xs" style={{ color: 'var(--text-title)' }}>{language === 'bn' ? 'Rohit (রোহিত)' : 'Rohit'}</div>
                     <div className="text-slate-400" style={{ fontSize: '10px' }}>Male Tutor Guide</div>
                   </div>
                 </div>
@@ -163,7 +207,7 @@ export default function Profile() {
                     <img src={femaleAvatar} alt="Riya" className="w-full h-full object-cover" />
                   </div>
                   <div>
-                    <div className="font-bold text-xs text-white">{language === 'bn' ? 'Riya (রিয়া)' : 'Riya'}</div>
+                    <div className="font-bold text-xs" style={{ color: 'var(--text-title)' }}>{language === 'bn' ? 'Riya (রিয়া)' : 'Riya'}</div>
                     <div className="text-slate-400" style={{ fontSize: '10px' }}>Female Tutor Guide</div>
                   </div>
                 </div>
@@ -203,7 +247,7 @@ export default function Profile() {
         </h2>
         <div className="card-card bg-rose-950/10 border border-rose-500/20 p-6 rounded-2xl grid md:grid-cols-2 gap-6 items-center">
           <div>
-            <h3 className="font-bold text-white text-sm mb-1">{language === 'bn' ? 'অ্যাকাউন্ট নিষ্ক্রিয় করুন (Deactivate)' : 'Deactivate Account'}</h3>
+            <h3 className="font-bold text-sm mb-1" style={{ color: 'var(--text-title)' }}>{language === 'bn' ? 'অ্যাকাউন্ট নিষ্ক্রিয় করুন (Deactivate)' : 'Deactivate Account'}</h3>
             <p className="text-xs text-slate-400">{language === 'bn' ? 'আপনার অ্যাকাউন্ট সাময়িকভাবে লুকিয়ে রাখুন। আপনি পরে আবার লগ ইন করে এটি চালু করতে পারবেন।' : 'Temporarily hide your account. You can log back in later to reactivate it.'}</p>
           </div>
           <div className="flex md:justify-end">

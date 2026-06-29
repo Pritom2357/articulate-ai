@@ -432,7 +432,7 @@ export default function LessonDetails() {
         ].map((s) => (
           <button
             key={s.step}
-            onClick={() => goToStep(s.step)}
+            // onClick={() => goToStep(s.step)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer border-none ${wizardStep === s.step
               ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-md'
               : wizardStep > s.step
