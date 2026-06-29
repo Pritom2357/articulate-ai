@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, Play, ArrowLeft, Mic, Award, CheckCircle, XCircle, Headphones, Loader2 } from 'lucide-react';
-import { generateExam, submitExamAnswers, getExamResults, getAnswerAudioBlobUrl } from '../api/exam.js';
+import { ClipboardList, Play, ArrowLeft, Mic, Award, CheckCircle, XCircle, Headphones, Loader2, BookOpen, Layers, History, ChevronRight } from 'lucide-react';
+import { generateExam, submitExamAnswers, getExamResults, getAnswerAudioBlobUrl, getExamHistory } from '../api/exam.js';
+import { getChapters, getLessonsByChapter } from '../api/curriculum.js';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 
 const AuthAudioPlayer = ({ answerId }) => {
@@ -28,7 +29,7 @@ export default function Tests() {
   const { language } = useThemeLanguage();
   
   // STATES
-  const [view, setView] = useState('HUB'); // 'HUB' | 'ACTIVE' | 'EVALUATING' | 'RESULT'
+  const [view, setView] = useState('HUB'); // 'HUB' | 'PICKER' | 'ACTIVE' | 'EVALUATING' | 'RESULT'
   const [loadingType, setLoadingType] = useState(null);
   const [error, setError] = useState('');
   
@@ -51,6 +52,17 @@ export default function Tests() {
   // Polling / Results
   const pollIntervalRef = useRef(null);
   const [results, setResults] = useState(null);
+
+  // Lesson / Chapter picker
+  const [pickerType, setPickerType] = useState(null); // 'LESSON' | 'CHAPTER'
+  const [chapters, setChapters] = useState([]);
+  const [lessons, setLessons] = useState([]);
+  const [selectedChapter, setSelectedChapter] = useState(null);
+  const [pickerLoading, setPickerLoading] = useState(false);
+
+  // Exam history
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // Reset audio when question changes
   useEffect(() => {
@@ -79,18 +91,27 @@ export default function Tests() {
     };
   }, []);
 
-  const handleStartExam = async (examType) => {
+  // Fetch exam history on mount
+  useEffect(() => {
+    setHistoryLoading(true);
+    getExamHistory().then(data => {
+      setHistory(Array.isArray(data?.data) ? data.data : []);
+    }).catch(() => {}).finally(() => setHistoryLoading(false));
+  }, []);
+
+  const handleStartExam = async (examType, extraParams = {}) => {
     try {
       setLoadingType(examType);
       setError('');
-      // Generate exam — backend now returns { success, examId, exam, questions }
-      const data = await generateExam({ examType });
+      const data = await generateExam({ examType, ...extraParams });
       if (data.success && data.exam && data.questions) {
         setExam(data.exam);
         setQuestions(data.questions);
         setAnswers({});
         setCurrentQuestionIndex(0);
         setView('ACTIVE');
+        setSelectedChapter(null);
+        setLessons([]);
       } else {
         setError(data.message || 'Failed to generate exam.');
       }
@@ -99,6 +120,38 @@ export default function Tests() {
       setError(err.message || err.error || 'Failed to start exam.');
     } finally {
       setLoadingType(null);
+    }
+  };
+
+  const openPicker = async (type) => {
+    setPickerType(type);
+    setView('PICKER');
+    setSelectedChapter(null);
+    setLessons([]);
+    setError('');
+    setPickerLoading(true);
+    try {
+      const chaps = await getChapters();
+      setChapters(chaps || []);
+    } catch (e) {
+      setError('Failed to load chapters.');
+    } finally {
+      setPickerLoading(false);
+    }
+  };
+
+  const selectChapterInPicker = async (chapter) => {
+    setSelectedChapter(chapter);
+    if (pickerType === 'LESSON') {
+      setPickerLoading(true);
+      try {
+        const lsns = await getLessonsByChapter(chapter.id);
+        setLessons(lsns || []);
+      } catch (e) {
+        setError('Failed to load lessons.');
+      } finally {
+        setPickerLoading(false);
+      }
     }
   };
 
@@ -251,53 +304,169 @@ export default function Tests() {
         {error && <div className="glass-alert glass-alert-error mb-4">{error}</div>}
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {/* Mock EXAM Types */}
+          {/* Progress Exam */}
           <div className="card-card p-5 border border-indigo-500/20 hover:border-indigo-500/60 transition bg-indigo-950/20 flex flex-col justify-between">
             <div>
               <h3 className="text-lg font-bold text-white mb-2">Progress Exam</h3>
               <p className="text-sm text-slate-400 mb-4">Based on your weak words and recent progress. Awards XP.</p>
             </div>
-            <button
-              onClick={() => handleStartExam('PROGRESS')}
-              disabled={loadingType !== null}
-              className="primary-button flex items-center justify-center gap-2"
-            >
-              {loadingType === 'PROGRESS' ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />} 
-              Start Exam
+            <button onClick={() => handleStartExam('PROGRESS')} disabled={loadingType !== null} className="primary-button flex items-center justify-center gap-2">
+              {loadingType === 'PROGRESS' ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />} Start Exam
             </button>
           </div>
-          
+
+          {/* IELTS Mock */}
           <div className="card-card p-5 bg-slate-900/50 border border-white/5 flex flex-col items-start text-left hover:bg-slate-800/50 transition relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition duration-500"></div>
             <h3 className="font-bold text-white text-lg mb-2 z-10">IELTS Mock</h3>
-            <p className="text-slate-400 text-sm mb-6 flex-1 z-10">
-              Band 4-6 style everyday topics. High XP reward.
-            </p>
-            <button
-              onClick={() => handleStartExam('IELTS')}
-              disabled={!!loadingType}
-              className="w-full bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2 z-10"
-            >
-              {loadingType === 'IELTS' ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-              Start IELTS
+            <p className="text-slate-400 text-sm mb-6 flex-1 z-10">Band 4-6 style everyday topics. High XP reward.</p>
+            <button onClick={() => handleStartExam('IELTS')} disabled={!!loadingType} className="w-full bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2 z-10">
+              {loadingType === 'IELTS' ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />} Start IELTS
             </button>
           </div>
-          
+
+          {/* Lesson Exam */}
+          <div className="card-card p-5 border border-violet-500/20 hover:border-violet-500/60 transition bg-violet-950/20 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-2"><BookOpen size={16} className="text-violet-400" /><h3 className="text-lg font-bold text-white">Lesson Exam</h3></div>
+              <p className="text-sm text-slate-400 mb-4">Test a specific lesson's words & phrases. Awards XP.</p>
+            </div>
+            <button onClick={() => openPicker('LESSON')} disabled={!!loadingType} className="bg-violet-600 hover:bg-violet-500 text-white font-bold py-2 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+              <BookOpen size={16} /> Select Lesson
+            </button>
+          </div>
+
+          {/* Chapter Exam */}
+          <div className="card-card p-5 border border-amber-500/20 hover:border-amber-500/60 transition bg-amber-950/20 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-2"><Layers size={16} className="text-amber-400" /><h3 className="text-lg font-bold text-white">Chapter Exam</h3></div>
+              <p className="text-sm text-slate-400 mb-4">Test an entire chapter across all its lessons. Awards XP.</p>
+            </div>
+            <button onClick={() => openPicker('CHAPTER')} disabled={!!loadingType} className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+              <Layers size={16} /> Select Chapter
+            </button>
+          </div>
+
+          {/* Practice Exam */}
           <div className="card-card p-5 border border-emerald-500/20 hover:border-emerald-500/60 transition bg-emerald-950/20 flex flex-col justify-between">
             <div>
               <h3 className="text-lg font-bold text-white mb-2">Practice Exam</h3>
               <p className="text-sm text-slate-400 mb-4">Casual practice to keep your streak alive. No XP awarded.</p>
             </div>
-            <button
-              onClick={() => handleStartExam('PRACTICE')}
-              disabled={loadingType !== null}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2"
-            >
-              {loadingType === 'PRACTICE' ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />} 
-              Start Practice
+            <button onClick={() => handleStartExam('PRACTICE')} disabled={loadingType !== null} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+              {loadingType === 'PRACTICE' ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />} Start Practice
             </button>
           </div>
         </div>
+
+        {/* Exam History */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-bold text-white flex items-center gap-2"><History size={16} className="text-slate-400" /> Recent Exams</h2>
+            <button
+              onClick={() => navigate('/exam-history')}
+              className="text-xs text-indigo-400 hover:text-indigo-300 transition font-semibold"
+            >
+              View Full History →
+            </button>
+          </div>
+          {historyLoading ? (
+            <div className="flex items-center gap-2 text-slate-400 text-sm"><Loader2 size={14} className="animate-spin" /> Loading history...</div>
+          ) : history.length === 0 ? (
+            <p className="text-slate-500 text-sm">No exams taken yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {history.slice(0, 5).map(h => (
+                <div
+                  key={h.id}
+                  onClick={() => navigate('/exam-history')}
+                  className="card-card p-3 flex items-center justify-between border border-white/5 hover:bg-white/5 transition cursor-pointer"
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-white">{h.title}</div>
+                    <div className="text-xs text-slate-400">{h.exam_type} • {new Date(h.created_at).toLocaleDateString()}</div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {h.status === 'EVALUATED' ? (
+                      <span className="text-sm font-bold text-emerald-400">{Math.round(h.score_pct ?? 0)}%</span>
+                    ) : (
+                      <span className="text-xs text-slate-500 capitalize">{h.status?.toLowerCase()}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+      </div>
+    );
+  }
+
+  // --- PICKER VIEW (Lesson / Chapter selection) ---
+  if (view === 'PICKER') {
+    return (
+      <div className="page-container" style={{ maxWidth: '800px' }}>
+        <div className="page-header border-b border-white/10 pb-4 mb-6">
+          <div className="flex items-center gap-3">
+            <button onClick={() => { setView('HUB'); setError(''); }} className="text-slate-400 hover:text-white transition"><ArrowLeft size={20} /></button>
+            <h1 className="page-title text-indigo-400">{pickerType === 'LESSON' ? 'Select a Lesson' : 'Select a Chapter'}</h1>
+          </div>
+        </div>
+        {error && <div className="glass-alert glass-alert-error mb-4">{error}</div>}
+        {pickerLoading ? (
+          <div className="flex items-center gap-2 text-slate-400"><Loader2 className="animate-spin" size={16} /> Loading...</div>
+        ) : (
+          <div className="space-y-3">
+            {/* Chapter list */}
+            {chapters.map(ch => (
+              <div key={ch.id}>
+                <button
+                  onClick={() => {
+                    if (pickerType === 'CHAPTER') {
+                      handleStartExam('CHAPTER', { chapterId: ch.id });
+                    } else {
+                      selectChapterInPicker(ch);
+                    }
+                  }}
+                  disabled={!!loadingType}
+                  className="w-full card-card p-4 flex items-center justify-between border border-white/5 hover:bg-white/5 transition text-left"
+                >
+                  <div>
+                    <div className="font-semibold text-white text-sm">{ch.title || ch.title_en || `Chapter ${ch.id}`}</div>
+                    {ch.title_bn && <div className="text-xs text-slate-400">{ch.title_bn}</div>}
+                  </div>
+                  {loadingType === 'CHAPTER' && pickerType === 'CHAPTER' ? (
+                    <Loader2 size={16} className="animate-spin text-slate-400" />
+                  ) : (
+                    <ChevronRight size={16} className="text-slate-400" />
+                  )}
+                </button>
+                {/* Lesson list under selected chapter */}
+                {pickerType === 'LESSON' && selectedChapter?.id === ch.id && (
+                  <div className="ml-4 mt-2 space-y-2">
+                    {pickerLoading ? (
+                      <div className="flex items-center gap-2 text-slate-400 text-sm"><Loader2 size={14} className="animate-spin" /> Loading lessons...</div>
+                    ) : lessons.map(ls => (
+                      <button
+                        key={ls.id}
+                        onClick={() => handleStartExam('LESSON', { lessonId: ls.id })}
+                        disabled={!!loadingType}
+                        className="w-full card-card p-3 flex items-center justify-between border border-violet-500/20 hover:bg-violet-950/30 transition text-left"
+                      >
+                        <div>
+                          <div className="font-semibold text-white text-sm">{ls.title || ls.title_en || `Lesson ${ls.id}`}</div>
+                          {ls.title_bn && <div className="text-xs text-slate-400">{ls.title_bn}</div>}
+                        </div>
+                        {loadingType === 'LESSON' ? <Loader2 size={14} className="animate-spin text-slate-400" /> : <Play size={14} className="text-violet-400" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
