@@ -185,7 +185,7 @@ export default function Curriculum() {
               ${isLocked
                 ? 'bg-slate-950/60 border-white/5 opacity-55 cursor-not-allowed'
                 : isSkipped
-                  ? 'bg-slate-950/40 border-white/8 opacity-70 hover:opacity-90 hover:border-slate-500/40'
+                  ? 'bg-gradient-to-br from-slate-950/40 to-amber-950/10 border-amber-500/15 hover:border-amber-500/35 hover:scale-[1.02] hover:shadow-[0_15px_30px_rgba(245,158,11,0.06)]'
                   : isCompleted
                     ? 'bg-slate-950/40 border-green-500/20 hover:border-green-500/35 hover:scale-[1.02] hover:shadow-[0_15px_30px_rgba(34,197,94,0.06)]'
                     : 'bg-slate-950/40 border-white/10 hover:border-indigo-500/40 hover:scale-[1.02] hover:shadow-[0_15px_30px_rgba(99,102,241,0.06)]'
@@ -194,7 +194,7 @@ export default function Curriculum() {
               {/* Glow blob */}
               {!isLocked && (
                 <div className={`absolute top-0 right-0 w-20 h-20 rounded-full filter blur-lg pointer-events-none transition-colors
-                  ${isCompleted ? 'bg-green-500/5 group-hover:bg-green-500/10' : 'bg-indigo-500/5 group-hover:bg-indigo-500/10'}`} />
+                  ${isCompleted ? 'bg-green-500/5 group-hover:bg-green-500/10' : isSkipped ? 'bg-amber-500/5 group-hover:bg-amber-500/10' : 'bg-indigo-500/5 group-hover:bg-indigo-500/10'}`} />
               )}
 
               <div>
@@ -210,7 +210,7 @@ export default function Curriculum() {
                     </span>
                   )}
                   {isSkipped && (
-                    <span className="flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full border bg-slate-700/40 text-slate-500 border-slate-600/40">
+                    <span className="flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full border bg-amber-500/10 text-amber-400 border-amber-500/25">
                       <SkipForward size={9} /> Skipped
                     </span>
                   )}
@@ -233,7 +233,7 @@ export default function Curriculum() {
 
                 {/* Title */}
                 <h2 className={`text-xl font-extrabold tracking-wide mb-2 transition-colors
-                  ${isLocked ? 'text-slate-600' : isSkipped ? 'text-slate-500' : 'text-white group-hover:text-indigo-400'}`}>
+                  ${isLocked ? 'text-slate-600' : isSkipped ? 'text-slate-300 group-hover:text-amber-400' : 'text-white group-hover:text-indigo-400'}`}>
                   {language === 'bn' ? (chapter.title_bn || chapter.title) : chapter.title}
                 </h2>
 
@@ -262,7 +262,7 @@ export default function Curriculum() {
               {/* Bottom action row */}
               <div className={`mt-6 flex items-center justify-between text-xs font-bold pt-4 border-t border-white/5 transition-colors
                 ${isLocked   ? 'text-slate-700'
-                : isSkipped  ? 'text-slate-500 group-hover:text-slate-400'
+                : isSkipped  ? 'text-amber-500 group-hover:text-amber-400'
                 : isCompleted? 'text-green-500 group-hover:text-green-400'
                 :              'text-indigo-400 group-hover:text-indigo-300'}`}>
                 {isLocked   && <span className="flex items-center gap-1.5"><Lock size={11} /> Complete the previous chapter first</span>}

@@ -439,6 +439,68 @@ export default function Progress() {
                   </div>
                 </div>
               </div>
+
+              {/* Placement Test History Timeline */}
+              {progress.onboarding_history && progress.onboarding_history.length > 1 && (
+                <div className="mt-6 pt-5 border-t border-white/8">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <Clock size={12} />
+                    {language === 'bn' ? 'প্লেসমেন্ট টেস্ট ইতিহাস' : 'Placement Test History'}
+                    <span className="text-[10px] text-slate-500 font-bold ml-1">({progress.onboarding_history.length} {language === 'bn' ? 'টি প্রচেষ্টা' : 'attempts'})</span>
+                  </h4>
+                  <div className="space-y-2.5">
+                    {progress.onboarding_history.map((attempt, idx) => {
+                      const isLatest = idx === 0;
+                      const levelColor = attempt.assessed_level === 'B1' ? 'text-green-400 border-green-500/30 bg-green-500/10'
+                        : attempt.assessed_level === 'A2' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10'
+                        : 'text-slate-400 border-slate-500/30 bg-slate-500/10';
+                      return (
+                        <div key={idx} className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 ${
+                          isLatest
+                            ? 'bg-indigo-500/8 border-indigo-500/25'
+                            : 'bg-white/2 border-white/5 hover:border-white/10'
+                        }`}>
+                          {/* Attempt number */}
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                            isLatest ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-white/5 text-slate-500 border border-white/5'
+                          }`}>
+                            {progress.onboarding_history.length - idx}
+                          </div>
+
+                          {/* Level badge */}
+                          <span className={`text-xs font-black px-2 py-0.5 rounded-md border shrink-0 ${levelColor}`}>
+                            {attempt.assessed_level}
+                          </span>
+
+                          {/* Scores */}
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap">
+                              {language === 'bn' ? 'ভোক:' : 'Vocab:'} <span className="text-indigo-400">{Math.round(attempt.vocab_score)}%</span>
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap">
+                              {language === 'bn' ? 'উচ্চা:' : 'Pron:'} <span className="text-cyan-400">{Math.round(attempt.pronunciation_score)}%</span>
+                            </span>
+                          </div>
+
+                          {/* Date */}
+                          <span className="text-[10px] text-slate-500 font-semibold whitespace-nowrap shrink-0">
+                            {new Date(attempt.assessed_at).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US', {
+                              month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                            })}
+                          </span>
+
+                          {/* Latest badge */}
+                          {isLatest && (
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shrink-0 uppercase">
+                              {language === 'bn' ? 'সর্বশেষ' : 'Latest'}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

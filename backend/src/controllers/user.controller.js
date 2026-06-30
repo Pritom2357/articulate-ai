@@ -195,7 +195,8 @@ class UserController {
             if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
             const count = await this.userModel.getOnboardingAttemptCount(userId);
-            return res.status(200).json({ success: true, attempts: count, maxAttempts: 3 });
+            const bestResult = await this.userModel.getBestOnboardingResult(userId);
+            return res.status(200).json({ success: true, attempts: count, maxAttempts: 3, bestResult });
         } catch (error) {
             console.error('Get onboarding attempts error:', error);
             return res.status(500).json({ success: false, error: 'Internal server error' });
