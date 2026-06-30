@@ -604,6 +604,70 @@ class ProgressModel {
     }
 
 
+    getDashboardData = async (userId) => {
+        try {
+            const statsQuery = `SELECT * FROM vw_user_stats WHERE user_id = $1`;
+            const bestWordsQuery = `
+                SELECT w.word, w.bangla_meaning, w.ipa, uwp.streak, uwp.correct_count, uwp.wrong_count, uwp.familiarity
+                FROM user_word_progress uwp
+                JOIN words w ON w.id = uwp.word_id
+                WHERE uwp.user_id = $1 AND uwp.familiarity = 'MASTERED'
+                ORDER BY uwp.streak DESC, uwp.correct_count DESC
+                LIMIT 3
+            `;
+            const worstWordsQuery = `
+                SELECT w.word, w.bangla_meaning, w.ipa, uwp.streak, uwp.correct_count, uwp.wrong_count, uwp.familiarity
+                FROM user_word_progress uwp
+                JOIN words w ON w.id = uwp.word_id
+                WHERE uwp.user_id = $1 AND uwp.wrong_count > 0
+                ORDER BY uwp.wrong_count DESC, uwp.streak ASC
+                LIMIT 3
+            `;
+            const currentChapterQuery = `
+                SELECT c.id, c.title, c.title_bn, vcp.completion_pct, vcp.completed_lessons, vcp.total_lessons, vcp.status
+                FROM vw_user_chapter_progress vcp
+                JOIN chapters c ON c.id = vcp.chapter_id
+                WHERE vcp.user_id = $1 AND vcp.status != 'COMPLETED'
+                ORDER BY vcp.chapter_order ASC
+                LIMIT 1
+            `;
+            const xp7DayQuery = `
+                SELECT DATE(created_at) AS day, SUM(amount) AS total_xp
+                FROM user_xp_log
+                WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '7 days'
+                GROUP BY DATE(created_at)
+                ORDER BY day ASC
+            `;
+            const wordCountQuery = `
+                SELECT
+                    COUNT(*) FILTER (WHERE familiarity = 'MASTERED') AS mastered,
+                    COUNT(*) FILTER (WHERE familiarity = 'FAMILIAR') AS familiar,
+                    COUNT(*) FILTER (WHERE familiarity = 'LEARNING') AS learning
+                FROM user_word_progress WHERE user_id = $1
+            `;
+
+            const [statsRes, bestRes, worstRes, chapterRes, xpRes, wordCountRes] = await Promise.all([
+                this.db_connection.query_executor(statsQuery, [userId]),
+                this.db_connection.query_executor(bestWordsQuery, [userId]),
+                this.db_connection.query_executor(worstWordsQuery, [userId]),
+                this.db_connection.query_executor(currentChapterQuery, [userId]),
+                this.db_connection.query_executor(xp7DayQuery, [userId]),
+                this.db_connection.query_executor(wordCountQuery, [userId]),
+            ]);
+
+            return {
+                stats: statsRes.rows[0] || { xp: 0, level: 1, streak_days: 0 },
+                best_words: bestRes.rows,
+                worst_words: worstRes.rows,
+                current_chapter: chapterRes.rows[0] || null,
+                xp_7days: xpRes.rows,
+                word_counts: wordCountRes.rows[0] || { mastered: 0, familiar: 0, learning: 0 },
+            };
+        } catch (error) {
+            throw new Error(`Failed to get dashboard data: ${error.message}`);
+        }
+    }
+
     // later additions
     getChapterConversationPoints = async (chapterId) => {
         try {

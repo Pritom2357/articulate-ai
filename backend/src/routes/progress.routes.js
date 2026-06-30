@@ -57,4 +57,10 @@ progressRouter.get(
     progressController.getXPLog
 );
 
+progressRouter.get(
+    '/dashboard',
+    authenticateToken.authenticateToken,
+    progressController.getDashboard
+);
+
 module.exports = { progressRouter };

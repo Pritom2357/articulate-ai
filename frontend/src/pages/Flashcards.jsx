@@ -1,19 +1,43 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { getDueFlashcards, reviewFlashcard } from '../api/progress.js';
 import useAuth from '../hooks/useAuth.js';
-import { Award, Volume2, Sparkles, ShieldAlert, RotateCcw } from 'lucide-react';
+import { Award, Volume2, Sparkles, ShieldAlert, RotateCcw, RefreshCw, BookOpen } from 'lucide-react';
 import { playWordAudio } from '../utils/playWordAudio.js';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
+import PageLoader from '../components/PageLoader.jsx';
 
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articulate_female.jpeg';
 
+// ─── Cache helpers ────────────────────────────────────────────────────────────
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 min — flashcards change after each review
+
+function cacheKey(userId) { return `articulate_flashcards_${userId}`; }
+
+function readCache(userId) {
+  try {
+    const raw = localStorage.getItem(cacheKey(userId));
+    if (!raw) return null;
+    const { cards, cachedAt } = JSON.parse(raw);
+    if (Date.now() - cachedAt > CACHE_TTL_MS) return null;
+    return cards;
+  } catch { return null; }
+}
+
+function writeCache(userId, cards) {
+  try { localStorage.setItem(cacheKey(userId), JSON.stringify({ cards, cachedAt: Date.now() })); } catch { /* quota */ }
+}
+
+function clearCache(userId) {
+  try { localStorage.removeItem(cacheKey(userId)); } catch { /* ignore */ }
+}
+
 // ─── Confidence buttons config ────────────────────────────────────────────────
 const CONFIDENCE_LEVELS = [
-  { label: 'Again',  labelBn: 'আবার',   emoji: '😰', score: 1,  color: 'bg-red-500/15 hover:bg-red-500/30 text-red-400 border-red-500/30' },
-  { label: 'Hard',   labelBn: 'কঠিন',   emoji: '🤔', score: 50, color: 'bg-orange-500/15 hover:bg-orange-500/30 text-orange-400 border-orange-500/30' },
-  { label: 'Good',   labelBn: 'ঠিক আছে', emoji: '😊', score: 70, color: 'bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-400 border-indigo-500/30' },
-  { label: 'Easy',   labelBn: 'সহজ',    emoji: '🚀', score: 90, color: 'bg-green-500/15 hover:bg-green-500/30 text-green-400 border-green-500/30' },
+  { label: 'Again',  labelBn: 'আবার',    score: 1,  color: 'bg-red-500/15 hover:bg-red-500/30 text-red-400 border-red-500/30' },
+  { label: 'Hard',   labelBn: 'কঠিন',    score: 50, color: 'bg-orange-500/15 hover:bg-orange-500/30 text-orange-400 border-orange-500/30' },
+  { label: 'Good',   labelBn: 'ঠিক আছে', score: 70, color: 'bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-400 border-indigo-500/30' },
+  { label: 'Easy',   labelBn: 'সহজ',     score: 90, color: 'bg-green-500/15 hover:bg-green-500/30 text-green-400 border-green-500/30' },
 ];
 
 // ─── CSS Confetti ─────────────────────────────────────────────────────────────
@@ -35,16 +59,11 @@ function Confetti() {
         <div
           key={p.id}
           style={{
-            position: 'absolute',
-            top: '-20px',
-            left: p.left,
-            width: p.size,
-            height: p.size,
-            backgroundColor: p.color,
+            position: 'absolute', top: '-20px', left: p.left,
+            width: p.size, height: p.size, backgroundColor: p.color,
             borderRadius: '2px',
             animation: `confetti-fall ${p.duration} ${p.delay} ease-in forwards`,
-            transform: `rotate(${p.rotate})`,
-            opacity: 0,
+            transform: `rotate(${p.rotate})`, opacity: 0,
           }}
         />
       ))}
@@ -69,21 +88,22 @@ function SessionSummary({ sessionData, language, tutorName, tutorAvatar, onResta
     <>
       <Confetti />
       <div className="page-container animate-fade-in flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="card-card p-8 max-w-md w-full text-center bg-gradient-to-br from-indigo-950/30 to-slate-950/50 border border-indigo-500/25 shadow-2xl relative overflow-hidden">
+        <div className="card-card p-8 max-w-md w-full text-center bg-linear-to-br from-indigo-950/30 to-slate-950/50 border border-indigo-500/25 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/5 rounded-full filter blur-2xl pointer-events-none" />
 
-          {/* Tutor */}
           <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-4 border-2 border-indigo-500/40 shadow-lg">
             <img src={tutorAvatar} alt="Tutor" className="w-full h-full object-cover" />
           </div>
-          <div className="font-extrabold text-white text-lg mb-1">🎉 {language === 'bn' ? 'সেশন সম্পন্ন!' : 'Session Complete!'}</div>
+          <div className="font-extrabold text-white text-lg mb-1">
+            <Award className="inline mr-2 text-yellow-400" size={20} />
+            {language === 'bn' ? 'সেশন সম্পন্ন!' : 'Session Complete!'}
+          </div>
           <p className="text-xs text-slate-400 mb-6 font-semibold italic">
             {language === 'bn'
               ? `"চমৎকার! আপনি আজকের সব ফ্ল্যাশকার্ড রিভিশন শেষ করেছেন।"`
               : `"${tutorName}: Excellent! You've completed all your flashcards for today."`}
           </p>
 
-          {/* Stats grid */}
           <div className="grid grid-cols-3 gap-3 mb-6">
             <div className="bg-white/5 border border-white/5 rounded-2xl p-3">
               <div className="text-2xl font-black text-white">{total}</div>
@@ -91,15 +111,14 @@ function SessionSummary({ sessionData, language, tutorName, tutorAvatar, onResta
             </div>
             <div className="bg-white/5 border border-white/5 rounded-2xl p-3">
               <div className="text-2xl font-black text-green-400">{byConfidence[90] || 0}</div>
-              <div className="text-[10px] text-slate-400 font-bold uppercase">{language === 'bn' ? 'সহজ 🚀' : 'Easy 🚀'}</div>
+              <div className="text-[10px] text-slate-400 font-bold uppercase">{language === 'bn' ? 'সহজ' : 'Easy'}</div>
             </div>
             <div className="bg-white/5 border border-white/5 rounded-2xl p-3">
               <div className="text-2xl font-black text-red-400">{byConfidence[1] || 0}</div>
-              <div className="text-[10px] text-slate-400 font-bold uppercase">{language === 'bn' ? 'আবার 😰' : 'Again 😰'}</div>
+              <div className="text-[10px] text-slate-400 font-bold uppercase">{language === 'bn' ? 'আবার' : 'Again'}</div>
             </div>
           </div>
 
-          {/* Confidence bar */}
           <div className="mb-6">
             <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-1">
               <span>{language === 'bn' ? 'গড় আত্মবিশ্বাস' : 'Avg. confidence'}</span>
@@ -107,7 +126,7 @@ function SessionSummary({ sessionData, language, tutorName, tutorAvatar, onResta
             </div>
             <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-700 ${avgConf >= 70 ? 'bg-gradient-to-r from-indigo-500 to-green-500' : avgConf >= 50 ? 'bg-orange-500' : 'bg-red-500'}`}
+                className={`h-full rounded-full transition-all duration-700 ${avgConf >= 70 ? 'bg-linear-to-r from-indigo-500 to-green-500' : avgConf >= 50 ? 'bg-orange-500' : 'bg-red-500'}`}
                 style={{ width: `${avgConf}%` }}
               />
             </div>
@@ -115,7 +134,7 @@ function SessionSummary({ sessionData, language, tutorName, tutorAvatar, onResta
 
           <button
             onClick={onRestart}
-            className="glass-button w-full bg-gradient-to-r from-indigo-600 to-cyan-600 border-none flex items-center justify-center gap-2"
+            className="glass-button w-full bg-linear-to-r from-indigo-600 to-cyan-600 border-none flex items-center justify-center gap-2"
           >
             <RotateCcw size={14} /> {language === 'bn' ? 'আবার শুরু করুন' : 'Review Again'}
           </button>
@@ -138,6 +157,8 @@ export default function Flashcards() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [sessionDone, setSessionDone] = useState(false);
   const [sessionData, setSessionData] = useState({ total: 0, byConfidence: {} });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const activeTutor = user?.guide_preference || 'MALE';
   const tutorAvatar = activeTutor === 'FEMALE' ? femaleAvatar : maleAvatar;
@@ -145,23 +166,54 @@ export default function Flashcards() {
     ? (language === 'bn' ? 'Riya (রিয়া)' : 'Riya')
     : (language === 'bn' ? 'Rohit (রোহিত)' : 'Rohit');
 
-  useEffect(() => {
-    loadCards();
-  }, []);
+  const loadCards = useCallback(async (forceRefresh = false) => {
+    if (!user?.id) return;
 
-  async function loadCards() {
+    if (!forceRefresh) {
+      const cached = readCache(user.id);
+      if (cached) {
+        setCards(cached);
+        setOriginalCards(cached);
+        setSelectedIndex(0);
+        setIsFlipped(false);
+        setSessionDone(false);
+        setSessionData({ total: 0, byConfidence: {} });
+        setLoading(false);
+        // silent background refresh
+        loadCards(true).catch(() => {});
+        return;
+      }
+    }
+
     try {
+      if (forceRefresh) setRefreshing(true);
+      else setLoading(true);
+
       const dueCards = await getDueFlashcards();
-      setCards(dueCards || []);
-      setOriginalCards(dueCards || []);
+      const result = dueCards || [];
+      setCards(result);
+      setOriginalCards(result);
       setSelectedIndex(0);
       setIsFlipped(false);
       setSessionDone(false);
       setSessionData({ total: 0, byConfidence: {} });
+      writeCache(user.id, result);
     } catch (err) {
       setError(err.payload?.error || err.message || (language === 'bn' ? 'ফ্ল্যাশ-কার্ড লোড করা যায়নি।' : 'Failed to load flashcards.'));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  }
+  }, [user?.id, language]);
+
+  useEffect(() => {
+    loadCards();
+  }, [loadCards]);
+
+  const handleRefresh = () => {
+    clearCache(user?.id);
+    loadCards(true);
+  };
 
   const handlePlayAudio = async (card, e) => {
     if (e) e.stopPropagation();
@@ -171,26 +223,27 @@ export default function Flashcards() {
   async function handleReview(confidenceLevel) {
     const card = cards[selectedIndex];
     if (!card) return;
-    const { score, label, emoji } = confidenceLevel;
+    const { score, label } = confidenceLevel;
 
     try {
       setError('');
       setFeedback('');
       await reviewFlashcard({ wordId: card.word_id || card.id, score });
 
-      // Update session data
+      // Invalidate cache since queue has changed
+      clearCache(user?.id);
+
       setSessionData(prev => ({
         total: prev.total + 1,
         byConfidence: { ...prev.byConfidence, [score]: (prev.byConfidence[score] || 0) + 1 },
       }));
 
-      setFeedback(`${emoji} ${label}`);
+      setFeedback(label);
       setIsFlipped(false);
 
       setTimeout(() => {
         const nextIndex = selectedIndex + 1;
         if (nextIndex >= cards.length) {
-          // Session finished
           setSessionDone(true);
         } else {
           setSelectedIndex(nextIndex);
@@ -211,7 +264,7 @@ export default function Flashcards() {
         language={language}
         tutorName={tutorName}
         tutorAvatar={tutorAvatar}
-        onRestart={loadCards}
+        onRestart={() => loadCards(true)}
       />
     );
   }
@@ -219,12 +272,12 @@ export default function Flashcards() {
   return (
     <div className="page-container animate-fade-in">
       <div className="page-header border-b border-white/10 pb-4 mb-6">
-        <div>
+        <div className="grow">
           <h1 className="page-title flex items-center gap-3 text-white">
             <span className="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center">
               <Sparkles className="text-indigo-400" size={24} />
             </span>
-            {language === 'bn' ? 'ফ্ল্যাশ-কার্ড রিভিশন (Flashcards)' : 'Flashcards Revision'}
+            {language === 'bn' ? 'ফ্ল্যাশ-কার্ড রিভিশন' : 'Flashcards Revision'}
           </h1>
           <p className="page-subtitle text-slate-400">
             {language === 'bn'
@@ -232,6 +285,15 @@ export default function Flashcards() {
               : 'Review English word meanings and pronunciations using the Spaced Repetition System (SRS).'}
           </p>
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing || loading}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800/60 hover:bg-slate-700/60 border border-white/8 text-slate-400 hover:text-slate-200 text-xs font-semibold transition-colors disabled:opacity-50 shrink-0"
+          title={language === 'bn' ? 'রিফ্রেশ' : 'Refresh'}
+        >
+          <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+          {language === 'bn' ? 'রিফ্রেশ' : 'Refresh'}
+        </button>
       </div>
 
       {error && (
@@ -241,7 +303,9 @@ export default function Flashcards() {
         </div>
       )}
 
-      {currentCard ? (
+      {loading ? (
+        <PageLoader text={language === 'bn' ? 'ফ্ল্যাশকার্ড লোড হচ্ছে…' : 'Loading flashcards…'} />
+      ) : currentCard ? (
         <div className="grid gap-6 md:grid-cols-[1fr_280px] max-w-4xl mx-auto">
           {/* Flip Card Area */}
           <div className="card-card flex flex-col justify-between items-center p-6 bg-slate-950/40 border border-white/10 shadow-xl relative overflow-hidden">
@@ -259,7 +323,7 @@ export default function Flashcards() {
               </div>
               <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-indigo-500 to-cyan-500 rounded-full transition-all duration-500"
+                  className="h-full bg-linear-to-r from-indigo-500 to-cyan-500 rounded-full transition-all duration-500"
                   style={{ width: `${((selectedIndex) / cards.length) * 100}%` }}
                 />
               </div>
@@ -290,7 +354,7 @@ export default function Flashcards() {
                     <Volume2 size={20} />
                   </button>
                   <div className="text-[10px] text-cyan-400 mt-6 font-bold animate-pulse tracking-wide uppercase">
-                    {language === 'bn' ? 'কার্ডটি উল্টাতে ক্লিক করুন 🔄' : 'Click to Flip Card 🔄'}
+                    {language === 'bn' ? 'কার্ডটি উল্টাতে ক্লিক করুন' : 'Click to Flip Card'}
                   </div>
                 </div>
 
@@ -307,7 +371,7 @@ export default function Flashcards() {
                     </div>
                   )}
                   <div className="text-[10px] text-slate-400 mt-8 font-bold tracking-wide uppercase">
-                    {language === 'bn' ? 'সামনে ফিরে যেতে ক্লিক করুন 🔄' : 'Click to Flip Back 🔄'}
+                    {language === 'bn' ? 'সামনে ফিরে যেতে ক্লিক করুন' : 'Click to Flip Back'}
                   </div>
                 </div>
               </div>
@@ -326,7 +390,6 @@ export default function Flashcards() {
                     disabled={!!feedback}
                     className={`py-3 rounded-xl font-bold border transition cursor-pointer text-xs flex flex-col items-center gap-1 ${level.color} ${feedback ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
                   >
-                    <span className="text-lg">{level.emoji}</span>
                     <span>{language === 'bn' ? level.labelBn : level.label}</span>
                   </button>
                 ))}
@@ -354,12 +417,11 @@ export default function Flashcards() {
                 : '"Rate your confidence after each card. This helps the SRS schedule the perfect review timing for each word!"'}
             </p>
 
-            {/* Session mini-progress */}
             <div className="w-full bg-white/3 border border-white/5 rounded-xl p-3 text-left">
               <div className="text-[10px] font-bold text-slate-400 uppercase mb-2">{language === 'bn' ? 'এই সেশন' : 'This Session'}</div>
               {CONFIDENCE_LEVELS.slice().reverse().map(l => (
                 <div key={l.label} className="flex justify-between items-center text-[10px] mb-1">
-                  <span className="text-slate-400">{l.emoji} {language === 'bn' ? l.labelBn : l.label}</span>
+                  <span className="text-slate-400">{language === 'bn' ? l.labelBn : l.label}</span>
                   <span className="font-bold text-white">{sessionData.byConfidence[l.score] || 0}</span>
                 </div>
               ))}
@@ -367,9 +429,12 @@ export default function Flashcards() {
           </div>
         </div>
       ) : (
+        /* Empty state — only shown after loading completes with zero cards */
         <div className="empty-state max-w-md mx-auto py-16 border border-dashed border-white/10 bg-slate-950/20">
-          <div className="text-5xl mb-4 animate-bounce">🎉</div>
-          <h3 className="font-extrabold text-white text-base">{language === 'bn' ? 'রিভিশন করার মতো শব্দ নেই' : 'No words to review'}</h3>
+          <BookOpen size={40} className="mx-auto mb-4 text-indigo-400/50" />
+          <h3 className="font-extrabold text-white text-base">
+            {language === 'bn' ? 'রিভিশন করার মতো শব্দ নেই' : 'No words to review'}
+          </h3>
           <p className="text-xs text-slate-400 mt-2 max-w-xs mx-auto leading-relaxed">
             {language === 'bn'
               ? 'চমৎকার! সব ফ্ল্যাশ-কার্ড পড়া শেষ। নতুন চ্যাপ্টার ও লেসন সম্পন্ন করে আরও শব্দ যোগ করুন।'

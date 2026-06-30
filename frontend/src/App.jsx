@@ -22,6 +22,7 @@ import Tests from './pages/Tests.jsx';
 import ExamHistory from './pages/ExamHistory.jsx';
 import Notifications from './pages/Notifications.jsx';
 import Vocabulary from './pages/Vocabulary.jsx';
+import Dashboard from './pages/Dashboard.jsx';
 import TermsOfService from './pages/TermsOfService.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import DataSafety from './pages/DataSafety.jsx';
@@ -51,6 +52,7 @@ function App() {
               </ProtectedRoute>
             }
           >
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/curriculum" element={<Curriculum />} />
             <Route path="/chapters/:id" element={<ChapterDetails />} />
             <Route path="/lessons/:id" element={<LessonDetails />} />
