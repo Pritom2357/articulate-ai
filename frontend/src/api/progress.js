@@ -86,6 +86,10 @@ export async function deleteAllNotifications() {
   return request('/notifications', { method: 'DELETE' });
 }
 
+export async function getDashboard() {
+  return request('/progress/dashboard');
+}
+
 export async function getXpLog(limit = 100) {
   const response = await request(`/progress/xp-log?limit=${limit}`);
   return response.logs || [];

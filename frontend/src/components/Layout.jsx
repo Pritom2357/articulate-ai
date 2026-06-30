@@ -5,7 +5,7 @@ import { updateProfile } from '../api/user.js';
 import { getUnreadNotificationCount } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articulate_female.jpeg';
-import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key, Bookmark, Trophy, Search, X, Loader, Sun, Moon, Globe } from 'lucide-react';
+import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key, Bookmark, Trophy, Search, X, Loader, Sun, Moon, Globe, LayoutDashboard } from 'lucide-react';
 import { searchCurriculum } from '../api/curriculum.js';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 import FloatingAssistant from './FloatingAssistant.jsx';
@@ -30,8 +30,8 @@ function AnimatedBrandText({ text, baseDelay = 0, className = "" }) {
 function SidebarBrand() {
   return (
     <div className="sidebar-brand">
-      <Link to="/" className="brand-logo">
-        <div className="brand-icon">🎙️</div>
+      <Link to="/dashboard" className="brand-logo">
+        <div className="brand-icon"><Sparkles size={18} className="text-indigo-400" /></div>
         <div>
           <div className="brand-name">
             <AnimatedBrandText text="Articulate" baseDelay={0} className="brand-word brand-word-articulate" />
@@ -53,7 +53,7 @@ function GuideIndicator({ user, onUpdate }) {
   return (
     <div className="bg-white/3 rounded-xl p-3 mb-4 mt-2 border border-white/5 text-xs">
       <div className="flex items-center gap-2 mb-1.5 font-bold text-slate-300">
-        <span>🤖</span> {t('nav_active_tutor')}
+        <User size={12} className="text-indigo-400" /> {t('nav_active_tutor')}
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -319,6 +319,9 @@ export default function Layout() {
 
         <nav className="sidebar-nav">
           <div className="nav-section-label">{language === 'bn' ? 'শিখুন' : 'Learn'}</div>
+          <NavLink to="/dashboard" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <span className="nav-icon"><LayoutDashboard size={16} /></span> {language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard'}
+          </NavLink>
           <NavLink to="/curriculum" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
             <span className="nav-icon"><BookOpen size={16} /></span> {t('nav_curriculum')}
           </NavLink>

@@ -30,6 +30,29 @@ All notable changes made during AI-assisted development sessions are recorded he
   - Sticky "End Conversation" button while session is active.
   - Separate full-page report screen with IELTS band, pronunciation/fluency circles, strengths/weaknesses, mispronounced word chips, fluency issue list, improvement tips, turn-by-turn breakdown.
 
+## 2026-06-29 (session 7)
+
+### Dashboard, consistent loader, flashcard fix, cache
+
+**Shared infrastructure:**
+- `frontend/src/components/PageLoader.jsx` — New shared loading component: `Loader2` icon (animate-spin) + optional text. No emojis. Replaces per-page ad-hoc spinners.
+
+**Flashcards (`frontend/src/pages/Flashcards.jsx`):**
+- Added `loading` state (starts `true`); empty-state now only renders after `loading === false`, fixing the false "no cards" message shown during fetch.
+- Added localStorage cache: key `articulate_flashcards_${userId}`, 2-min TTL, stale-while-revalidate pattern.
+- Cache is invalidated on every `reviewFlashcard` call so the queue stays accurate.
+- Added hard Refresh button (top-right of header).
+- Removed emojis from confidence buttons, session summary, and empty state (replaced with `BookOpen`/`Award` icons).
+
+**Dashboard:**
+- `backend/src/models/progress.model.js` — Added `getDashboardData(userId)`: parallel queries for stats, best 3 mastered words (by streak), worst 3 words (by wrong_count), in-progress chapter, 7-day XP log, word familiarity counts.
+- `backend/src/controllers/progress.controller.js` — Added `getDashboard` handler.
+- `backend/src/routes/progress.routes.js` — Added `GET /api/progress/dashboard`.
+- `frontend/src/api/progress.js` — Added `getDashboard()`.
+- `frontend/src/pages/Dashboard.jsx` — New page: greeting, screen-time subtitle, level XP bar, 4 stat cards (XP/Streak/Words/Today), word familiarity bar, 7-day XP bar chart with screen-time overlay, current chapter card with progress bar, best/worst word chips, quick-access links. 3-min localStorage cache + stale-while-revalidate + hard Refresh.
+- `frontend/src/App.jsx` — Added `/dashboard` route (protected).
+- `frontend/src/components/Layout.jsx` — Brand link changed from `/` → `/dashboard`; brand emoji replaced with `Sparkles` icon; `GuideIndicator` emoji replaced with `User` icon; added Dashboard nav link with `LayoutDashboard` icon.
+
 ## 2026-06-27 (session 6 — patch 2)
 
 ### IELTS Conversation — listen to your own recordings in the report

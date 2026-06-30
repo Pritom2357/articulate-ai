@@ -552,9 +552,6 @@ export default function Landing() {
               
               {/* Tutor Dialog Box */}
               <div className="flex gap-3.5 items-start">
-                <div className="w-9 h-9 rounded-full bg-indigo-600/30 flex items-center justify-center font-bold text-sm text-indigo-300 border border-indigo-500/20 shrink-0">
-                  🤖
-                </div>
                 <div className="bg-white/5 border border-white/5 rounded-2xl rounded-tl-none p-3.5 max-w-[85%] text-left text-sm text-slate-200">
                   <div className="text-[10px] font-black text-indigo-400 uppercase tracking-wider mb-1">
                     {scenario.tutorName}
