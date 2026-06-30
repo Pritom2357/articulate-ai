@@ -6,5 +6,6 @@ module.exports = {
     PASSWORD_RESET_REQUESTED: 'user.password.reset.requested',
     PASSWORD_CHANGED: 'user.password.changed',
     BADGE_UNLOCKED: 'user.badge.unlocked',
-    RAG_TRIGGER: 'pronunciation.rag.trigger'
+    RAG_TRIGGER: 'pronunciation.rag.trigger',
+    EXAM_EVALUATED: 'exam.evaluated'
 };

@@ -19,6 +19,7 @@ import Onboarding from './pages/Onboarding.jsx';
 import IELTSConversation from './pages/IELTSConversation.jsx';
 import AIChat from './pages/AIChat.jsx';
 import Tests from './pages/Tests.jsx';
+import ExamHistory from './pages/ExamHistory.jsx';
 import Notifications from './pages/Notifications.jsx';
 import Vocabulary from './pages/Vocabulary.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -64,6 +65,7 @@ function App() {
             <Route path="/vocabulary" element={<Vocabulary />} />
             <Route path="/ai-chat" element={<AIChat />} />
             <Route path="/tests" element={<Tests />} />
+            <Route path="/exam-history" element={<ExamHistory />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/change-password" element={<ChangePassword />} />

@@ -86,10 +86,10 @@ export default function Leaderboard() {
             <div className="card-card w-full p-4 bg-gradient-to-t from-slate-800/80 to-slate-900/40 border-t-2 border-slate-400/50 rounded-t-2xl rounded-b-xl text-center">
               <h3 className="font-bold text-white text-sm truncate w-full">{leaderboard[1].name}</h3>
               <p className="text-slate-300 font-black mt-1 text-lg">{leaderboard[1].xp} XP</p>
-              <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400 font-bold mt-1 uppercase">
+              <div className="flex items-center justify-center gap-1 text-[10px] font-bold mt-1 uppercase text-slate-500 bg-slate-500/10 py-1 rounded-full px-3 w-max mx-auto">
                 <span>Lvl {leaderboard[1].level}</span>
-                <span className="mx-1">•</span>
-                <span className="flex items-center text-rose-400"><Flame size={10} className="mr-0.5" /> {leaderboard[1].streak_days}</span>
+                <span className="mx-1 opacity-50">•</span>
+                <span className="flex items-center text-rose-500"><Flame size={10} className="mr-0.5" /> {leaderboard[1].streak_days}</span>
               </div>
             </div>
           </div>
@@ -117,10 +117,10 @@ export default function Leaderboard() {
             <div className="card-card w-full p-5 bg-gradient-to-t from-yellow-900/30 to-slate-900/60 border-t-2 border-yellow-400/80 rounded-t-3xl rounded-b-xl text-center shadow-[0_-10px_30px_rgba(250,204,21,0.1)]">
               <h3 className="font-extrabold text-white text-base truncate w-full">{leaderboard[0].name}</h3>
               <p className="text-yellow-400 font-black mt-1 text-2xl drop-shadow-md">{leaderboard[0].xp} XP</p>
-              <div className="flex items-center justify-center gap-1.5 text-xs text-yellow-200/70 font-bold mt-2 uppercase bg-yellow-500/10 py-1 rounded-full">
+              <div className="flex items-center justify-center gap-1.5 text-xs font-bold mt-2 uppercase bg-yellow-500/20 py-1 rounded-full text-yellow-700 dark:text-yellow-500 w-max mx-auto px-4" style={{ color: 'var(--text-main)', opacity: 0.85 }}>
                 <span>Lvl {leaderboard[0].level}</span>
-                <span className="mx-1">•</span>
-                <span className="flex items-center text-rose-400 font-black"><Flame size={12} className="mr-0.5" /> {leaderboard[0].streak_days}</span>
+                <span className="mx-1 opacity-50">•</span>
+                <span className="flex items-center text-rose-500 font-black"><Flame size={12} className="mr-0.5" /> {leaderboard[0].streak_days}</span>
               </div>
             </div>
           </div>
@@ -145,10 +145,10 @@ export default function Leaderboard() {
             <div className="card-card w-full p-4 bg-gradient-to-t from-amber-900/30 to-slate-900/40 border-t-2 border-amber-600/50 rounded-t-2xl rounded-b-xl text-center">
               <h3 className="font-bold text-white text-sm truncate w-full">{leaderboard[2].name}</h3>
               <p className="text-amber-500 font-black mt-1 text-lg">{leaderboard[2].xp} XP</p>
-              <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400 font-bold mt-1 uppercase">
+              <div className="flex items-center justify-center gap-1 text-[10px] font-bold mt-1 uppercase text-slate-500 bg-slate-500/10 py-1 rounded-full px-3 w-max mx-auto">
                 <span>Lvl {leaderboard[2].level}</span>
-                <span className="mx-1">•</span>
-                <span className="flex items-center text-rose-400"><Flame size={10} className="mr-0.5" /> {leaderboard[2].streak_days}</span>
+                <span className="mx-1 opacity-50">•</span>
+                <span className="flex items-center text-rose-500"><Flame size={10} className="mr-0.5" /> {leaderboard[2].streak_days}</span>
               </div>
             </div>
           </div>
@@ -189,14 +189,14 @@ export default function Leaderboard() {
                     )}
                   </div>
                   <div className="text-xs text-slate-500 font-semibold sm:hidden mt-0.5 flex items-center gap-2">
-                    <span>Lvl {student.level}</span>
-                    <span className="flex items-center text-rose-400"><Flame size={10} className="mr-0.5" />{student.streak_days}</span>
+                    <span className="bg-slate-500/10 px-1.5 py-0.5 rounded">Lvl {student.level}</span>
+                    <span className="flex items-center text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded"><Flame size={10} className="mr-0.5" />{student.streak_days}</span>
                   </div>
                 </div>
               </div>
-              <div className="w-24 justify-center items-center gap-3 hidden sm:flex text-xs font-bold text-slate-400">
-                <span className="bg-slate-800/80 px-2 py-1 rounded">Lvl {student.level}</span>
-                <span className="flex items-center text-rose-400 bg-rose-500/10 px-2 py-1 rounded"><Flame size={12} className="mr-1" />{student.streak_days}</span>
+              <div className="w-24 justify-center items-center gap-3 hidden sm:flex text-xs font-bold text-slate-500">
+                <span className="bg-slate-500/10 px-2 py-1 rounded">Lvl {student.level}</span>
+                <span className="flex items-center text-rose-500 bg-rose-500/10 px-2 py-1 rounded"><Flame size={12} className="mr-1" />{student.streak_days}</span>
               </div>
               <div className="w-24 text-right font-black text-indigo-300 text-base">
                 {student.xp}

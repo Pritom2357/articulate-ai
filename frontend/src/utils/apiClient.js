@@ -104,4 +104,4 @@ async function authorizedFetch(path, options = {}, _isRetry = false) {
   return response;
 }
 
-export { request, authorizedFetch };
+export { request, authorizedFetch, API_BASE };

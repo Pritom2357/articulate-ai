@@ -276,7 +276,7 @@ export default function Vocabulary() {
               : (language === 'bn' ? 'বুকমার্ক করা শব্দ খুঁজুন...' : 'Search bookmarks...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="glass-input pl-10 py-2.5 rounded-xl text-sm w-full"
+            className="bg-slate-900/50 border border-white/10 text-white focus:border-indigo-500 outline-none pl-[36px] py-2.5 rounded-xl text-sm w-full"
           />
         </div>
       </div>

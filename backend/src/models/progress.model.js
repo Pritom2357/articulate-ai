@@ -266,7 +266,7 @@ class ProgressModel {
                 ['chapter_5', completedChapters.has(13)],
                 ['chapter_6', completedChapters.has(14)],
                 ['chapter_7', completedChapters.has(15)],
-                ['chapter_8', completedChapters.has(16)]
+                ['chapter_8', completedChapters.has(16)],
                 // General milestones
                 ['first_lesson', parseInt(stats.completed_lessons) >= 1],
                 ['first_test', parseInt(stats.completed_tests) >= 1],
