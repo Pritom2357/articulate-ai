@@ -466,8 +466,7 @@ class ProgressModel {
                 SELECT assessed_level, vocab_score, pronunciation_score, assessed_at, ai_notes
                 FROM onboarding_assessments
                 WHERE user_id = $1
-                ORDER BY assessed_at DESC
-                LIMIT 1;
+                ORDER BY assessed_at DESC;
             `
 
             const placementQuery = `
@@ -525,7 +524,8 @@ class ProgressModel {
                 badges: badges || [],
                 lessons: lessonMap,
                 chapters: chapterMap,
-                onboarding: onboardingResult.rows[0] || null
+                onboarding: onboardingResult.rows[0] || null,
+                onboarding_history: onboardingResult.rows || []
             }
         }
 

@@ -31,6 +31,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(1); // 1: Select Guide, 2: Mic Check, 3: Speech Test, 4: Done
   const [guide, setGuide] = useState('MALE'); // 'MALE' or 'FEMALE'
   const [attemptCount, setAttemptCount] = useState(null); // null = loading
+  const [bestResult, setBestResult] = useState(null); // best onboarding assessment result
   
   const testWords = language === 'bn' ? TEST_WORDS_BN : TEST_WORDS_EN;
   
@@ -59,6 +60,7 @@ export default function Onboarding() {
   const [recordedAudioUrl, setRecordedAudioUrl] = useState(null);
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
   const [isTestRecording, setIsTestRecording] = useState(false);
+  const [wordEvaluated, setWordEvaluated] = useState(false); // tracks if the current word has been evaluated
 
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
@@ -67,11 +69,14 @@ export default function Onboarding() {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  // Fetch attempt count on mount
+  // Fetch attempt count and best result on mount
   useEffect(() => {
     if (!user) return;
     getOnboardingAttempts()
-      .then(data => setAttemptCount(data.attempts ?? 0))
+      .then(data => {
+        setAttemptCount(data.attempts ?? 0);
+        if (data.bestResult) setBestResult(data.bestResult);
+      })
       .catch(() => setAttemptCount(0));
   }, [user]);
 
@@ -331,6 +336,7 @@ export default function Onboarding() {
 
   async function evaluateSpeech(audioBlob) {
     setIsEvaluating(true);
+    setWordEvaluated(false);
     try {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'attempt.webm');
@@ -347,49 +353,63 @@ export default function Onboarding() {
       console.log('[speechTest] assessPronunciation response', data);
 
       setRecognizedText(data.recognized_text || '');
-      setPronScore(data.overall_score);
-      setPronFeedback(data.feedback);
-
-      const isCorrect = data.overall_score >= 60; // 60% accuracy threshold to pass
-      setScores(prev => [...prev, isCorrect]);
+      setPronScore(data.overall_score ?? 0);
+      setPronFeedback(data.feedback || '');
+      setWordEvaluated(true);
     } catch (err) {
       console.error('[speechTest] Speech evaluation failed:', err);
       setRecognizedText(language === 'bn' ? '(উচ্চারণ বোঝা যায়নি)' : '(Pronunciation not recognized)');
       setPronScore(0);
       setPronFeedback(language === 'bn' ? 'দুঃখিত, সংযোগে ত্রুটি হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।' : 'Sorry, connection error occurred. Please try again.');
-      setScores(prev => [...prev, false]);
+      setWordEvaluated(true);
     } finally {
       setIsEvaluating(false);
     }
   }
 
-  // Advance speech test after showing scoring feedback
-  useEffect(() => {
-    if (scores.length > wordIndex) {
-      const timer = setTimeout(() => {
-        if (wordIndex < testWords.length - 1) {
-          setWordIndex(prev => prev + 1);
-          setRecognizedText('');
-          setPronScore(null);
-          setPronFeedback('');
-        } else {
-          // Test completed - calculate level
-          const correctCount = scores.filter(x => x).length;
-          let finalLevel = 'A1';
-          if (correctCount === 3) finalLevel = 'B1';
-          else if (correctCount >= 1) finalLevel = 'A2';
-          
-          setTestResult({ level: finalLevel, correctCount });
-          setStep(4);
-          
-          // Submit onboarding assessment
-          submitOnboardingAssessment(finalLevel, correctCount);
-        }
-      }, 3000); // Wait 3 seconds to let user read the AI feedback score
+  // Manually advance to next word (called by the "Next Word" / "Skip" button)
+  function advanceToNextWord(skipped = false) {
+    // Record the score for the current word before advancing
+    const isCorrect = !skipped && pronScore !== null && pronScore >= 60;
+    const updatedScores = [...scores, isCorrect];
+    setScores(updatedScores);
 
-      return () => clearTimeout(timer);
+    if (wordIndex < testWords.length - 1) {
+      setWordIndex(prev => prev + 1);
+      setRecognizedText('');
+      setPronScore(null);
+      setPronFeedback('');
+      setWordEvaluated(false);
+      setRecordedAudioUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    } else {
+      // Test completed - calculate level using updatedScores (not stale `scores`)
+      const correctCount = updatedScores.filter(x => x).length;
+      let finalLevel = 'A1';
+      if (correctCount === 3) finalLevel = 'B1';
+      else if (correctCount >= 1) finalLevel = 'A2';
+      
+      setTestResult({ level: finalLevel, correctCount });
+      setStep(4);
+      
+      // Submit onboarding assessment
+      submitOnboardingAssessment(finalLevel, correctCount);
     }
-  }, [scores]);
+  }
+
+  // Retry the current word (re-record without advancing)
+  function retryCurrentWord() {
+    setRecognizedText('');
+    setPronScore(null);
+    setPronFeedback('');
+    setWordEvaluated(false);
+    setRecordedAudioUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }
 
   async function submitOnboardingAssessment(level, correctCount) {
     try {
@@ -419,8 +439,11 @@ export default function Onboarding() {
     );
   }
 
-  // Limit reached — show a clear block screen
+  // Limit reached — show a clear block screen with best result
   if (attemptCount >= MAX_ATTEMPTS) {
+    const bestLevel = bestResult?.assessed_level || '—';
+    const bestPronScore = bestResult?.pronunciation_score != null ? Math.round(bestResult.pronunciation_score) : null;
+
     return (
       <div className="colorful-mesh-container">
         <div className="mesh-blob-3"></div>
@@ -430,20 +453,47 @@ export default function Onboarding() {
               <Lock size={26} className="text-red-400" />
             </div>
             <div>
-              <h2 className="text-xl font-extrabold text-white mb-2">Placement Test Locked</h2>
+              <h2 className="text-xl font-extrabold text-white mb-2">
+                {language === 'bn' ? 'প্লেসমেন্ট টেস্ট লক হয়েছে' : 'Placement Test Locked'}
+              </h2>
               <p className="text-sm text-slate-400 max-w-sm mx-auto leading-relaxed">
-                You have used all <span className="text-red-400 font-bold">{MAX_ATTEMPTS}</span> placement test attempts.
-                Your curriculum has been set based on your best result.
+                {language === 'bn'
+                  ? <>আপনি সর্বোচ্চ <span className="text-red-400 font-bold">{MAX_ATTEMPTS}টি</span> প্লেসমেন্ট টেস্ট দিয়েছেন। আপনার সেরা ফলাফলের ভিত্তিতে কারিকুলাম সেট করা হয়েছে।</>
+                  : <>You have used all <span className="text-red-400 font-bold">{MAX_ATTEMPTS}</span> placement test attempts. Your curriculum has been set based on your best result.</>}
               </p>
             </div>
+
+            {/* Best result display */}
+            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-5">
+              <div className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">
+                {language === 'bn' ? 'আপনার সেরা ফলাফল' : 'Your Best Result'}
+              </div>
+              <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400 my-1">
+                {bestLevel}
+              </div>
+              {bestPronScore != null && (
+                <div className="text-sm text-slate-300 mt-1">
+                  {language === 'bn' ? 'উচ্চারণ স্কোর:' : 'Pronunciation Score:'}{' '}
+                  <span className={`font-bold ${bestPronScore >= 60 ? 'text-green-400' : 'text-amber-400'}`}>
+                    {bestPronScore}%
+                  </span>
+                </div>
+              )}
+              <div className="text-xs text-slate-500 mt-2">
+                {language === 'bn'
+                  ? `${bestLevel === 'B1' ? 'চ্যাপ্টার ৫ (ইন্টারমিডিয়েট)' : bestLevel === 'A2' ? 'চ্যাপ্টার ৩ (প্রি-ইন্টারমিডিয়েট)' : bestLevel === 'B2' ? 'চ্যাপ্টার ৭ (আপার-ইন্টারমিডিয়েট)' : 'চ্যাপ্টার ১ (বিগিনার)'} থেকে শুরু`
+                  : `Starting from ${bestLevel === 'B1' ? 'Chapter 5 (Intermediate)' : bestLevel === 'A2' ? 'Chapter 3 (Pre-Intermediate)' : bestLevel === 'B2' ? 'Chapter 7 (Upper-Intermediate)' : 'Chapter 1 (Beginner)'}`}
+              </div>
+            </div>
+
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold">
               <AlertTriangle size={14} />
-              Contact support if you believe this is an error.
+              {language === 'bn' ? 'আপনি মনে করলে এটি ভুল হয়েছে, সাপোর্টে যোগাযোগ করুন।' : 'Contact support if you believe this is an error.'}
             </div>
             <button
               onClick={() => navigate('/curriculum')}
               className="mt-4 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors w-full">
-              Go to My Curriculum
+              {language === 'bn' ? 'আমার কারিকুলামে যান' : 'Go to My Curriculum'}
             </button>
           </div>
         </div>
@@ -742,6 +792,40 @@ export default function Onboarding() {
                       {isPlayingRecording ? (language === 'bn' ? 'বাজছে...' : 'Playing...') : (language === 'bn' ? 'আপনার রেকর্ডিং শুনুন' : 'Listen to your recording')}
                     </button>
                   )}
+                </div>
+              )}
+
+              {/* Action buttons after evaluation */}
+              {wordEvaluated && !isEvaluating && (
+                <div className="mt-5 flex flex-col gap-2">
+                  {/* Next Word / Finish Test button */}
+                  <button
+                    onClick={() => advanceToNextWord(false)}
+                    className="w-full py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white shadow-lg"
+                  >
+                    {wordIndex < testWords.length - 1
+                      ? (language === 'bn' ? `পরবর্তী শব্দ (${wordIndex + 2}/${testWords.length})` : `Next Word (${wordIndex + 2}/${testWords.length})`)
+                      : (language === 'bn' ? 'টেস্ট শেষ করুন' : 'Finish Test')}
+                  </button>
+                  {/* Retry current word */}
+                  <button
+                    onClick={retryCurrentWord}
+                    className="w-full py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10"
+                  >
+                    🔄 {language === 'bn' ? 'আবার চেষ্টা করুন' : 'Try Again'}
+                  </button>
+                </div>
+              )}
+
+              {/* Skip button — always available when not recording/evaluating */}
+              {!wordEvaluated && !recording && !isEvaluating && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => advanceToNextWord(true)}
+                    className="text-xs text-slate-500 hover:text-slate-300 transition cursor-pointer underline underline-offset-2"
+                  >
+                    {language === 'bn' ? 'এই শব্দ এড়িয়ে যান' : 'Skip this word'}
+                  </button>
                 </div>
               )}
             </div>
