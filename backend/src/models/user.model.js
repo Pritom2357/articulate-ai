@@ -191,17 +191,18 @@ class UserModel {
             const params = [userId, assessed_level, vocab_score, pronunciation_score, ai_notes];
             const result = await this.db_connection.query_executor(query, params);
 
-            // Map level to placement chapter: A1 -> 1, A2 -> 2, B1 -> 3
+            // Map level to placement chapter (must match seed: A1=ch1-2, A2=ch3-4, B1=ch5-6, B2=ch7, C1=ch8)
             let placementChapter = 1;
-            if (assessed_level === 'A2') placementChapter = 2;
-            else if (assessed_level === 'B1') placementChapter = 3;
-            else if (assessed_level === 'B2' || assessed_level === 'C1') placementChapter = 4;
+            if (assessed_level === 'A2') placementChapter = 3;
+            else if (assessed_level === 'B1') placementChapter = 5;
+            else if (assessed_level === 'B2') placementChapter = 7;
+            else if (assessed_level === 'C1') placementChapter = 8;
 
-            // Upsert user progress with placement chapter
+            // Upsert user progress with placement chapter — only upgrade, never downgrade
             const upsertProgressQuery = `
                 INSERT INTO user_progress (user_id, placement_chapter)
                 VALUES ($1, $2)
-                ON CONFLICT (user_id) DO UPDATE SET placement_chapter = $2;
+                ON CONFLICT (user_id) DO UPDATE SET placement_chapter = GREATEST(user_progress.placement_chapter, $2);
             `;
             await this.db_connection.query_executor(upsertProgressQuery, [userId, placementChapter]);
 
@@ -211,6 +212,34 @@ class UserModel {
         }
     }
 
+    getBestOnboardingResult = async (userId) => {
+        const result = await this.db_connection.query_executor(
+            `SELECT assessed_level, vocab_score, pronunciation_score, assessed_at
+             FROM onboarding_assessments
+             WHERE user_id = $1
+             ORDER BY pronunciation_score DESC NULLS LAST, assessed_at DESC
+             LIMIT 1`,
+            [userId]
+        );
+        const best = result.rows[0] || null;
+
+        // Reconcile placement_chapter if it's out of sync with the best assessment
+        if (best) {
+            // Must match seed: A1=ch1-2, A2=ch3-4, B1=ch5-6, B2=ch7, C1=ch8
+            let correctChapter = 1;
+            if (best.assessed_level === 'A2') correctChapter = 3;
+            else if (best.assessed_level === 'B1') correctChapter = 5;
+            else if (best.assessed_level === 'B2') correctChapter = 7;
+            else if (best.assessed_level === 'C1') correctChapter = 8;
+
+            await this.db_connection.query_executor(
+                `UPDATE user_progress SET placement_chapter = GREATEST(placement_chapter, $2) WHERE user_id = $1`,
+                [userId, correctChapter]
+            );
+        }
+
+        return best;
+    }
 }
 
 module.exports = UserModel
