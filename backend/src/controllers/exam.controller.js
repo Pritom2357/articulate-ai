@@ -3,9 +3,51 @@ const aiService = require('../services/aiService');
 const examEvaluator = require('../services/examEvaluator');
 const CurriculumModel = require('../models/curriculum.model');
 const ProgressModel = require('../models/progress.model');
+const DB_Connection = require('../database/db');
 
 const curriculumModel = new CurriculumModel();
 const progressModel = new ProgressModel();
+const db = DB_Connection.getInstance();
+
+// ─── Helper: resolve real word_id/phrase_id by exact text match ──────────────
+// The LLM has no reliable way to know real DB IDs (buildContextText never sends
+// them), so we never trust an LLM-supplied id — we look it up ourselves against
+// the unique `words.word` / `phrases.phrase_en` columns. No match = null, which
+// is safe since these columns are nullable and only used for best-effort SRS
+// phoneme logging downstream.
+async function resolveQuestionIds(questions) {
+  const wordTexts = [...new Set(
+    questions.filter(q => q.item_type === 'WORD' && q.text_en).map(q => q.text_en.toLowerCase())
+  )];
+  const phraseTexts = [...new Set(
+    questions.filter(q => q.item_type === 'PHRASE' && q.text_en).map(q => q.text_en.toLowerCase())
+  )];
+
+  const wordMap = new Map();
+  const phraseMap = new Map();
+
+  if (wordTexts.length > 0) {
+    const { rows } = await db.query_executor(
+      `SELECT id, LOWER(word) AS w FROM words WHERE LOWER(word) = ANY($1)`,
+      [wordTexts]
+    );
+    rows.forEach(r => wordMap.set(r.w, r.id));
+  }
+
+  if (phraseTexts.length > 0) {
+    const { rows } = await db.query_executor(
+      `SELECT id, LOWER(phrase_en) AS p FROM phrases WHERE LOWER(phrase_en) = ANY($1)`,
+      [phraseTexts]
+    );
+    rows.forEach(r => phraseMap.set(r.p, r.id));
+  }
+
+  return questions.map(q => ({
+    ...q,
+    word_id:   q.item_type === 'WORD'   ? (wordMap.get(q.text_en?.toLowerCase())   || null) : null,
+    phrase_id: q.item_type === 'PHRASE' ? (phraseMap.get(q.text_en?.toLowerCase()) || null) : null,
+  }));
+}
 
 // ─── Helper: build rich context string for the LLM ───────────────────────────
 async function buildContextText(examType, lessonId, chapterId, userId) {
@@ -137,8 +179,11 @@ class ExamController {
         return res.status(500).json({ success: false, message: 'Failed to generate questions. Please try again.' });
       }
 
+      // ── Resolve real word_id/phrase_id ourselves — never trust the LLM's own IDs ──
+      const resolvedQuestions = await resolveQuestionIds(rawQuestions);
+
       // ── Generate TTS audio for LISTENING questions ──
-      const questionsWithAudio = await attachListeningAudio(rawQuestions);
+      const questionsWithAudio = await attachListeningAudio(resolvedQuestions);
 
       // ── Calculate total marks ──
       const totalMarks = questionsWithAudio.reduce((sum, q) => sum + (q.marks || 1), 0);

@@ -2,6 +2,51 @@
 
 All notable changes made during AI-assisted development sessions are recorded here, grouped by date/session. Each entry lists the files touched and a short summary of what changed and why.
 
+## 2026-07-08 (session 13) — Exam 500 fix (constraints + word_id hallucination) + mobile responsiveness + floating assistant fix
+
+### Exam generation 500 errors — two compounding root causes, both fixed and verified end-to-end
+Exam generation had **two independent bugs** that both had to be fixed for it to work; earlier in this session the schema fix below was applied then explicitly reverted at the user's request, then a second bug report (a `word_id` FK violation) led to re-diagnosing and re-fixing both together, this time verified with real end-to-end test runs (not just isolated pieces).
+
+**Bug 1 — erroneous single-column `UNIQUE` constraints (schema bug):**
+- `exam_questions` and `exam_answers` had **single-column** `UNIQUE` constraints — `exam_questions(exam_id)`, `exam_questions(order_num)`, `exam_answers(exam_id)`, `exam_answers(question_id)`. Since `order_num`/`question_id` uniqueness was column-wide (not per-exam), at most ONE question could ever be inserted per exam, and — worse — once any exam claimed `order_num=1`, no other exam in the system could ever insert a question with `order_num=1` again. Confirmed via reproduction: a second freshly-created test exam failed on its very first question insert because exam #1's question had already permanently claimed `order_num=1` table-wide.
+- The correct uniqueness was already provided by the composite `UNIQUE(exam_id, order_num)` / `UNIQUE(exam_id, question_id)` constraints (also present) — the single-column ones were pure schema authoring mistakes.
+- Fix: dropped the four single-column `UNIQUE` constraints live (kept the composites), restored `backend/src/docs/tables.sql` to match (no `UNIQUE` on those four columns).
+
+**Bug 2 — LLM hallucinated `word_id`/`phrase_id`, violating FK constraints:**
+- `backend/src/prompts/examGeneratePrompt.txt` instructed the LLM to output a real `word_id`/`phrase_id` "if taken from context" — but `buildContextText()` in `exam.controller.js` never actually included the ID in the context string sent to the LLM (only `word (bangla_meaning)` text pairs, for all four exam types). With no real ID available, the LLM hallucinated plausible-looking integers (likely primed by the prompt's own `"word_id": 42` example), and any ID that didn't exist in `words`/`phrases` violated `exam_questions_word_id_fkey` on insert → 500.
+- Fix: `examGeneratePrompt.txt` no longer asks the LLM for `word_id`/`phrase_id` at all. `exam.controller.js` adds `resolveQuestionIds()` — a batched, case-insensitive exact-match lookup against `words.word` / `phrases.phrase_en` (both unique columns) for each generated question's text, run **after** the LLM call. Real DB ID if a match exists, `null` otherwise — never an LLM-supplied value. `word_id`/`phrase_id` are only used downstream for best-effort SRS phoneme logging (`examEvaluator.js`, wrapped in `.catch()`), so `null` is safe.
+
+**Verification (not just unit-level — full controller path, live DB, live OpenAI call):**
+- Confirmed the schema bug's exact failure mode by reproduction (see above), then re-applied the fix.
+- Ran `examController.generateExam()` directly (bypassing HTTP) twice for a PROGRESS exam: both returned `200 success: true`, 5 and 10 questions respectively (LLM under-generated once — separate pre-existing prompt-adherence variance, not a functional bug, no error either way). Real words resolved to their true DB IDs (e.g. "knowledge" → `word_id: 3530`); phrases/words with no exact match correctly got `null`, no FK violations.
+- Cleaned up all test exam rows created during diagnosis (`exams` ids 50-54 and their cascaded `exam_questions`); confirmed `exam_questions`/`exam_answers` were both empty again before finishing.
+
+### Mobile responsiveness + floating assistant fix
+
+### Collapsible off-canvas sidebar (replaces the un-hideable mobile top ribbon)
+- **Root cause:** the old `@media (max-width: 768px)` block turned `.site-sidebar` into a full-width sticky top bar with a horizontal-scrolling nav ribbon that always occupied vertical space and could not be minimized.
+- `frontend/src/components/Layout.jsx` — Added `sidebarOpen` state, a hamburger toggle button (`.sidebar-toggle-btn`) in the previously-empty `top-bar-left`, a backdrop overlay (`.sidebar-backdrop`), and an in-drawer close button (`.sidebar-close-btn`). A `useEffect` on `location.pathname` closes the drawer on any navigation (covers nav-link taps without per-link handlers). Imported the `Menu` icon.
+- `frontend/src/App.css` — Rewrote the mobile media query: the sidebar is now `position: fixed`, off-canvas (`translateX(-100%)`), sliding in when `.open` with a dimmed backdrop; the nav returns to a vertical list and the sign-out footer is visible inside the drawer. Desktop layout unchanged. Added `.sidebar-toggle-btn`/`.sidebar-close-btn`/`.sidebar-backdrop` styles with light-mode variants.
+
+### Global search is now a modal instead of an inline dropdown
+- `frontend/src/components/Layout.jsx` — Reworked `GlobalSearch`: the top bar now shows a **search trigger button** (styled like a search field) that opens a centered **command-palette-style modal**. The modal auto-focuses its input, locks body scroll, closes on Escape / backdrop click / result selection, and shows empty/searching/results/no-results states. Reused the existing debounced `searchCurriculum` logic (debounce trimmed 500ms → 400ms). Gives a roomy search surface especially on mobile where the inline bar was cramped.
+- `frontend/src/App.css` — Added `.search-trigger` (theme-aware field-style button) and `.search-modal-overlay`/`.search-modal`/`.search-modal-input-row`/`.search-modal-input`/`.search-modal-close`/`.search-modal-results` styles with light-mode variants and safe-area padding.
+
+### Landing page header buttons wrapped to multiple lines on mobile
+- **Root cause:** the public Landing navbar uses raw Tailwind classes (not the `.nav-link`/`.glass-button` design-system classes), so the earlier global `nowrap` fix didn't reach it; "Sign In" wrapped to 2 lines and "Get Started Free" to 3 as the flex row got tight.
+- `frontend/src/pages/Landing.jsx` — Added `whitespace-nowrap shrink-0` to the Sign In / Get Started Free / Go to Dashboard links; shrank brand text (`text-lg sm:text-xl`) and button text (`text-xs sm:text-sm`) with tighter mobile padding so all three fit on one row at 360px+ without horizontal overflow.
+
+### Mobile text-wrapping & cross-device consistency
+- `frontend/src/App.css` — Added `white-space: nowrap` to `.nav-link`/`.nav-button`, `.form-button`/`.secondary-button`, and `.glass-button` so action buttons (Sign in, Sign out, etc.) stay on one line. Added `env(safe-area-inset-top)` padding to the top bar and drawer for notched phones (iPhone). Floating assistant panel width/height now use `min(…, calc(100vw/100dvh − …))` so it never overflows small screens (Pixel/Samsung/iPhone SE).
+- `frontend/src/components/Layout.jsx` — Global search container base `min-w-[200px]` → `min-w-0` so it shrinks instead of overflowing the crowded mobile top bar (hamburger + search + 4 action icons).
+- `frontend/index.html` — Added `viewport-fit=cover` to the viewport meta so safe-area insets apply on notched devices.
+- Audit note: page-level grids already use responsive `grid-cols-1 sm:grid-cols-*` prefixes; remaining base multi-column grids are small stat chips / the 7-day calendar / 4-button rows that hold up at 320px+, so left as-is.
+
+### Floating assistant gave URL routes instead of human directions
+- **Root cause:** `appContext.md` and the `generateQuickResponse` system prompt instructed the model to output raw routes like `/progress`, so "how do I see my progress" returned "go to /progress".
+- `backend/src/prompts/appContext.md` — Rewrote around the actual UI: maps each destination to its **sidebar menu label** ("open the sidebar and tap My Progress"), documents the mobile hamburger (☰), and forbids emitting URLs/paths.
+- `backend/src/services/aiService.js` — Updated the `generateQuickResponse` STRICT RULES to direct users by menu name (never a URL), and fixed the two no-OpenAI/error fallback strings that still referenced `/ai-chat`.
+
 ## 2026-06-27 (session 6)
 
 ### IELTS Open Conversation — full voice-based AI conversation test

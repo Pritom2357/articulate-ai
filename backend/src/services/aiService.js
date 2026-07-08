@@ -385,7 +385,7 @@ class AIService {
    */
   async generateQuickResponse(chatMessages, userContext = '') {
     if (!this.openai) {
-      return "I'm your quick app assistant! Visit /ai-chat for full English tutoring."
+      return "I'm your quick app assistant! Open the sidebar and tap AI Chat for full English tutoring."
     }
     try {
       const systemContent = `You are a friendly in-app assistant for Articulate AI, a spoken English learning platform for Bengali learners.
@@ -396,8 +396,9 @@ ${userContext ? `\n=== CURRENT USER ===\n${userContext}\n=== END USER ===` : ''}
 
 STRICT RULES:
 - Max 2-3 sentences per reply. Be direct and helpful.
-- Always mention a specific page route (/flashcards, /progress, etc.) when relevant.
-- For complex English questions (grammar, pronunciation deep-dive, vocabulary coaching): say "For that, visit the AI Chat Assistant at /ai-chat — it's built for exactly this."
+- Give directions by the sidebar MENU NAME, e.g. "Open the sidebar and tap My Progress." NEVER output a URL, route, or path like "/progress" — users tap menu items, they do not type URLs.
+- On a phone the sidebar opens via the menu button (☰) at the top-left; mention this if it helps.
+- For complex English questions (grammar, pronunciation deep-dive, vocabulary coaching): say "Open the sidebar and tap AI Chat — it's built for exactly this."
 - Speak conversationally, not like a robot. Be encouraging.`
 
       const messages = [
@@ -414,7 +415,7 @@ STRICT RULES:
       return completion.choices[0].message.content.trim()
     } catch (error) {
       console.error('Quick chat failed:', error.message)
-      return "I had a hiccup! Try asking again, or visit /ai-chat for full support."
+      return "I had a hiccup! Try asking again, or open the sidebar and tap AI Chat for full support."
     }
   }
 
