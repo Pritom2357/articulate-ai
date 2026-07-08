@@ -2,6 +2,10 @@ import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './token
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
+// Render's free tier spins the backend down after inactivity — the first request after
+// a while can take 30-50s to "wake" it. Used to conditionally show a cold-start warning.
+const IS_RENDER_BACKEND = API_BASE.includes('onrender.com');
+
 let refreshPromise = null;
 
 async function refreshAccessToken() {
@@ -104,4 +108,4 @@ async function authorizedFetch(path, options = {}, _isRetry = false) {
   return response;
 }
 
-export { request, authorizedFetch, API_BASE };
+export { request, authorizedFetch, API_BASE, IS_RENDER_BACKEND };

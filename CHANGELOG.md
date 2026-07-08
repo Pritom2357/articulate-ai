@@ -2,6 +2,13 @@
 
 All notable changes made during AI-assisted development sessions are recorded here, grouped by date/session. Each entry lists the files touched and a short summary of what changed and why.
 
+## 2026-07-08 (session 15) — Render cold-start warning on Login/Register
+
+### Conditional cold-start notice for Render-hosted backend
+- `frontend/src/utils/apiClient.js` — Added `IS_RENDER_BACKEND` (checks if `API_BASE` contains `onrender.com`), exported alongside `API_BASE`.
+- `frontend/src/components/ColdStartNotice.jsx` (new) — Renders nothing unless `IS_RENDER_BACKEND` is true; shows a bilingual amber notice warning that the backend may take 30-50s to wake up after inactivity.
+- `frontend/src/pages/Login.jsx`, `frontend/src/pages/Register.jsx` — Render `<ColdStartNotice language={language} />` below the page subtitle; on login/registration failure, append a bilingual "the server may still be waking up, try again in a moment" hint to the error message, but only when `IS_RENDER_BACKEND` is true (no change to the DigitalOcean-backend experience).
+
 ## 2026-07-08 (session 14) — CI/CD: deploy backend to DigitalOcean droplet via GitHub Actions
 
 ### Automated backend deployment set up
