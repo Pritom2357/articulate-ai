@@ -7,3 +7,6 @@ denoiser-worker/venv
 __pycache__/
 *.pyc
 .claude
+CHANGELOG.md
+pptx_generation_prompt.md
+modelcard_slide_prompt.md

@@ -84,6 +84,7 @@ export default function LessonDetails() {
 
   // Wizard steps: 1: Learn, 2: Practice (Flashcards), 3: Speak Words, 4: Speak Sentences, 5: Completed
   const [wizardStep, setWizardStep] = useState(1);
+  const [maxStep, setMaxStep] = useState(1);
 
   // Active guide selection
   const activeTutor = user?.guide_preference || 'MALE';
@@ -146,6 +147,10 @@ export default function LessonDetails() {
     }
     loadLessonAndBookmarks();
   }, [id]);
+
+  useEffect(() => {
+    setMaxStep(prev => Math.max(prev, wizardStep));
+  }, [wizardStep]);
 
   const clearRecordedAudio = () => {
     setRecordedAudioUrl(prev => {
@@ -429,28 +434,40 @@ export default function LessonDetails() {
           { step: 3, label: t('step_word') },
           { step: 4, label: t('step_sentence') },
           { step: 5, label: t('step_complete') }
-        ].map((s) => (
-          <button
-            key={s.step}
-            // onClick={() => goToStep(s.step)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer border-none ${wizardStep === s.step
-              ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-md'
-              : wizardStep > s.step
-                ? 'text-indigo-400 bg-indigo-950/10 hover:bg-indigo-950/20'
-                : 'text-slate-500 bg-transparent hover:bg-white/5 hover:text-slate-300'
+        ].map((s) => {
+          const isActive = wizardStep === s.step;
+          const isVisited = s.step < wizardStep;
+          const isReachable = s.step <= maxStep;
+          return (
+            <button
+              key={s.step}
+              onClick={() => isReachable && !isActive && goToStep(s.step)}
+              title={!isReachable ? (language === 'bn' ? 'এই ধাপে এখনো পৌঁছাননি' : 'Complete previous steps first') : undefined}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition border-none ${
+                isActive
+                  ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-md cursor-default'
+                  : isVisited
+                    ? 'text-indigo-400 bg-indigo-950/10 hover:bg-indigo-500/20 cursor-pointer'
+                    : isReachable
+                      ? 'text-cyan-400 bg-cyan-950/10 hover:bg-cyan-500/20 cursor-pointer'
+                      : 'text-slate-600 bg-transparent cursor-not-allowed opacity-40'
               }`}
-          >
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${wizardStep === s.step
-              ? 'bg-white text-indigo-600'
-              : wizardStep > s.step
-                ? 'bg-indigo-500/20 text-indigo-400'
-                : 'bg-white/5 text-slate-500'
+            >
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+                isActive
+                  ? 'bg-white text-indigo-600'
+                  : isVisited
+                    ? 'bg-indigo-500/20 text-indigo-400'
+                    : isReachable
+                      ? 'bg-cyan-500/20 text-cyan-400'
+                      : 'bg-white/5 text-slate-600'
               }`}>
-              {s.step}
-            </span>
-            <span>{s.label}</span>
-          </button>
-        ))}
+                {isVisited ? '✓' : s.step}
+              </span>
+              <span>{s.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Tutor Speech Bubble Area */}

@@ -237,4 +237,20 @@ All notable changes made during AI-assisted development sessions are recorded he
 ### "Your recording" playback was still gated behind denoised audio that no longer exists
 - `backend/src/services/aiService.js` — removed the dead `denoisedAudioDataUrl`/`denoised_audio_url` machinery entirely (it was always `null` since the denoiser stopped being called, but the field still existed on the response). Renamed `denoisedBuffer`/`denoisedMimeType` → `azureBuffer`/`azureMimeType` since they're just "whatever bytes get sent to Azure" now (raw, or ffmpeg-converted) — calling them "denoised" was misleading given no denoising happens here at all anymore.
 - `frontend/src/pages/LessonDetails.jsx`, `frontend/src/pages/Onboarding.jsx` — removed the `if (response.denoised_audio_url) { swap playback source }` blocks. "আপনার রেকর্ডিং" / "your recording" now always plays the original raw mic capture (the object URL created immediately from the recorded blob), never anything processed — this field would never be present anymore anyway, but the dead conditional and its comments incorrectly implied playback might still be swapped to a "cleaned" version.
+
+## 2026-07-08 (session 13)
+
+### Root README.md
+- `README.md` (new, repo root) — Professional project README for the GitHub repo: live demo + video badges, problem/solution, feature table, AI innovation section, architecture diagram, tech stack, project structure, quick-start commands, docs links, and team credits. Reused verified facts (7,640 words, XP system, Azure/OpenAI/DeepFilterNet3 stack) already gathered for the earlier PPTX report prompts rather than re-deriving them.
+
+## 2026-07-05 (session 12)
+
+### PPTX project report prompt
+- `pptx_generation_prompt.md` (new, repo root) — Comprehensive prompt for generating a 6-slide python-pptx project report for the CUET AI Hackathon submission. Covers: Cover/Intro, Problem & Solution, Technical Architecture, AI Innovation, Features & Competitive Analysis, Impact & Roadmap. Includes exact hex colors, font sizes, layout coordinates, all verified facts (7,640 words, 8 AI services, XP values, pricing, team names, market size), and helper function signatures for the script generator.
+- `frontend/src/pages/LessonDetails.jsx` — Developer skip mode added then reverted in same session: `import.meta.env.DEV` gate that made all stepper steps freely clickable during recording, with amber DEV badge. Reverted back to normal `maxStep`-gated behavior after recording was done.
+
+## 2026-07-04 (session 11)
+
+### Lesson stepper — quick-access navigation between steps
+- `frontend/src/pages/LessonDetails.jsx` — Added `maxStep` state (tracks the highest wizard step ever reached in the session) and a `useEffect` that keeps it updated whenever `wizardStep` advances. The step buttons in the stepper bar now have their `onClick` re-enabled: any step ≤ `maxStep` is clickable and navigates via `goToStep()` (which resets mic/recording state safely). Steps already visited show a ✓ badge instead of a number; the current step stays highlighted in gradient; unvisited/locked steps are dimmed with `opacity-40` and `cursor-not-allowed`. This lets users jump back to review flashcards or vocabulary without being forced through the linear flow again.
 - Verified live: `assessPronunciation()`'s response no longer has a `denoised_audio_url` key at all, and scoring still works (`overall_score: 100` on the same test clip).
