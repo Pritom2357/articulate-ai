@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { register } from '../api/auth.js';
 import useAuth from '../hooks/useAuth.js';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
+import { IS_RENDER_BACKEND } from '../utils/apiClient.js';
+import ColdStartNotice from '../components/ColdStartNotice.jsx';
 import { Sun, Moon } from 'lucide-react';
 
 export default function Register() {
@@ -96,7 +98,13 @@ export default function Register() {
         navigate('/login');
       }, 1500);
     } catch (err) {
-      setError(err.payload?.error || err.message || (language === 'bn' ? 'নিবন্ধন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' : 'Registration failed. Please try again.'));
+      const fallbackMessage = language === 'bn' ? 'নিবন্ধন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' : 'Registration failed. Please try again.';
+      const retryHint = IS_RENDER_BACKEND
+        ? (language === 'bn'
+          ? ' যদি এটি আপনার প্রথম চেষ্টা হয়, সার্ভার জেগে উঠতে কিছুক্ষণ সময় লাগতে পারে — কিছুক্ষণ পর আবার চেষ্টা করুন।'
+          : ' If this is your first attempt in a while, the server may still be waking up — please try again in a moment.')
+        : '';
+      setError((err.payload?.error || err.message || fallbackMessage) + retryHint);
       setIsLoading(false);
     }
   }
@@ -120,6 +128,8 @@ export default function Register() {
 
         <h1 className="glass-title">{language === 'bn' ? 'অ্যাকাউন্ট তৈরি করুন' : 'Create Account'}</h1>
         <p className="glass-subtitle">{language === 'bn' ? 'নিবন্ধন করুন এবং আপনার নিজস্ব লার্নিং জার্নি শুরু করুন।' : 'Register and start your own learning journey.'}</p>
+
+        <ColdStartNotice language={language} />
 
         <form onSubmit={handleSubmit} className="glass-grid two-cols">
           

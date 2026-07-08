@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
+import { IS_RENDER_BACKEND } from '../utils/apiClient.js';
+import ColdStartNotice from '../components/ColdStartNotice.jsx';
 import { Sun, Moon } from 'lucide-react';
 
 export default function Login() {
@@ -10,7 +12,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login, user } = useAuth();
-  const { theme, toggleTheme } = useThemeLanguage();
+  const { theme, toggleTheme, language } = useThemeLanguage();
   const navigate = useNavigate();
 
   // Redirect to curriculum if user is already authenticated
@@ -29,7 +31,13 @@ export default function Login() {
       await login({ email, password });
       navigate('/curriculum');
     } catch (err) {
-      setError(err.payload?.error || err.message || 'Login failed. Please check your credentials.');
+      const baseMessage = err.payload?.error || err.message || 'Login failed. Please check your credentials.';
+      const retryHint = IS_RENDER_BACKEND
+        ? (language === 'bn'
+          ? ' যদি এটি আপনার প্রথম চেষ্টা হয়, সার্ভার জেগে উঠতে কিছুক্ষণ সময় লাগতে পারে — কিছুক্ষণ পর আবার চেষ্টা করুন।'
+          : ' If this is your first attempt in a while, the server may still be waking up — please try again in a moment.')
+        : '';
+      setError(baseMessage + retryHint);
     } finally {
       setIsLoading(false);
     }
@@ -61,6 +69,8 @@ export default function Login() {
 
         <h1 className="glass-title">Welcome Back</h1>
         <p className="glass-subtitle">Log in to your account and continue your learning journey.</p>
+
+        <ColdStartNotice language={language} />
 
         <form onSubmit={handleSubmit} className="glass-grid">
           <label className="glass-label">
