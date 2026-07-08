@@ -2,6 +2,14 @@
 
 All notable changes made during AI-assisted development sessions are recorded here, grouped by date/session. Each entry lists the files touched and a short summary of what changed and why.
 
+## 2026-07-08 (session 14) — CI/CD: deploy backend to DigitalOcean droplet via GitHub Actions
+
+### Automated backend deployment set up
+- `.github/workflows/deploy-backend.yml` (new) — On every push to `main` touching `backend/**`, SSHes into the droplet (`appleboy/ssh-action`) and runs `git reset --hard origin/main` + `npm install --omit=dev` + `pm2 reload articulate-ai-backend`. Also runnable manually via `workflow_dispatch`.
+- `backend/deploy/setup-droplet.sh` (new) — One-time, manually-run setup script for a fresh Ubuntu 24.04 droplet: installs Node 20 LTS, git, ffmpeg, Nginx, PM2; clones the repo to `/var/www/articulate-ai`; pauses for the operator to hand-create `backend/src/.env` (secrets never go through git); starts the app under PM2 (with `pm2 startup` for reboot survival); configures Nginx as an HTTP reverse proxy on port 80 → 8000. Prints a reminder to run `certbot --nginx` once a domain is pointed at the droplet — no domain was available yet, so SSL is deferred.
+- Generated a dedicated ed25519 deploy keypair (kept out of the repo, in the session scratchpad) for the `DROPLET_SSH_KEY` GitHub secret, rather than reusing any personal key.
+- **Known gap, flagged to the user:** the droplet currently serves HTTP-only (no domain yet, so no Let's Encrypt cert). Since the frontend is deployed on Render over HTTPS, browsers will block requests to an HTTP-only backend (mixed content) until a domain is pointed at the droplet and `certbot --nginx` is run.
+
 ## 2026-07-08 (session 13) — Exam 500 fix (constraints + word_id hallucination) + mobile responsiveness + floating assistant fix
 
 ### Exam generation 500 errors — two compounding root causes, both fixed and verified end-to-end
