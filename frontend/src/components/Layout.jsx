@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth.js';
 import { updateProfile } from '../api/user.js';
 import { getUnreadNotificationCount } from '../api/progress.js';
 import maleAvatar from '../assets/articulate_male.jpeg';
 import femaleAvatar from '../assets/articulate_female.jpeg';
-import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key, Bookmark, Trophy, Search, X, Loader, Sun, Moon, Globe, LayoutDashboard } from 'lucide-react';
+import { BookOpen, Layers, BarChart2, User, Sparkles, ClipboardList, Bell, LogOut, Key, Bookmark, Trophy, Search, X, Loader, Sun, Moon, Globe, LayoutDashboard, Menu } from 'lucide-react';
 import { searchCurriculum } from '../api/curriculum.js';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext.jsx';
 import FloatingAssistant from './FloatingAssistant.jsx';
@@ -85,7 +85,9 @@ function GlobalSearch() {
   const [results, setResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const inputRef = useRef(null);
   const navigate = useNavigate();
+  const { t, language } = useThemeLanguage();
 
   useEffect(() => {
     if (!query.trim()) {
@@ -102,87 +104,119 @@ function GlobalSearch() {
       } finally {
         setIsSearching(false);
       }
-    }, 500);
+    }, 400);
 
     return () => clearTimeout(delayDebounceFn);
   }, [query]);
+
+  // When the modal opens: focus the input, lock body scroll, close on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const focusTimer = setTimeout(() => inputRef.current?.focus(), 50);
+    const onKey = (e) => { if (e.key === 'Escape') setIsOpen(false); };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      clearTimeout(focusTimer);
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   const handleResultClick = (path) => {
     navigate(path);
     setIsOpen(false);
     setQuery('');
+    setResults(null);
   };
 
-  const { t, language } = useThemeLanguage();
+  const hasResults = results && (results.lessons?.length || results.words?.length || results.phrases?.length);
 
   return (
-    <div className="relative w-full min-w-[200px] sm:min-w-[350px] md:min-w-[500px] lg:min-w-[650px] max-w-3xl">
-      <div className={`flex items-center bg-slate-900/50 border ${isOpen ? 'border-indigo-500/50' : 'border-white/10'} rounded-xl px-3 py-2 transition-all`}>
-        <Search size={16} className="text-slate-400 mr-2" />
-        <input
-          type="text"
-          placeholder={t('nav_search')}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setIsOpen(true);
-          }}
-          onFocus={() => setIsOpen(true)}
-          className="bg-transparent border-none text-white text-sm w-full outline-none placeholder:text-slate-500"
-        />
-        {query && (
-          <button onClick={() => { setQuery(''); setResults(null); }} className="text-slate-400 hover:text-white">
-            <X size={14} />
-          </button>
-        )}
-      </div>
+    <>
+      {/* Trigger — styled like a search field, opens the modal on click */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="search-trigger"
+        aria-label={t('nav_search')}
+      >
+        <Search size={16} className="text-slate-400 shrink-0" />
+        <span className="search-trigger-text">{t('nav_search')}</span>
+      </button>
 
-      {isOpen && query.trim().length > 0 && (
-        <div className="absolute z-50 left-2 right-2 top-full mt-2 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl max-h-80 overflow-y-auto custom-scrollbar p-2">
-          {isSearching ? (
-            <div className="py-4 text-center text-slate-400 flex justify-center items-center gap-2 text-sm">
-              <Loader size={14} className="animate-spin" /> Searching...
-            </div>
-          ) : results && (results.lessons?.length || results.words?.length || results.phrases?.length) ? (
-            <div className="space-y-3">
-              {results.lessons?.length > 0 && (
-                <div>
-                  <div className="text-[10px] uppercase font-bold text-slate-500 mb-1 px-2">Lessons</div>
-                  {results.lessons.slice(0, 3).map(lesson => (
-                    <div key={lesson.id} onClick={() => handleResultClick(`/lessons/${lesson.id}`)} className="p-2 hover:bg-white/5 rounded-lg cursor-pointer transition-colors group">
-                      <div className="text-sm font-bold text-indigo-300 group-hover:text-indigo-200">
-                        {language === 'bn' ? (lesson.title_bn || lesson.title) : lesson.title}
-                      </div>
-                      <div className="text-xs text-slate-400 truncate">
-                        {language === 'bn' ? (lesson.objective_bn || lesson.title_bn) : 'Practice pronunciation and speaking.'}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+      {isOpen && (
+        <div className="search-modal-overlay" onClick={() => setIsOpen(false)}>
+          <div className="search-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="search-modal-input-row">
+              <Search size={18} className="text-slate-400 shrink-0" />
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder={t('nav_search')}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="search-modal-input"
+              />
+              {isSearching && <Loader size={16} className="animate-spin text-slate-400 shrink-0" />}
+              {query && !isSearching && (
+                <button onClick={() => { setQuery(''); setResults(null); inputRef.current?.focus(); }} className="text-slate-400 hover:text-white shrink-0" aria-label="Clear">
+                  <X size={16} />
+                </button>
               )}
-              {results.words?.length > 0 && (
-                <div>
-                  <div className="text-[10px] uppercase font-bold text-slate-500 mb-1 px-2">Words</div>
-                  {results.words.slice(0, 5).map(word => (
-                    <div key={word.id} onClick={() => handleResultClick(`/words/${word.id}`)} className="p-2 hover:bg-white/5 rounded-lg cursor-pointer transition-colors flex justify-between items-center group">
-                      <div className="text-sm font-bold text-cyan-300 group-hover:text-cyan-200">{word.word}</div>
-                      <div className="text-xs text-slate-400">{word.bangla_meaning}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <button onClick={() => setIsOpen(false)} className="search-modal-close" aria-label="Close search">
+                <X size={18} />
+              </button>
             </div>
-          ) : (
+
+            <div className="search-modal-results">
+              {!query.trim() ? (
+                <div className="py-10 text-center text-slate-500 text-sm">
+                  {language === 'bn' ? 'লেসন বা শব্দ খুঁজতে টাইপ করুন…' : 'Type to search lessons and words…'}
+                </div>
+              ) : isSearching && !hasResults ? (
+                <div className="py-10 text-center text-slate-400 flex justify-center items-center gap-2 text-sm">
+                  <Loader size={16} className="animate-spin" /> {language === 'bn' ? 'খুঁজছি…' : 'Searching…'}
+                </div>
+              ) : hasResults ? (
+                <div className="space-y-4">
+                  {results.lessons?.length > 0 && (
+                    <div>
+                      <div className="text-[10px] uppercase font-bold text-slate-500 mb-1.5 px-2 tracking-wider">{language === 'bn' ? 'লেসন' : 'Lessons'}</div>
+                      {results.lessons.slice(0, 4).map(lesson => (
+                        <div key={lesson.id} onClick={() => handleResultClick(`/lessons/${lesson.id}`)} className="p-2.5 hover:bg-white/5 rounded-lg cursor-pointer transition-colors group">
+                          <div className="text-sm font-bold text-indigo-300 group-hover:text-indigo-200">
+                            {language === 'bn' ? (lesson.title_bn || lesson.title) : lesson.title}
+                          </div>
+                          <div className="text-xs text-slate-400 truncate">
+                            {language === 'bn' ? (lesson.objective_bn || lesson.title_bn) : 'Practice pronunciation and speaking.'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {results.words?.length > 0 && (
+                    <div>
+                      <div className="text-[10px] uppercase font-bold text-slate-500 mb-1.5 px-2 tracking-wider">{language === 'bn' ? 'শব্দ' : 'Words'}</div>
+                      {results.words.slice(0, 8).map(word => (
+                        <div key={word.id} onClick={() => handleResultClick(`/words/${word.id}`)} className="p-2.5 hover:bg-white/5 rounded-lg cursor-pointer transition-colors flex justify-between items-center gap-3 group">
+                          <div className="text-sm font-bold text-cyan-300 group-hover:text-cyan-200">{word.word}</div>
+                          <div className="text-xs text-slate-400 truncate">{word.bangla_meaning}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
             <div className="py-4 text-center text-slate-500 text-sm italic">
               {language === 'bn' ? 'কোনো ফলাফল পাওয়া যায়নি।' : 'No results found.'}
             </div>
-          )}
+              )}
+            </div>
+          </div>
         </div>
       )}
-
-      {/* Click outside overlay */}
-      {isOpen && <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>}
-    </div>
+    </>
   );
 }
 
@@ -192,6 +226,12 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Close the mobile drawer whenever the route changes (covers nav link taps too)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!user) {
@@ -311,7 +351,22 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      <aside className="site-sidebar">
+      {/* Mobile drawer backdrop */}
+      <div
+        className={`sidebar-backdrop${sidebarOpen ? ' open' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+        aria-hidden="true"
+      />
+
+      <aside className={`site-sidebar${sidebarOpen ? ' open' : ''}`}>
+        <button
+          className="sidebar-close-btn"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Close menu"
+        >
+          <X size={20} />
+        </button>
+
         <SidebarBrand />
 
         {user && <GuideIndicator user={user} onUpdate={handleToggleGuide} />}
@@ -372,7 +427,15 @@ export default function Layout() {
 
         {/* Persistent Top Bar with Notifications & Profile */}
         <div className="top-bar">
-          <div className="top-bar-left"></div>
+          <div className="top-bar-left">
+            <button
+              className="sidebar-toggle-btn"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu size={22} />
+            </button>
+          </div>
 
           <div className="top-bar-center">
             {/* Global Search Bar */}

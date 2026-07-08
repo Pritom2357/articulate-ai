@@ -402,10 +402,10 @@ ALTER TABLE "exams" ADD CONSTRAINT "exams_user_id_fkey" FOREIGN KEY ("user_id") 
 
 CREATE TABLE "exam_questions" (
 	"id" serial PRIMARY KEY,
-	"exam_id" integer NOT NULL UNIQUE,
+	"exam_id" integer NOT NULL,
 	"section" question_section NOT NULL,
 	"item_type" question_item_type NOT NULL,
-	"order_num" integer NOT NULL UNIQUE,
+	"order_num" integer NOT NULL,
 	"text_en" varchar(500) NOT NULL,
 	"text_bn" varchar(500),
 	"audio_url" text,
@@ -425,8 +425,8 @@ ALTER TABLE "exam_questions" ADD CONSTRAINT "exam_questions_word_id_fkey" FOREIG
 
 CREATE TABLE "exam_answers" (
 	"id" serial PRIMARY KEY,
-	"exam_id" integer NOT NULL UNIQUE,
-	"question_id" integer NOT NULL UNIQUE,
+	"exam_id" integer NOT NULL,
+	"question_id" integer NOT NULL,
 	"typed_answer" text,
 	"audio_url" text,
 	"audio_buffer" bytea,

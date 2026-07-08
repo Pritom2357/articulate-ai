@@ -406,10 +406,10 @@ export default function Landing() {
       </div>
 
       {/* Top Navbar */}
-      <header className="sticky top-0 z-50 bg-[#0b0f19]/70 backdrop-blur-xl border-b border-white/5 py-4 px-6 md:px-12 flex justify-between items-center">
-        <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-          <span className="text-2xl">🎙️</span>
-          <span className="text-xl font-black tracking-tight flex items-center">
+      <header className="sticky top-0 z-50 bg-[#0b0f19]/70 backdrop-blur-xl border-b border-white/5 py-4 px-4 sm:px-6 md:px-12 flex justify-between items-center gap-2">
+        <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity shrink-0 min-w-0">
+          <span className="text-xl sm:text-2xl shrink-0">🎙️</span>
+          <span className="text-lg sm:text-xl font-black tracking-tight flex items-center whitespace-nowrap">
             <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">Articulate</span>
             <span className="mx-1 text-cyan-400 font-bold">•</span>
             <span className="bg-gradient-to-r from-cyan-400 to-pink-400 bg-clip-text text-transparent">AI</span>
@@ -423,11 +423,11 @@ export default function Landing() {
           <a href="#testimonials" className="hover:text-white transition-colors">Success Stories</a>
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           {/* Theme Switcher */}
-          <button 
-            onClick={toggleTheme} 
-            className="top-bar-icon-btn" 
+          <button
+            onClick={toggleTheme}
+            className="top-bar-icon-btn shrink-0"
             title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             style={{ width: '36px', height: '36px' }}
           >
@@ -435,23 +435,23 @@ export default function Landing() {
           </button>
 
           {user ? (
-            <Link 
-              to="/curriculum" 
-              className="bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-sm py-2 px-5 rounded-xl transition-all shadow-[0_4px_15px_rgba(6,182,212,0.2)] hover:scale-105"
+            <Link
+              to="/curriculum"
+              className="whitespace-nowrap shrink-0 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-xs sm:text-sm py-2 px-3 sm:px-5 rounded-xl transition-all shadow-[0_4px_15px_rgba(6,182,212,0.2)] hover:scale-105"
             >
               Go to Dashboard
             </Link>
           ) : (
             <>
-              <Link 
-                to="/login" 
-                className="text-slate-300 hover:text-white text-sm font-semibold px-3 py-2 transition-colors"
+              <Link
+                to="/login"
+                className="whitespace-nowrap shrink-0 text-slate-300 hover:text-white text-xs sm:text-sm font-semibold px-2 sm:px-3 py-2 transition-colors"
               >
                 Sign In
               </Link>
-              <Link 
-                to="/register" 
-                className="bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-sm py-2.5 px-5 rounded-xl transition-all shadow-[0_4px_15px_rgba(6,182,212,0.2)] hover:scale-105"
+              <Link
+                to="/register"
+                className="whitespace-nowrap shrink-0 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-xs sm:text-sm py-2.5 px-3 sm:px-5 rounded-xl transition-all shadow-[0_4px_15px_rgba(6,182,212,0.2)] hover:scale-105"
               >
                 Get Started Free
               </Link>
